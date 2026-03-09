@@ -1,17 +1,18 @@
-import { Calendar, Clock, MapPin, TrendingUp, BookOpen, Users, ArrowRight, FileText, Star } from "lucide-react";
+import { Clock, MapPin, TrendingUp, BookOpen, Users, ArrowRight, FileText, Star as StarIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useMeetups } from "@/contexts/MeetupContext";
+import { useApp } from "@/contexts/AppContext";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 
 const trendingResources = [
-  { id: 1, title: "Calculus II Final Cheat Sheet", author: "Anna K.", downloads: 234, tag: "Exam Prep", tagClass: "badge-exam" },
-  { id: 2, title: "Data Structures Lecture Notes (Golden)", author: "Márton B.", downloads: 189, tag: "Student Notes", tagClass: "badge-golden" },
-  { id: 3, title: "Probability Theory Slides - Week 10", author: "Prof. Szabó", downloads: 156, tag: "Lecture Slides", tagClass: "badge-slides" },
-  { id: 4, title: "Operating Systems Past Papers 2024", author: "Dániel T.", downloads: 142, tag: "Exam Prep", tagClass: "badge-exam" },
+  { id: "res-1", title: "Calculus II Final Cheat Sheet", author: "Anna K.", downloads: 234, tag: "Exam Prep", tagClass: "badge-exam" },
+  { id: "res-2", title: "Data Structures Lecture Notes (Golden)", author: "Márton B.", downloads: 189, tag: "Student Notes", tagClass: "badge-golden" },
+  { id: "res-3", title: "Probability Theory Slides - Week 10", author: "Prof. Szabó", downloads: 156, tag: "Lecture Slides", tagClass: "badge-slides" },
+  { id: "res-4", title: "Operating Systems Past Papers 2024", author: "Dániel T.", downloads: 142, tag: "Exam Prep", tagClass: "badge-exam" },
 ];
 
 const quickSubjects = [
@@ -22,6 +23,7 @@ const quickSubjects = [
 
 export default function Dashboard() {
   const { meetups } = useMeetups();
+  const { favorites, toggleFavorite } = useApp();
   const navigate = useNavigate();
   const joinedMeetups = meetups.filter((m) => m.joined);
   const [loading, setLoading] = useState(true);
@@ -31,6 +33,8 @@ export default function Dashboard() {
     return () => clearTimeout(t);
   }, []);
 
+  const favoriteResources = trendingResources.filter((r) => favorites.includes(r.id));
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
@@ -38,14 +42,30 @@ export default function Dashboard() {
         <p className="text-muted-foreground mt-1">Here's what's happening at ELTE Informatics today.</p>
       </div>
 
+      {/* Favorites Section */}
+      {favoriteResources.length > 0 && (
+        <section className="glass-card p-5">
+          <h2 className="text-lg font-semibold flex items-center gap-2 mb-3">
+            <StarIcon className="h-5 w-5 text-warning fill-warning" /> Favorites
+          </h2>
+          <div className="space-y-2">
+            {favoriteResources.map((r) => (
+              <div key={r.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer">
+                <FileText className="h-4 w-4 text-primary" />
+                <span className="text-sm font-medium flex-1">{r.title}</span>
+                <Badge variant="outline" className={`text-[10px] ${r.tagClass}`}>{r.tag}</Badge>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
-          {/* Upcoming Meetups - synced with global state */}
           <section className="glass-card p-5">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold flex items-center gap-2">
-                <Users className="h-5 w-5 text-primary" />
-                Upcoming Meetups
+                <Users className="h-5 w-5 text-primary" /> Upcoming Meetups
               </h2>
               <Button variant="ghost" size="sm" className="text-primary text-xs" onClick={() => navigate("/meetups")}>
                 View all <ArrowRight className="ml-1 h-3 w-3" />
@@ -55,10 +75,7 @@ export default function Dashboard() {
               {loading ? (
                 Array.from({ length: 3 }).map((_, i) => (
                   <div key={i} className="glass-subtle p-3.5 flex items-center justify-between">
-                    <div className="space-y-2 flex-1">
-                      <Skeleton className="h-4 w-48" />
-                      <Skeleton className="h-3 w-64" />
-                    </div>
+                    <div className="space-y-2 flex-1"><Skeleton className="h-4 w-48" /><Skeleton className="h-3 w-64" /></div>
                     <Skeleton className="h-7 w-20 ml-3" />
                   </div>
                 ))
@@ -88,12 +105,10 @@ export default function Dashboard() {
             </div>
           </section>
 
-          {/* Trending Resources */}
           <section className="glass-card p-5">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold flex items-center gap-2">
-                <TrendingUp className="h-5 w-5 text-primary" />
-                Trending in Informatics
+                <TrendingUp className="h-5 w-5 text-primary" /> Trending in Informatics
               </h2>
               <Button variant="ghost" size="sm" className="text-primary text-xs" onClick={() => navigate("/vault")}>
                 Browse Vault <ArrowRight className="ml-1 h-3 w-3" />
@@ -104,10 +119,7 @@ export default function Dashboard() {
                 ? Array.from({ length: 4 }).map((_, i) => (
                     <div key={i} className="flex items-center gap-3 p-3">
                       <Skeleton className="h-9 w-9 rounded-lg" />
-                      <div className="space-y-1.5 flex-1">
-                        <Skeleton className="h-4 w-48" />
-                        <Skeleton className="h-3 w-32" />
-                      </div>
+                      <div className="space-y-1.5 flex-1"><Skeleton className="h-4 w-48" /><Skeleton className="h-3 w-32" /></div>
                       <Skeleton className="h-5 w-20" />
                     </div>
                   ))
@@ -120,6 +132,9 @@ export default function Dashboard() {
                         <h3 className="text-sm font-medium truncate">{r.title}</h3>
                         <p className="text-xs text-muted-foreground">by {r.author} · {r.downloads} downloads</p>
                       </div>
+                      <button onClick={() => toggleFavorite(r.id)} className="shrink-0 p-1 hover:scale-110 transition-transform">
+                        <StarIcon className={`h-4 w-4 ${favorites.includes(r.id) ? "fill-warning text-warning" : "text-muted-foreground"}`} />
+                      </button>
                       <Badge variant="outline" className={`text-[10px] shrink-0 ${r.tagClass}`}>{r.tag}</Badge>
                     </div>
                   ))}
@@ -130,17 +145,13 @@ export default function Dashboard() {
         <div className="space-y-6">
           <section className="glass-card p-5">
             <h2 className="text-lg font-semibold flex items-center gap-2 mb-4">
-              <BookOpen className="h-5 w-5 text-primary" />
-              My Subjects
+              <BookOpen className="h-5 w-5 text-primary" /> My Subjects
             </h2>
             <div className="space-y-4">
               {loading
                 ? Array.from({ length: 3 }).map((_, i) => (
                     <div key={i} className="glass-subtle p-3.5 space-y-2">
-                      <div className="flex justify-between">
-                        <Skeleton className="h-4 w-32" />
-                        <Skeleton className="h-3 w-16" />
-                      </div>
+                      <div className="flex justify-between"><Skeleton className="h-4 w-32" /><Skeleton className="h-3 w-16" /></div>
                       <Skeleton className="h-1.5 w-full" />
                     </div>
                   ))
@@ -165,7 +176,7 @@ export default function Dashboard() {
               {[
                 { label: "Resources Viewed", value: "24", icon: FileText },
                 { label: "Meetups Joined", value: String(joinedMeetups.length), icon: Users },
-                { label: "Forum Posts", value: "7", icon: Star },
+                { label: "Forum Posts", value: "7", icon: StarIcon },
                 { label: "Study Hours", value: "18h", icon: Clock },
               ].map((stat) => (
                 <div key={stat.label} className="glass-subtle p-3 text-center">
