@@ -52,7 +52,7 @@ export function CategorySidebar() {
   const displayStatus = voiceRoom ? `🔈 In ${voiceRoom}` : currentStatus;
 
   return (
-    <div className="w-[220px] shrink-0 flex flex-col bg-background/80 backdrop-blur-xl border-r border-border/40 overflow-hidden">
+    <div className="w-[220px] shrink-0 flex flex-col bg-card/80 backdrop-blur-xl border-r border-border/40 overflow-hidden">
       {/* Server name */}
       <div className="h-12 flex items-center px-4 border-b border-border/40 shrink-0">
         <h2 className="font-bold text-sm tracking-tight truncate">ELTE · Informatics</h2>
@@ -87,9 +87,9 @@ export function CategorySidebar() {
                       key={item.url}
                       to={item.url}
                       end={item.url === "/"}
-                      className={`flex items-center gap-2.5 px-2 py-1.5 rounded-md text-sm transition-colors duration-150 ${
+                      className={`flex items-center gap-2.5 px-2 py-1.5 rounded-md text-sm transition-all duration-200 ${
                         isActive
-                          ? "bg-accent text-accent-foreground font-medium"
+                          ? "bg-primary/10 text-primary font-medium shadow-sm shadow-primary/10"
                           : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
                       }`}
                       activeClassName=""

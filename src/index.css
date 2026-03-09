@@ -6,50 +6,96 @@
 
 @layer base {
   :root {
-    --background: 210 20% 98%;
-    --foreground: 222 84% 5%;
+    --background: 210 20% 97%;
+    --foreground: 222 47% 11%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222 84% 5%;
+    --card-foreground: 222 47% 11%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222 84% 5%;
+    --popover-foreground: 222 47% 11%;
 
-    --primary: 239 84% 67%;
+    --primary: 217 91% 60%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 214 32% 91%;
+    --secondary: 215 20% 93%;
     --secondary-foreground: 222 47% 11%;
 
-    --muted: 210 40% 96%;
+    --muted: 210 20% 95%;
     --muted-foreground: 215 16% 47%;
 
-    --accent: 239 84% 67%;
+    --accent: 217 91% 60%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 213 27% 84%;
-    --input: 213 27% 84%;
-    --ring: 239 84% 67%;
+    --border: 214 20% 88%;
+    --input: 214 20% 88%;
+    --ring: 217 91% 60%;
 
     --radius: 0.75rem;
 
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 215 25% 27%;
-    --sidebar-primary: 239 84% 67%;
+    --sidebar-primary: 217 91% 60%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 239 84% 97%;
-    --sidebar-accent-foreground: 239 84% 47%;
-    --sidebar-border: 213 27% 90%;
-    --sidebar-ring: 239 84% 67%;
+    --sidebar-accent: 217 91% 96%;
+    --sidebar-accent-foreground: 217 91% 40%;
+    --sidebar-border: 214 20% 92%;
+    --sidebar-ring: 217 91% 60%;
 
     --success: 142 76% 36%;
     --success-foreground: 0 0% 100%;
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
     --info: 199 89% 48%;
+    --info-foreground: 0 0% 100%;
+  }
+
+  .dark {
+    --background: 222 47% 6%;
+    --foreground: 210 20% 92%;
+
+    --card: 222 47% 9%;
+    --card-foreground: 210 20% 92%;
+
+    --popover: 222 47% 9%;
+    --popover-foreground: 210 20% 92%;
+
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 222 30% 16%;
+    --secondary-foreground: 210 20% 85%;
+
+    --muted: 222 30% 14%;
+    --muted-foreground: 215 16% 55%;
+
+    --accent: 217 91% 60%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 70% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 222 20% 18%;
+    --input: 222 20% 18%;
+    --ring: 217 91% 60%;
+
+    --sidebar-background: 222 47% 7%;
+    --sidebar-foreground: 210 20% 75%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 217 91% 15%;
+    --sidebar-accent-foreground: 217 91% 70%;
+    --sidebar-border: 222 20% 14%;
+    --sidebar-ring: 217 91% 60%;
+
+    --success: 142 76% 42%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 55%;
+    --warning-foreground: 0 0% 100%;
+    --info: 199 89% 55%;
     --info-foreground: 0 0% 100%;
   }
 }
@@ -69,24 +115,24 @@
 
 @layer components {
   .glass-card {
-    @apply bg-white/70 backdrop-blur-xl border border-white/20 rounded-xl;
-    box-shadow: 0 8px 32px -8px rgba(79, 70, 229, 0.08), 0 2px 8px -2px rgba(0, 0, 0, 0.04);
+    @apply bg-card/80 backdrop-blur-xl border border-border/50 rounded-xl;
+    box-shadow: 0 8px 32px -8px hsl(var(--primary) / 0.06), 0 2px 8px -2px hsl(var(--foreground) / 0.04);
   }
   .glass-subtle {
-    @apply bg-white/50 backdrop-blur-sm border border-slate-200/50 rounded-lg;
-    box-shadow: 0 2px 12px -4px rgba(0, 0, 0, 0.06);
+    @apply bg-card/60 backdrop-blur-sm border border-border/40 rounded-lg;
+    box-shadow: 0 2px 12px -4px hsl(var(--foreground) / 0.05);
   }
   .glass-sidebar {
-    @apply bg-white/80 backdrop-blur-xl border-r border-slate-200/60;
+    @apply bg-card/90 backdrop-blur-xl border-r border-border/50;
   }
   .badge-golden {
-    @apply bg-amber-100 text-amber-800 border border-amber-200;
+    @apply bg-warning/10 text-warning border border-warning/20;
   }
   .badge-exam {
-    @apply bg-red-50 text-red-700 border border-red-200;
+    @apply bg-destructive/10 text-destructive border border-destructive/20;
   }
   .badge-slides {
-    @apply bg-blue-50 text-blue-700 border border-blue-200;
+    @apply bg-info/10 text-info border border-info/20;
   }
 
   /* Haptic button press feedback */
@@ -114,5 +160,14 @@
   }
   .custom-scroll::-webkit-scrollbar-thumb:hover {
     background: hsl(var(--muted-foreground));
+  }
+
+  /* Page transition */
+  .page-slide-in {
+    animation: slideIn 0.25s ease-out;
+  }
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateX(12px); }
+    to { opacity: 1; transform: translateX(0); }
   }
 }

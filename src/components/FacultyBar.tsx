@@ -11,7 +11,7 @@ export function FacultyBar() {
   const { activeCommunity, setActiveCommunity } = useApp();
 
   return (
-    <div className="w-[68px] shrink-0 flex flex-col items-center gap-2 py-4 bg-muted/60 backdrop-blur-xl border-r border-border/40 overflow-y-auto custom-scroll">
+    <div className="w-[68px] shrink-0 flex flex-col items-center gap-2 py-4 bg-card/60 backdrop-blur-xl border-r border-border/40 overflow-y-auto custom-scroll">
       {communities.map((c) => (
         <Tooltip key={c.id}>
           <TooltipTrigger asChild>
@@ -19,8 +19,8 @@ export function FacultyBar() {
               onClick={() => setActiveCommunity(c.id)}
               className={`h-12 w-12 rounded-2xl flex items-center justify-center text-xl transition-all duration-200 hover:rounded-xl ${
                 activeCommunity === c.id
-                  ? "bg-primary text-primary-foreground rounded-xl shadow-md"
-                  : "bg-background hover:bg-accent/20"
+                  ? "bg-primary text-primary-foreground rounded-xl shadow-lg shadow-primary/25"
+                  : "bg-muted hover:bg-accent/20"
               }`}
             >
               {c.emoji}
@@ -32,7 +32,7 @@ export function FacultyBar() {
       <div className="w-8 h-px bg-border my-1" />
       <Tooltip>
         <TooltipTrigger asChild>
-          <button className="h-12 w-12 rounded-2xl flex items-center justify-center text-xl bg-background hover:bg-accent/20 hover:rounded-xl transition-all duration-200 text-muted-foreground">
+          <button className="h-12 w-12 rounded-2xl flex items-center justify-center text-xl bg-muted hover:bg-accent/20 hover:rounded-xl transition-all duration-200 text-muted-foreground">
             +
           </button>
         </TooltipTrigger>

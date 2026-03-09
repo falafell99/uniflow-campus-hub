@@ -1,4 +1,4 @@
-import { Search, Bell, X, Tag, GraduationCap } from "lucide-react";
+import { Search, Bell, X, Tag, GraduationCap, Sun, Moon } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -7,6 +7,7 @@ import {
 } from "@/components/ui/popover";
 import { useState } from "react";
 import { useApp } from "@/contexts/AppContext";
+import { useTheme } from "@/contexts/ThemeContext";
 
 const notifications = [
   { id: 1, text: "New notes uploaded for Linear Algebra", time: "5 min ago", unread: true },
@@ -17,6 +18,7 @@ const notifications = [
 export function TopHeader() {
   const [search, setSearch] = useState("");
   const { credits, tutoringAvailable } = useApp();
+  const { theme, toggleTheme } = useTheme();
 
   return (
     <header className="sticky top-0 z-30 flex h-12 items-center gap-3 border-b border-border/40 bg-background/70 backdrop-blur-xl px-4 shrink-0">
@@ -47,6 +49,11 @@ export function TopHeader() {
         <Tag className="h-3.5 w-3.5 text-primary" />
         <span className="text-xs font-semibold">{credits.toLocaleString()} Credits</span>
       </div>
+
+      {/* Theme Toggle */}
+      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleTheme}>
+        {theme === "light" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+      </Button>
 
       <Popover>
         <PopoverTrigger asChild>
