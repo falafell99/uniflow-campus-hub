@@ -27,6 +27,7 @@ const trendingThisWeek = [
 export default function Marketplace() {
   const [search, setSearch] = useState("");
   const [confirmItem, setConfirmItem] = useState<typeof listings[0] | null>(null);
+  const [processing, setProcessing] = useState(false);
   const { credits, spendCredits, ownedItems, addOwnedItem } = useApp();
 
   const filtered = listings.filter((l) =>
@@ -34,20 +35,21 @@ export default function Marketplace() {
   );
 
   const handleBuy = () => {
-    if (!confirmItem) return;
-    if (confirmItem.price === 0) {
-      addOwnedItem(confirmItem.id);
-      toast({ title: "Added to library!", description: `"${confirmItem.title}" is now yours.` });
+    if (!confirmItem || processing) return;
+    setProcessing(true);
+    setTimeout(() => {
+      if (confirmItem.price === 0) {
+        addOwnedItem(confirmItem.id);
+        toast({ title: "Purchase successful", description: `Added to your Vault: "${confirmItem.title}"` });
+      } else if (spendCredits(confirmItem.price)) {
+        addOwnedItem(confirmItem.id);
+        toast({ title: "Purchase successful", description: `Added to your Vault: "${confirmItem.title}"` });
+      } else {
+        toast({ title: "Insufficient credits", description: `You need ${confirmItem.price - credits} more credits.`, variant: "destructive" });
+      }
+      setProcessing(false);
       setConfirmItem(null);
-      return;
-    }
-    if (spendCredits(confirmItem.price)) {
-      addOwnedItem(confirmItem.id);
-      toast({ title: "Purchase successful!", description: `"${confirmItem.title}" has been added to your library.` });
-    } else {
-      toast({ title: "Insufficient credits", description: `You need ${confirmItem.price - credits} more credits.`, variant: "destructive" });
-    }
-    setConfirmItem(null);
+    }, 1000);
   };
 
   return (
