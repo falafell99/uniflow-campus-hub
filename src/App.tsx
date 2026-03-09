@@ -23,6 +23,8 @@ import Flashcards from "@/pages/Flashcards";
 import KnowledgeGraph from "@/pages/KnowledgeGraph";
 import Pomodoro from "@/pages/Pomodoro";
 import Workspace from "@/pages/Workspace";
+import Studio from "@/pages/Studio";
+import MentalMap from "@/pages/MentalMap";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
