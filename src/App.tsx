@@ -56,6 +56,8 @@ const App = () => (
                   <Route path="/knowledge-graph" element={<KnowledgeGraph />} />
                   <Route path="/pomodoro" element={<Pomodoro />} />
                   <Route path="/workspace" element={<Workspace />} />
+                  <Route path="/studio" element={<Studio />} />
+                  <Route path="/mental-map" element={<MentalMap />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </Layout>

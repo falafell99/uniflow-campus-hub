@@ -339,6 +339,16 @@ export default function Vault() {
                 </div>
                 <div className="pt-4 flex gap-2">
                   <Button className="gap-2"><Download className="h-4 w-4" /> Download PDF</Button>
+                  <Button
+                    variant="outline"
+                    className="gap-2"
+                    onClick={() => {
+                      setPreviewFile(null);
+                      navigate(`/studio?file=${encodeURIComponent(previewFile?.name || "")}`);
+                    }}
+                  >
+                    <Sparkles className="h-4 w-4" /> Open in Studio
+                  </Button>
                   <Button variant="outline" onClick={() => setPreviewFile(null)}>Close</Button>
                 </div>
               </div>
