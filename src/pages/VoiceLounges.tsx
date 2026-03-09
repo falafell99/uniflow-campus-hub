@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Mic, MicOff, Volume2, Users, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useApp } from "@/contexts/AppContext";
 
 type Room = {
   id: number;
@@ -44,9 +45,35 @@ const initialRooms: Room[] = [
 ];
 
 export default function VoiceLounges() {
-  const [rooms] = useState<Room[]>(initialRooms);
+  const [rooms, setRooms] = useState<Room[]>(initialRooms);
   const [joinedRoom, setJoinedRoom] = useState<number | null>(null);
   const [muted, setMuted] = useState(false);
+  const { setVoiceRoom } = useApp();
+
+  const handleJoin = (room: Room) => {
+    // Add user to room
+    setRooms((prev) =>
+      prev.map((r) =>
+        r.id === room.id
+          ? { ...r, users: [...r.users, { name: "Ahmed K.", avatar: "AK", speaking: false }] }
+          : r
+      )
+    );
+    setJoinedRoom(room.id);
+    setVoiceRoom(room.name.replace(/^[^\w]*/, "").trim());
+  };
+
+  const handleLeave = () => {
+    setRooms((prev) =>
+      prev.map((r) =>
+        r.id === joinedRoom
+          ? { ...r, users: r.users.filter((u) => u.avatar !== "AK" || u.name !== "Ahmed K.") }
+          : r
+      )
+    );
+    setJoinedRoom(null);
+    setVoiceRoom(null);
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -71,8 +98,8 @@ export default function VoiceLounges() {
 
             {/* Avatars */}
             <div className="flex flex-wrap gap-3 mb-4">
-              {room.users.map((u) => (
-                <div key={u.name} className="flex flex-col items-center gap-1">
+              {room.users.map((u, i) => (
+                <div key={`${u.name}-${i}`} className="flex flex-col items-center gap-1">
                   <div className={`relative h-10 w-10 rounded-full flex items-center justify-center ${u.speaking ? "ring-2 ring-success ring-offset-2" : "bg-muted"}`}>
                     <span className="text-xs font-semibold text-primary">{u.avatar}</span>
                     {u.speaking && (
@@ -99,7 +126,7 @@ export default function VoiceLounges() {
                   variant="destructive"
                   size="sm"
                   className="flex-1"
-                  onClick={() => setJoinedRoom(null)}
+                  onClick={handleLeave}
                 >
                   Leave
                 </Button>
@@ -108,8 +135,8 @@ export default function VoiceLounges() {
               <Button
                 size="sm"
                 className="w-full"
-                disabled={room.locked}
-                onClick={() => setJoinedRoom(room.id)}
+                disabled={room.locked || joinedRoom !== null}
+                onClick={() => handleJoin(room)}
               >
                 {room.locked ? "Locked" : "Join Room"}
               </Button>

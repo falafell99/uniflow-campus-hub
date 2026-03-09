@@ -11,7 +11,7 @@ export function FacultyBar() {
   const { activeCommunity, setActiveCommunity } = useApp();
 
   return (
-    <div className="w-[68px] shrink-0 flex flex-col items-center gap-2 py-4 bg-muted/60 border-r border-border/40">
+    <div className="w-[68px] shrink-0 flex flex-col items-center gap-2 py-4 bg-muted/60 backdrop-blur-xl border-r border-border/40 overflow-y-auto custom-scroll">
       {communities.map((c) => (
         <Tooltip key={c.id}>
           <TooltipTrigger asChild>
