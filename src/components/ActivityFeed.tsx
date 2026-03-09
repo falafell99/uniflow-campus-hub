@@ -21,7 +21,7 @@ const recentUploads = [
 
 export function ActivityFeed() {
   return (
-    <div className="w-[240px] shrink-0 border-l border-border/40 bg-background/60 backdrop-blur-xl overflow-hidden hidden xl:flex flex-col">
+    <div className="w-[240px] shrink-0 border-l border-border/40 bg-card/60 backdrop-blur-xl overflow-hidden hidden xl:flex flex-col">
       {/* Active Study Groups */}
       <div className="p-3 border-b border-border/30">
         <h3 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">

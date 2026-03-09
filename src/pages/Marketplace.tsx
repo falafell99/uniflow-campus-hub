@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ShoppingCart, Star, Search, Tag, Check } from "lucide-react";
+import { ShoppingCart, Star, Search, Tag, Check, TrendingUp, Flame } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +16,12 @@ const listings = [
   { id: 4, title: "Linear Algebra Solved Problems (200+)", author: "Márton B.", price: 750, credits: true, rating: 4.7, reviews: 28, subject: "Linear Algebra", tag: "Best Seller" },
   { id: 5, title: "OS Concepts Mind Maps", author: "Dániel T.", price: 0, credits: false, rating: 4.5, reviews: 15, subject: "Operating Systems", tag: "Free" },
   { id: 6, title: "Probability & Statistics Summary", author: "Eszter N.", price: 400, credits: true, rating: 4.4, reviews: 19, subject: "Probability", tag: "" },
+];
+
+const trendingThisWeek = [
+  { id: 101, title: "Calculus II Final Review Pack", author: "Anna K.", downloads: 342, subject: "Calculus II" },
+  { id: 102, title: "Data Structures Visualized", author: "Gábor L.", downloads: 289, subject: "Algorithms" },
+  { id: 103, title: "Discrete Math Proofs Masterclass", author: "Eszter N.", downloads: 256, subject: "Discrete Math" },
 ];
 
 export default function Marketplace() {
@@ -57,6 +63,27 @@ export default function Marketplace() {
         </div>
       </div>
 
+      {/* Trending This Week */}
+      <section className="glass-card p-5">
+        <h2 className="text-base font-semibold flex items-center gap-2 mb-3">
+          <Flame className="h-4 w-4 text-warning" /> Trending This Week
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {trendingThisWeek.map((item, i) => (
+            <div key={item.id} className="glass-subtle p-3 flex items-center gap-3 hover:shadow-md transition-all duration-200 cursor-pointer">
+              <div className="h-9 w-9 rounded-lg bg-warning/10 flex items-center justify-center shrink-0 font-bold text-sm text-warning">
+                #{i + 1}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium truncate">{item.title}</p>
+                <p className="text-[10px] text-muted-foreground">{item.author} · {item.downloads} downloads</p>
+              </div>
+              <TrendingUp className="h-4 w-4 text-success shrink-0" />
+            </div>
+          ))}
+        </div>
+      </section>
+
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input placeholder="Search notes..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
@@ -82,17 +109,14 @@ export default function Marketplace() {
                 <span className="text-xs text-muted-foreground">({item.reviews} reviews)</span>
               </div>
               <div className="mt-auto flex items-center justify-between">
-                <span className="font-bold text-sm">
-                  {item.price === 0 ? "Free" : `${item.price} Credits`}
-                </span>
+                <span className="font-bold text-sm">{item.price === 0 ? "Free" : `${item.price} Credits`}</span>
                 {owned ? (
                   <Button size="sm" className="h-7 gap-1 text-xs" variant="outline" disabled>
                     <Check className="h-3 w-3" /> Owned
                   </Button>
                 ) : (
                   <Button size="sm" className="h-7 gap-1 text-xs" onClick={() => setConfirmItem(item)}>
-                    <ShoppingCart className="h-3 w-3" />
-                    {item.price === 0 ? "Get" : "Buy"}
+                    <ShoppingCart className="h-3 w-3" /> {item.price === 0 ? "Get" : "Buy"}
                   </Button>
                 )}
               </div>
@@ -101,7 +125,6 @@ export default function Marketplace() {
         })}
       </div>
 
-      {/* Confirm Purchase Modal */}
       <Dialog open={!!confirmItem} onOpenChange={() => setConfirmItem(null)}>
         <DialogContent className="max-w-sm">
           <DialogHeader>

@@ -13,7 +13,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <TopHeader />
         <main className="flex-1 p-6 overflow-y-auto custom-scroll">
-          {children}
+          <div className="page-slide-in">
+            {children}
+          </div>
         </main>
       </div>
       <ActivityFeed />

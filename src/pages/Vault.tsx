@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ChevronRight, ChevronDown, Folder, FileText, Upload, Search, Filter, Download, Eye, Check, Loader2 } from "lucide-react";
+import { ChevronRight, ChevronDown, Folder, FileText, Upload, Search, Filter, Download, Eye, Check, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -68,7 +68,7 @@ const initialVaultData: FileItem[] = [
   }
 ];
 
-function FileTree({ items, depth = 0 }: { items: FileItem[]; depth?: number }) {
+function FileTree({ items, depth = 0, onPreview }: { items: FileItem[]; depth?: number; onPreview: (file: FileItem) => void }) {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({ "1": true, "2": true, "3": true });
 
   return (
@@ -87,7 +87,7 @@ function FileTree({ items, depth = 0 }: { items: FileItem[]; depth?: number }) {
                 <span className="font-medium">{item.name}</span>
                 {item.children && <span className="text-xs text-muted-foreground ml-auto">{item.children.length}</span>}
               </button>
-              {expanded[item.id] && item.children && <FileTree items={item.children} depth={depth + 1} />}
+              {expanded[item.id] && item.children && <FileTree items={item.children} depth={depth + 1} onPreview={onPreview} />}
             </>
           ) : (
             <div
@@ -99,7 +99,9 @@ function FileTree({ items, depth = 0 }: { items: FileItem[]; depth?: number }) {
               {item.isNew && <Badge className="text-[10px] bg-primary text-primary-foreground border-0 animate-fade-in">New</Badge>}
               {item.tag && <Badge variant="outline" className={`text-[10px] shrink-0 ${item.tagClass}`}>{item.tag}</Badge>}
               <div className="hidden group-hover:flex items-center gap-1">
-                <Button variant="ghost" size="icon" className="h-6 w-6"><Eye className="h-3 w-3" /></Button>
+                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onPreview(item)}>
+                  <Eye className="h-3 w-3" />
+                </Button>
                 <Button variant="ghost" size="icon" className="h-6 w-6"><Download className="h-3 w-3" /></Button>
               </div>
             </div>
@@ -122,6 +124,7 @@ export default function Vault() {
   const [selectedFolder, setSelectedFolder] = useState("linear-algebra");
   const [selectedTag, setSelectedTag] = useState("student-notes");
   const [loading, setLoading] = useState(true);
+  const [previewFile, setPreviewFile] = useState<FileItem | null>(null);
 
   useEffect(() => {
     const t = setTimeout(() => setLoading(false), 500);
@@ -133,13 +136,11 @@ export default function Vault() {
     setUploadStage("uploading");
     setUploadProgress(0);
 
-    // Simulate upload progress
     const uploadInterval = setInterval(() => {
       setUploadProgress((p) => {
         if (p >= 100) {
           clearInterval(uploadInterval);
           setUploadStage("indexing");
-          // Start indexing phase
           let indexProgress = 0;
           const indexInterval = setInterval(() => {
             indexProgress += 8;
@@ -147,7 +148,6 @@ export default function Vault() {
             if (indexProgress >= 100) {
               clearInterval(indexInterval);
               setUploadStage("done");
-              // Add file to vault
               addFileToVault(fileName, selectedFolder, selectedTag);
             }
           }, 120);
@@ -165,44 +165,27 @@ export default function Vault() {
       "lecture-slides": { tag: "Lecture Slides", tagClass: "badge-slides" },
     };
     const folderMap: Record<string, string> = {
-      "linear-algebra": "11",
-      "calculus": "4",
-      "discrete-math": "8",
-      "algorithms": "15",
+      "linear-algebra": "11", "calculus": "4", "discrete-math": "8", "algorithms": "15",
     };
 
     const newFile: FileItem = {
-      id: `new-${Date.now()}`,
-      name: name.endsWith(".pdf") ? name : `${name}.pdf`,
-      type: "file",
-      ...tagMap[tag],
-      author: "Ahmed K.",
-      date: new Date().toISOString().split("T")[0],
-      downloads: 0,
-      isNew: true,
+      id: `new-${Date.now()}`, name: name.endsWith(".pdf") ? name : `${name}.pdf`,
+      type: "file", ...tagMap[tag], author: "Ahmed K.",
+      date: new Date().toISOString().split("T")[0], downloads: 0, isNew: true,
     };
 
     const targetFolderId = folderMap[folder];
-
     const addToFolder = (items: FileItem[]): FileItem[] =>
       items.map((item) => {
-        if (item.id === targetFolderId && item.children) {
-          return { ...item, children: [newFile, ...item.children] };
-        }
-        if (item.children) {
-          return { ...item, children: addToFolder(item.children) };
-        }
+        if (item.id === targetFolderId && item.children) return { ...item, children: [newFile, ...item.children] };
+        if (item.children) return { ...item, children: addToFolder(item.children) };
         return item;
       });
-
     setVaultData((prev) => addToFolder(prev));
   };
 
   const resetUpload = () => {
-    setUploadStage("form");
-    setUploadProgress(0);
-    setFileName("");
-    setUploadOpen(false);
+    setUploadStage("form"); setUploadProgress(0); setFileName(""); setUploadOpen(false);
   };
 
   return (
@@ -214,15 +197,10 @@ export default function Vault() {
         </div>
         <Dialog open={uploadOpen} onOpenChange={(open) => { setUploadOpen(open); if (!open) resetUpload(); }}>
           <DialogTrigger asChild>
-            <Button className="gap-2">
-              <Upload className="h-4 w-4" /> Upload Resource
-            </Button>
+            <Button className="gap-2"><Upload className="h-4 w-4" /> Upload Resource</Button>
           </DialogTrigger>
           <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Upload a Resource</DialogTitle>
-            </DialogHeader>
-
+            <DialogHeader><DialogTitle>Upload a Resource</DialogTitle></DialogHeader>
             {uploadStage === "form" && (
               <div className="space-y-4 pt-4">
                 <Input placeholder="File title (e.g. Eigenvalue Summary Notes)" value={fileName} onChange={(e) => setFileName(e.target.value)} />
@@ -243,7 +221,7 @@ export default function Vault() {
                     <SelectItem value="lecture-slides">Lecture Slides</SelectItem>
                   </SelectContent>
                 </Select>
-                <div className="border-2 border-dashed rounded-lg p-8 text-center text-muted-foreground cursor-pointer hover:border-primary/50 transition-colors">
+                <div className="border-2 border-dashed border-border rounded-lg p-8 text-center text-muted-foreground cursor-pointer hover:border-primary/50 transition-colors">
                   <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
                   <p className="text-sm">Drag & drop your file here, or click to browse</p>
                   <p className="text-xs mt-1">PDF, DOCX, PPTX up to 50MB</p>
@@ -251,12 +229,9 @@ export default function Vault() {
                 <Button className="w-full" onClick={handleUpload} disabled={!fileName.trim()}>Upload</Button>
               </div>
             )}
-
             {uploadStage === "uploading" && (
               <div className="py-8 space-y-4">
-                <div className="flex items-center justify-center">
-                  <Loader2 className="h-8 w-8 text-primary animate-spin" />
-                </div>
+                <div className="flex items-center justify-center"><Loader2 className="h-8 w-8 text-primary animate-spin" /></div>
                 <div className="text-center">
                   <p className="font-medium text-sm">Uploading file...</p>
                   <p className="text-xs text-muted-foreground mt-1">{fileName}</p>
@@ -265,7 +240,6 @@ export default function Vault() {
                 <p className="text-xs text-center text-muted-foreground">{uploadProgress}% complete</p>
               </div>
             )}
-
             {uploadStage === "indexing" && (
               <div className="py-8 space-y-4">
                 <div className="flex items-center justify-center">
@@ -280,24 +254,15 @@ export default function Vault() {
                 </div>
                 <Progress value={uploadProgress} className="h-2" />
                 <div className="space-y-1.5">
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Check className="h-3 w-3 text-success" /> File uploaded successfully
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Loader2 className="h-3 w-3 animate-spin text-primary" /> Extracting text content...
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground opacity-50">
-                    <div className="h-3 w-3" /> Building AI search index...
-                  </div>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground"><Check className="h-3 w-3 text-success" /> File uploaded successfully</div>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin text-primary" /> Extracting text content...</div>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground opacity-50"><div className="h-3 w-3" /> Building AI search index...</div>
                 </div>
               </div>
             )}
-
             {uploadStage === "done" && (
               <div className="py-8 space-y-4 text-center">
-                <div className="h-14 w-14 rounded-full bg-success/10 flex items-center justify-center mx-auto">
-                  <Check className="h-7 w-7 text-success" />
-                </div>
+                <div className="h-14 w-14 rounded-full bg-success/10 flex items-center justify-center mx-auto"><Check className="h-7 w-7 text-success" /></div>
                 <div>
                   <p className="font-semibold">Upload Complete!</p>
                   <p className="text-sm text-muted-foreground mt-1">"{fileName}" has been added to the vault and indexed for search.</p>
@@ -328,9 +293,57 @@ export default function Vault() {
             ))}
           </div>
         ) : (
-          <FileTree items={vaultData} />
+          <FileTree items={vaultData} onPreview={setPreviewFile} />
         )}
       </div>
+
+      {/* Quick Preview Modal */}
+      <Dialog open={!!previewFile} onOpenChange={() => setPreviewFile(null)}>
+        <DialogContent className="max-w-2xl max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-primary" />
+              {previewFile?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 text-sm text-muted-foreground">
+              <span>by {previewFile?.author}</span>
+              <span>·</span>
+              <span>{previewFile?.date}</span>
+              <span>·</span>
+              <span>{previewFile?.downloads} downloads</span>
+              {previewFile?.tag && (
+                <Badge variant="outline" className={`text-[10px] ${previewFile.tagClass}`}>{previewFile.tag}</Badge>
+              )}
+            </div>
+            {/* Mock PDF Viewer */}
+            <div className="bg-muted rounded-lg border border-border overflow-hidden">
+              <div className="bg-card border-b border-border px-4 py-2 flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">Page 1 of 12</span>
+                <div className="flex items-center gap-2">
+                  <Button variant="ghost" size="sm" className="h-6 text-xs">Zoom In</Button>
+                  <Button variant="ghost" size="sm" className="h-6 text-xs">Zoom Out</Button>
+                </div>
+              </div>
+              <div className="p-8 min-h-[400px] flex flex-col items-center justify-center text-center space-y-4">
+                <FileText className="h-16 w-16 text-muted-foreground/30" />
+                <div>
+                  <p className="font-semibold text-lg">{previewFile?.name}</p>
+                  <p className="text-sm text-muted-foreground mt-1">PDF Preview — {previewFile?.author}</p>
+                </div>
+                <div className="max-w-md text-sm text-muted-foreground leading-relaxed">
+                  <p>This is a mock preview of the document. In a production environment, this would render the actual PDF content using a viewer like pdf.js.</p>
+                </div>
+                <div className="pt-4 flex gap-2">
+                  <Button className="gap-2"><Download className="h-4 w-4" /> Download PDF</Button>
+                  <Button variant="outline" onClick={() => setPreviewFile(null)}>Close</Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
