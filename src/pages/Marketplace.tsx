@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ShoppingCart, Star, Search, Tag, Check, TrendingUp, Flame } from "lucide-react";
+import { ShoppingCart, Star, Search, Tag, Check, TrendingUp, Flame, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -27,6 +27,7 @@ const trendingThisWeek = [
 export default function Marketplace() {
   const [search, setSearch] = useState("");
   const [confirmItem, setConfirmItem] = useState<typeof listings[0] | null>(null);
+  const [processing, setProcessing] = useState(false);
   const { credits, spendCredits, ownedItems, addOwnedItem } = useApp();
 
   const filtered = listings.filter((l) =>
@@ -34,20 +35,21 @@ export default function Marketplace() {
   );
 
   const handleBuy = () => {
-    if (!confirmItem) return;
-    if (confirmItem.price === 0) {
-      addOwnedItem(confirmItem.id);
-      toast({ title: "Added to library!", description: `"${confirmItem.title}" is now yours.` });
+    if (!confirmItem || processing) return;
+    setProcessing(true);
+    setTimeout(() => {
+      if (confirmItem.price === 0) {
+        addOwnedItem(confirmItem.id);
+        toast({ title: "Purchase successful", description: `Added to your Vault: "${confirmItem.title}"` });
+      } else if (spendCredits(confirmItem.price)) {
+        addOwnedItem(confirmItem.id);
+        toast({ title: "Purchase successful", description: `Added to your Vault: "${confirmItem.title}"` });
+      } else {
+        toast({ title: "Insufficient credits", description: `You need ${confirmItem.price - credits} more credits.`, variant: "destructive" });
+      }
+      setProcessing(false);
       setConfirmItem(null);
-      return;
-    }
-    if (spendCredits(confirmItem.price)) {
-      addOwnedItem(confirmItem.id);
-      toast({ title: "Purchase successful!", description: `"${confirmItem.title}" has been added to your library.` });
-    } else {
-      toast({ title: "Insufficient credits", description: `You need ${confirmItem.price - credits} more credits.`, variant: "destructive" });
-    }
-    setConfirmItem(null);
+    }, 1000);
   };
 
   return (
@@ -154,9 +156,11 @@ export default function Marketplace() {
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setConfirmItem(null)}>Cancel</Button>
-            <Button onClick={handleBuy} disabled={confirmItem ? confirmItem.price > credits : false}>
-              {confirmItem?.price === 0 ? "Add to Library" : "Confirm Purchase"}
+            <Button variant="outline" onClick={() => setConfirmItem(null)} disabled={processing}>Cancel</Button>
+            <Button onClick={handleBuy} disabled={processing || (confirmItem ? confirmItem.price > credits : false)}>
+              {processing ? (
+                <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Processing...</>
+              ) : confirmItem?.price === 0 ? "Add to Library" : "Confirm Purchase"}
             </Button>
           </DialogFooter>
         </DialogContent>
