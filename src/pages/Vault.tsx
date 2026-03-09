@@ -116,6 +116,7 @@ function FileTree({ items, depth = 0, onPreview }: { items: FileItem[]; depth?: 
 type UploadStage = "form" | "uploading" | "indexing" | "done";
 
 export default function Vault() {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [vaultData, setVaultData] = useState<FileItem[]>(initialVaultData);
   const [uploadOpen, setUploadOpen] = useState(false);
