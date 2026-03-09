@@ -10,7 +10,7 @@ function renderLatex(text: string): string {
     } catch { return tex; }
   });
   // Replace inline math $...$
-  result = result.replace(/\$([^\$\n]+?)\$/g, (_, tex) => {
+  result = result.replace(/\$([^$\n]+?)\$/g, (_, tex) => {
     try {
       return katex.renderToString(tex.trim(), { displayMode: false, throwOnError: false });
     } catch { return tex; }

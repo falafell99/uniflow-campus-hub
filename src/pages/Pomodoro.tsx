@@ -37,7 +37,7 @@ export default function Pomodoro() {
       gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.8);
       osc.start(ctx.currentTime);
       osc.stop(ctx.currentTime + 0.8);
-    } catch {}
+    } catch { /* AudioContext not available in this environment */ }
   }, []);
 
   useEffect(() => {

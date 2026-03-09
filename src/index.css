@@ -51,6 +51,9 @@
     --warning-foreground: 0 0% 100%;
     --info: 199 89% 48%;
     --info-foreground: 0 0% 100%;
+
+    /* Enterprise Dark — pure-black base for dark-mode surfaces */
+    --enterprise-dark: #030303;
   }
 
   .dark {
@@ -97,6 +100,9 @@
     --warning-foreground: 0 0% 100%;
     --info: 199 89% 55%;
     --info-foreground: 0 0% 100%;
+
+    /* Enterprise Dark — pure-black base for dark-mode surfaces */
+    --enterprise-dark: #030303;
   }
 }
 
