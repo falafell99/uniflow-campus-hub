@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { ChevronRight, ChevronDown, Folder, FileText, Upload, Search, Filter, Download, Eye, Check, Loader2, X } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { ChevronRight, ChevronDown, Folder, FileText, Upload, Search, Filter, Download, Eye, Check, Loader2, X, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
