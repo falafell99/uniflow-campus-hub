@@ -1,9 +1,10 @@
-import { useState } from "react";
-import { Send, Bot, User, BookOpen, FileText, Sparkles } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { Send, Bot, User, BookOpen, FileText, Sparkles, Copy, Share2, Check, Loader2, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "@/hooks/use-toast";
 
 type Message = {
   id: number;
@@ -31,25 +32,54 @@ const initialMessages: Message[] = [
   },
 ];
 
+const demoResponses: Record<string, { content: string; sources: { title: string; page: string }[] }> = {
+  default: {
+    content: "That's a great question! Based on the course materials from ELTE's Faculty of Informatics, here's what I found...\n\n*This is a demo response. In production, this would be powered by RAG over your uploaded course materials.*",
+    sources: [{ title: "Course Material Reference", page: "p. 1" }],
+  },
+};
+
 export default function AIOracle() {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [input, setInput] = useState("");
   const [studyMode, setStudyMode] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const [copiedId, setCopiedId] = useState<number | null>(null);
+  const chatRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (chatRef.current) {
+      chatRef.current.scrollTop = chatRef.current.scrollHeight;
+    }
+  }, [messages, isSearching]);
 
   const sendMessage = () => {
-    if (!input.trim()) return;
-    setMessages((prev) => [...prev, { id: Date.now(), role: "user", content: input }]);
+    if (!input.trim() || isSearching) return;
+    const userMsg: Message = { id: Date.now(), role: "user", content: input };
+    setMessages((prev) => [...prev, userMsg]);
     setInput("");
+    setIsSearching(true);
+
+    // Simulate searching animation then response
     setTimeout(() => {
+      setIsSearching(false);
+      const resp = demoResponses.default;
       setMessages((prev) => [
         ...prev,
-        {
-          id: Date.now() + 1, role: "assistant",
-          content: "That's a great question! Based on the course materials from ELTE's Faculty of Informatics, here's what I found...\n\n*This is a demo response. In production, this would be powered by RAG over your uploaded course materials.*",
-          sources: [{ title: "Course Material Reference", page: "p. 1" }],
-        },
+        { id: Date.now() + 1, role: "assistant", content: resp.content, sources: resp.sources },
       ]);
-    }, 1000);
+    }, 2200);
+  };
+
+  const copyMessage = (msg: Message) => {
+    navigator.clipboard.writeText(msg.content);
+    setCopiedId(msg.id);
+    toast({ title: "Copied to clipboard", description: "Response has been copied." });
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const shareMessage = (msg: Message) => {
+    toast({ title: "Share link generated", description: "A shareable link has been copied to your clipboard." });
   };
 
   return (
@@ -70,9 +100,9 @@ export default function AIOracle() {
       </div>
 
       {/* Chat Area */}
-      <div className="flex-1 glass-card p-4 overflow-y-auto space-y-4 mb-4">
+      <div ref={chatRef} className="flex-1 glass-card p-4 overflow-y-auto space-y-4 mb-4">
         {messages.map((msg) => (
-          <div key={msg.id} className={`flex gap-3 ${msg.role === "user" ? "justify-end" : ""}`}>
+          <div key={msg.id} className={`flex gap-3 ${msg.role === "user" ? "justify-end" : ""} animate-fade-in`}>
             {msg.role === "assistant" && (
               <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
                 <Sparkles className="h-4 w-4 text-primary" />
@@ -91,6 +121,28 @@ export default function AIOracle() {
                   ))}
                 </div>
               )}
+              {/* Copy/Share buttons for assistant messages */}
+              {msg.role === "assistant" && (
+                <div className="flex items-center gap-1 mt-2 pt-2 border-t border-border/20">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-[11px] gap-1 text-muted-foreground hover:text-foreground"
+                    onClick={() => copyMessage(msg)}
+                  >
+                    {copiedId === msg.id ? <Check className="h-3 w-3 text-success" /> : <Copy className="h-3 w-3" />}
+                    {copiedId === msg.id ? "Copied" : "Copy"}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-[11px] gap-1 text-muted-foreground hover:text-foreground"
+                    onClick={() => shareMessage(msg)}
+                  >
+                    <Share2 className="h-3 w-3" /> Share
+                  </Button>
+                </div>
+              )}
             </div>
             {msg.role === "user" && (
               <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center shrink-0 mt-0.5">
@@ -99,6 +151,29 @@ export default function AIOracle() {
             )}
           </div>
         ))}
+
+        {/* Searching animation */}
+        {isSearching && (
+          <div className="flex gap-3 animate-fade-in">
+            <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+              <Sparkles className="h-4 w-4 text-primary" />
+            </div>
+            <div className="glass-subtle rounded-2xl rounded-bl-md px-4 py-3">
+              <div className="flex items-center gap-2">
+                <div className="relative">
+                  <Search className="h-4 w-4 text-primary animate-pulse" />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-foreground">Searching Knowledge Base...</p>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    <span>Scanning course materials, lecture notes, and past exams</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Input */}
@@ -109,8 +184,9 @@ export default function AIOracle() {
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && sendMessage()}
           className="border-0 bg-transparent focus-visible:ring-0"
+          disabled={isSearching}
         />
-        <Button onClick={sendMessage} size="icon" className="shrink-0">
+        <Button onClick={sendMessage} size="icon" className="shrink-0" disabled={isSearching}>
           <Send className="h-4 w-4" />
         </Button>
       </div>

@@ -1,30 +1,23 @@
-import { useState } from "react";
-import { Calendar, Clock, MapPin, Users, Plus, ExternalLink } from "lucide-react";
+import { Calendar, Clock, MapPin, Users, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
-const meetups = [
-  { id: 1, topic: "Linear Algebra Final Prep", subject: "Linear Algebra", time: "Today, 16:00 - 18:00", location: "Library Room 4", locationType: "in-person", attendees: 8, max: 12, joined: true, host: "Márton B." },
-  { id: 2, topic: "Algorithms Problem Set #7", subject: "Algorithms", time: "Tomorrow, 14:00 - 16:00", location: "Discord: #algo-study", locationType: "online", attendees: 5, max: 10, joined: true, host: "Eszter N." },
-  { id: 3, topic: "Discrete Math Exam Prep", subject: "Discrete Math", time: "Fri, 10:00 - 12:00", location: "Room 2-502, Northern Building", locationType: "in-person", attendees: 15, max: 20, joined: false, host: "Anna K." },
-  { id: 4, topic: "OS Concepts Weekly Review", subject: "Operating Systems", time: "Sat, 11:00 - 13:00", location: "Zoom Meeting", locationType: "online", attendees: 7, max: 15, joined: false, host: "Gábor L." },
-  { id: 5, topic: "Probability Theory Workshop", subject: "Probability", time: "Sun, 15:00 - 17:00", location: "Library Room 2", locationType: "in-person", attendees: 10, max: 10, joined: false, host: "Dániel T." },
-];
+import { useMeetups } from "@/contexts/MeetupContext";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useState, useEffect } from "react";
+import type { Meetup } from "@/contexts/MeetupContext";
 
 export default function Meetups() {
-  const [meetupData, setMeetupData] = useState(meetups);
+  const { meetups, toggleJoin } = useMeetups();
+  const [loading, setLoading] = useState(true);
 
-  const toggleJoin = (id: number) => {
-    setMeetupData((prev) =>
-      prev.map((m) =>
-        m.id === id ? { ...m, joined: !m.joined, attendees: m.joined ? m.attendees - 1 : m.attendees + 1 } : m
-      )
-    );
-  };
+  useEffect(() => {
+    const t = setTimeout(() => setLoading(false), 600);
+    return () => clearTimeout(t);
+  }, []);
 
-  const MeetupCard = ({ m }: { m: typeof meetups[0] }) => (
-    <div className="glass-card p-5 space-y-3">
+  const MeetupCard = ({ m }: { m: Meetup }) => (
+    <div className="glass-card p-5 space-y-3 transition-all duration-300 ease-in-out hover:shadow-lg">
       <div className="flex items-start justify-between">
         <div>
           <h3 className="font-semibold text-sm">{m.topic}</h3>
@@ -44,7 +37,7 @@ export default function Meetups() {
           onClick={() => toggleJoin(m.id)}
           variant={m.joined ? "default" : "outline"}
           size="sm"
-          className="flex-1 text-xs"
+          className="flex-1 text-xs transition-all duration-300"
           disabled={!m.joined && m.attendees >= m.max}
         >
           {m.joined ? "Joined ✓" : m.attendees >= m.max ? "Full" : "I'm Joining"}
@@ -52,6 +45,27 @@ export default function Meetups() {
         <Button variant="outline" size="sm" className="text-xs gap-1">
           <Calendar className="h-3 w-3" /> Add to Calendar
         </Button>
+      </div>
+    </div>
+  );
+
+  const SkeletonCard = () => (
+    <div className="glass-card p-5 space-y-3">
+      <div className="flex items-start justify-between">
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-40" />
+          <Skeleton className="h-5 w-24" />
+        </div>
+        <Skeleton className="h-5 w-20" />
+      </div>
+      <div className="space-y-1.5">
+        <Skeleton className="h-3 w-32" />
+        <Skeleton className="h-3 w-40" />
+        <Skeleton className="h-3 w-48" />
+      </div>
+      <div className="flex gap-2 pt-1">
+        <Skeleton className="h-8 flex-1" />
+        <Skeleton className="h-8 w-32" />
       </div>
     </div>
   );
@@ -74,17 +88,23 @@ export default function Meetups() {
         </TabsList>
         <TabsContent value="all" className="mt-4">
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {meetupData.map((m) => <MeetupCard key={m.id} m={m} />)}
+            {loading
+              ? Array.from({ length: 5 }).map((_, i) => <SkeletonCard key={i} />)
+              : meetups.map((m) => <MeetupCard key={m.id} m={m} />)}
           </div>
         </TabsContent>
         <TabsContent value="joined" className="mt-4">
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {meetupData.filter((m) => m.joined).map((m) => <MeetupCard key={m.id} m={m} />)}
+            {loading
+              ? Array.from({ length: 2 }).map((_, i) => <SkeletonCard key={i} />)
+              : meetups.filter((m) => m.joined).map((m) => <MeetupCard key={m.id} m={m} />)}
           </div>
         </TabsContent>
         <TabsContent value="online" className="mt-4">
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {meetupData.filter((m) => m.locationType === "online").map((m) => <MeetupCard key={m.id} m={m} />)}
+            {loading
+              ? Array.from({ length: 2 }).map((_, i) => <SkeletonCard key={i} />)
+              : meetups.filter((m) => m.locationType === "online").map((m) => <MeetupCard key={m.id} m={m} />)}
           </div>
         </TabsContent>
       </Tabs>
