@@ -21,7 +21,7 @@ const recentUploads = [
 
 export function ActivityFeed() {
   return (
-    <div className="w-[240px] shrink-0 border-l border-border/40 bg-background/60 backdrop-blur-xl overflow-y-auto hidden xl:flex flex-col">
+    <div className="w-[240px] shrink-0 border-l border-border/40 bg-background/60 backdrop-blur-xl overflow-hidden hidden xl:flex flex-col">
       {/* Active Study Groups */}
       <div className="p-3 border-b border-border/30">
         <h3 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
@@ -65,7 +65,7 @@ export function ActivityFeed() {
       </div>
 
       {/* New Uploads */}
-      <div className="p-3">
+      <div className="p-3 flex-1 overflow-y-auto custom-scroll">
         <h3 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
           <Upload className="h-3 w-3" /> New Uploads
         </h3>

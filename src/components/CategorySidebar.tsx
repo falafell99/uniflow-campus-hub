@@ -44,28 +44,30 @@ const categories: { label: string; emoji: string; items: NavItem[] }[] = [
 
 export function CategorySidebar() {
   const location = useLocation();
-  const { currentStatus } = useApp();
+  const { currentStatus, voiceRoom } = useApp();
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({
     ACADEMIC: true, SOCIAL: true, GROWTH: true, UTILS: true,
   });
 
+  const displayStatus = voiceRoom ? `🔈 In ${voiceRoom}` : currentStatus;
+
   return (
-    <div className="w-[220px] shrink-0 flex flex-col bg-background/80 backdrop-blur-xl border-r border-border/40 overflow-y-auto">
+    <div className="w-[220px] shrink-0 flex flex-col bg-background/80 backdrop-blur-xl border-r border-border/40 overflow-hidden">
       {/* Server name */}
       <div className="h-12 flex items-center px-4 border-b border-border/40 shrink-0">
         <h2 className="font-bold text-sm tracking-tight truncate">ELTE · Informatics</h2>
       </div>
 
       {/* Status */}
-      <div className="px-3 py-2 border-b border-border/30">
+      <div className="px-3 py-2 border-b border-border/30 shrink-0">
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <span className="h-2 w-2 rounded-full bg-success shrink-0 animate-pulse" />
-          <span className="truncate">{currentStatus}</span>
+          <span className={`h-2 w-2 rounded-full shrink-0 animate-pulse ${voiceRoom ? "bg-primary" : "bg-success"}`} />
+          <span className="truncate">{displayStatus}</span>
         </div>
       </div>
 
       {/* Categories */}
-      <nav className="flex-1 px-2 py-2 space-y-1">
+      <nav className="flex-1 px-2 py-2 space-y-1 overflow-y-auto custom-scroll">
         {categories.map((cat) => (
           <Collapsible
             key={cat.label}

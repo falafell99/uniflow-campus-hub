@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FileText, Filter, Download, Eye, Search } from "lucide-react";
+import { FileText, Download, Eye, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -70,7 +70,10 @@ export default function PastExams() {
 
       <div className="space-y-2">
         {filtered.map((exam) => (
-          <div key={exam.id} className="glass-card p-4 flex items-center gap-4 hover:shadow-md transition-all duration-200 cursor-pointer group">
+          <div
+            key={exam.id}
+            className="glass-card p-4 flex items-center gap-4 hover:shadow-md transition-all duration-300 cursor-pointer group animate-fade-in"
+          >
             <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
               <FileText className="h-5 w-5 text-primary" />
             </div>
@@ -86,7 +89,7 @@ export default function PastExams() {
           </div>
         ))}
         {filtered.length === 0 && (
-          <div className="text-center py-12 text-muted-foreground">
+          <div className="text-center py-12 text-muted-foreground animate-fade-in">
             <FileText className="h-8 w-8 mx-auto mb-2 opacity-40" />
             <p className="text-sm">No exams match your filters</p>
           </div>

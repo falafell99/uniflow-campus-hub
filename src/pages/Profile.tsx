@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Progress } from "@/components/ui/progress";
-import { Separator } from "@/components/ui/separator";
+import { useApp } from "@/contexts/AppContext";
 
 const badges = [
   { name: "STEM Gold Medalist", emoji: "🏅", earned: true },
@@ -22,6 +22,8 @@ const contributions = [
 ];
 
 export default function Profile() {
+  const { tutoringAvailable, setTutoringAvailable } = useApp();
+
   return (
     <div className="space-y-6 animate-fade-in max-w-3xl">
       <div className="flex items-center justify-between">
@@ -57,7 +59,7 @@ export default function Profile() {
           <h3 className="font-semibold text-sm">Available for Tutoring</h3>
           <p className="text-xs text-muted-foreground mt-0.5">Let other students know you can help with their courses</p>
         </div>
-        <Switch defaultChecked />
+        <Switch checked={tutoringAvailable} onCheckedChange={setTutoringAvailable} />
       </div>
 
       {/* Badges */}
