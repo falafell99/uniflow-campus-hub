@@ -15,6 +15,8 @@ const categories: { label: string; emoji: string; items: NavItem[] }[] = [
       { title: "The Vault", url: "/vault", emoji: "📚" },
       { title: "AI Oracle", url: "/ai-oracle", emoji: "🤖" },
       { title: "Past Exams Hub", url: "/past-exams", emoji: "📝" },
+      { title: "Knowledge Graph", url: "/knowledge-graph", emoji: "🧠" },
+      { title: "Flashcards", url: "/flashcards", emoji: "🃏" },
     ],
   },
   {
