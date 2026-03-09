@@ -1,21 +1,20 @@
-import { useState, useCallback, KeyboardEvent } from "react";
-import { Bold, Italic, Heading1, Heading2, List, Code, Plus, Trash2, GripVertical, FileText } from "lucide-react";
+import { useState, useCallback, KeyboardEvent, useEffect, useRef } from "react";
+import { Bold, Heading1, Heading2, List, Code, Plus, Trash2, GripVertical, FileText, Cloud, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { GlassCard } from "@/components/GlassCard";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/contexts/AuthContext";
 
 type BlockType = "paragraph" | "h1" | "h2" | "bullet" | "code";
 type Block = { id: string; type: BlockType; content: string };
 
 const defaultBlocks: Block[] = [
   { id: "1", type: "h1", content: "Linear Algebra — Study Notes" },
-  { id: "2", type: "paragraph", content: "These are my personal notes for the Linear Algebra course at ELTE. Focus areas include eigenvalues, matrix decomposition, and vector spaces." },
+  { id: "2", type: "paragraph", content: "These are my personal notes for the Linear Algebra course at ELTE." },
   { id: "3", type: "h2", content: "Key Concepts" },
-  { id: "4", type: "bullet", content: "A vector space is a set with addition and scalar multiplication satisfying 8 axioms" },
-  { id: "5", type: "bullet", content: "Linear independence: no vector can be written as a combination of others" },
-  { id: "6", type: "bullet", content: "Eigenvalues satisfy det(A - λI) = 0" },
-  { id: "7", type: "h2", content: "Code Example" },
-  { id: "8", type: "code", content: "import numpy as np\nA = np.array([[2, 1], [1, 2]])\neigenvalues, eigenvectors = np.linalg.eig(A)\nprint(eigenvalues)  # [3. 1.]" },
+  { id: "4", type: "bullet", content: "A vector space satisfies 8 axioms" },
+  { id: "5", type: "bullet", content: "Eigenvalues satisfy det(A - λI) = 0" },
+  { id: "6", type: "code", content: "import numpy as np\neigenvalues, _ = np.linalg.eig(A)" },
 ];
 
 const typeStyles: Record<BlockType, string> = {
@@ -27,15 +26,62 @@ const typeStyles: Record<BlockType, string> = {
 };
 
 export default function Workspace() {
+  const { user } = useAuth();
   const [blocks, setBlocks] = useState<Block[]>(defaultBlocks);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showToolbar, setShowToolbar] = useState<string | null>(null);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
+  const [noteId, setNoteId] = useState<string | null>(null);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const updateBlock = (id: string, content: string) =>
-    setBlocks((b) => b.map((bl) => (bl.id === id ? { ...bl, content } : bl)));
+  // Load notes on mount
+  useEffect(() => {
+    const load = async () => {
+      if (!user) return;
+      const { data } = await supabase
+        .from("notes")
+        .select("*")
+        .eq("user_id", user.id)
+        .single();
+      if (data) {
+        setNoteId(data.id);
+        if (data.blocks && Array.isArray(data.blocks) && data.blocks.length > 0) {
+          setBlocks(data.blocks as Block[]);
+        }
+      }
+    };
+    load();
+  }, [user]);
+
+  // Auto-save with debounce
+  const save = useCallback(async (blocksToSave: Block[]) => {
+    if (!user) return;
+    setSaveStatus("saving");
+    if (noteId) {
+      await supabase.from("notes").update({ blocks: blocksToSave, updated_at: new Date().toISOString() }).eq("id", noteId);
+    } else {
+      const { data } = await supabase.from("notes").insert({ user_id: user.id, blocks: blocksToSave }).select().single();
+      if (data) setNoteId(data.id);
+    }
+    setSaveStatus("saved");
+    setTimeout(() => setSaveStatus("idle"), 2000);
+  }, [user, noteId]);
+
+  const triggerSave = (newBlocks: Block[]) => {
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => save(newBlocks), 800);
+  };
+
+  const updateBlock = (id: string, content: string) => {
+    const updated = blocks.map((b) => (b.id === id ? { ...b, content } : b));
+    setBlocks(updated);
+    triggerSave(updated);
+  };
 
   const changeType = (id: string, type: BlockType) => {
-    setBlocks((b) => b.map((bl) => (bl.id === id ? { ...bl, type } : bl)));
+    const updated = blocks.map((b) => (b.id === id ? { ...b, type } : b));
+    setBlocks(updated);
+    triggerSave(updated);
     setShowToolbar(null);
   };
 
@@ -45,25 +91,22 @@ export default function Workspace() {
       const idx = b.findIndex((bl) => bl.id === afterId);
       const next = [...b];
       next.splice(idx + 1, 0, newBlock);
+      triggerSave(next);
       return next;
     });
     setTimeout(() => setEditingId(newBlock.id), 50);
-  }, []);
+  }, [blocks, triggerSave]);
 
   const removeBlock = (id: string) => {
     if (blocks.length <= 1) return;
-    setBlocks((b) => b.filter((bl) => bl.id !== id));
+    const updated = blocks.filter((b) => b.id !== id);
+    setBlocks(updated);
+    triggerSave(updated);
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>, block: Block) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      addBlock(block.id);
-    }
-    if (e.key === "Backspace" && block.content === "") {
-      e.preventDefault();
-      removeBlock(block.id);
-    }
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); addBlock(block.id); }
+    if (e.key === "Backspace" && block.content === "") { e.preventDefault(); removeBlock(block.id); }
   };
 
   return (
@@ -71,12 +114,21 @@ export default function Workspace() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">📝 Workspace</h1>
-          <p className="text-muted-foreground mt-1">Your personal Notion-style notes</p>
+          <p className="text-muted-foreground mt-1">Your personal notes — auto-saved to cloud</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" className="gap-1.5 text-xs">
             <FileText className="h-3.5 w-3.5" /> {blocks.length} blocks
           </Button>
+          <div className={`flex items-center gap-1.5 text-xs px-2 py-1 rounded-md transition-all ${
+            saveStatus === "saving" ? "text-primary" :
+            saveStatus === "saved" ? "text-success" : "text-muted-foreground"
+          }`}>
+            {saveStatus === "saving" ? <Cloud className="h-3.5 w-3.5 animate-pulse" /> :
+             saveStatus === "saved" ? <Check className="h-3.5 w-3.5" /> :
+             <Cloud className="h-3.5 w-3.5" />}
+            {saveStatus === "saving" ? "Saving..." : saveStatus === "saved" ? "Saved" : "Cloud sync"}
+          </div>
         </div>
       </div>
 
@@ -89,7 +141,6 @@ export default function Workspace() {
               onMouseEnter={() => setShowToolbar(block.id)}
               onMouseLeave={() => setShowToolbar(null)}
             >
-              {/* Side controls */}
               <div className={`flex items-center gap-0.5 pt-1 transition-opacity ${showToolbar === block.id ? "opacity-100" : "opacity-0"}`}>
                 <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => addBlock(block.id)}>
                   <Plus className="h-3 w-3" />
@@ -97,7 +148,6 @@ export default function Workspace() {
                 <GripVertical className="h-3 w-3 text-muted-foreground cursor-grab" />
               </div>
 
-              {/* Block */}
               <div className="flex-1 min-w-0">
                 {editingId === block.id ? (
                   <div className="space-y-1">
@@ -111,13 +161,7 @@ export default function Workspace() {
                           ["code", <Code className="h-3.5 w-3.5" />],
                         ] as [BlockType, React.ReactNode][]
                       ).map(([t, icon]) => (
-                        <Button
-                          key={t}
-                          variant={block.type === t ? "default" : "ghost"}
-                          size="icon"
-                          className="h-6 w-6"
-                          onClick={() => changeType(block.id, t)}
-                        >
+                        <Button key={t} variant={block.type === t ? "default" : "ghost"} size="icon" className="h-6 w-6" onClick={() => changeType(block.id, t)}>
                           {icon}
                         </Button>
                       ))}
@@ -149,12 +193,7 @@ export default function Workspace() {
           ))}
 
           <div className="pt-4 pl-8">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-xs text-muted-foreground gap-1.5"
-              onClick={() => addBlock(blocks[blocks.length - 1].id)}
-            >
+            <Button variant="ghost" size="sm" className="text-xs text-muted-foreground gap-1.5" onClick={() => addBlock(blocks[blocks.length - 1].id)}>
               <Plus className="h-3.5 w-3.5" /> Add block
             </Button>
           </div>

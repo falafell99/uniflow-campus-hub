@@ -1,8 +1,10 @@
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { NavLink } from "@/components/NavLink";
 import { ChevronDown } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useApp } from "@/contexts/AppContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/lib/supabase";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 type NavItem = { title: string; url: string; emoji: string };
@@ -47,14 +49,43 @@ const categories: { label: string; emoji: string; items: NavItem[] }[] = [
   },
 ];
 
+function getInitials(name: string) {
+  return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
+}
+
 export function CategorySidebar() {
   const location = useLocation();
-  const { currentStatus, voiceRoom } = useApp();
+  const navigate = useNavigate();
+  const { voiceRoom } = useApp();
+  const { user } = useAuth();
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({
     ACADEMIC: true, SOCIAL: true, GROWTH: true, UTILS: true,
   });
+  const [profileName, setProfileName] = useState("");
+  const [profileStatus, setProfileStatus] = useState("🟢 Online");
 
-  const displayStatus = voiceRoom ? `🔈 In ${voiceRoom}` : currentStatus;
+  // Load real name + status from profiles table
+  useEffect(() => {
+    if (!user) return;
+    const fallbackName = user.user_metadata?.display_name || user.email?.split("@")[0] || "Student";
+    setProfileName(fallbackName);
+
+    supabase
+      .from("profiles")
+      .select("display_name, status")
+      .eq("id", user.id)
+      .single()
+      .then(({ data }) => {
+        if (data) {
+          setProfileName(data.display_name || fallbackName);
+          setProfileStatus(data.status || "🟢 Online");
+        }
+      });
+  }, [user]);
+
+  const displayStatus = voiceRoom ? `🔈 In ${voiceRoom}` : profileStatus;
+  const isOnline = !voiceRoom && (profileStatus.includes("Online") || profileStatus.includes("Studying"));
+  const dotColor = voiceRoom ? "bg-primary" : isOnline ? "bg-success" : profileStatus.includes("Focusing") ? "bg-destructive" : "bg-warning";
 
   return (
     <div className="w-[220px] shrink-0 flex flex-col bg-card/80 backdrop-blur-xl border-r border-border/40 overflow-hidden">
@@ -111,18 +142,23 @@ export function CategorySidebar() {
       </nav>
 
       {/* User bar */}
-      <div className="h-14 flex items-center gap-2.5 px-3 border-t border-border/40 bg-muted/30 shrink-0">
-        <div className="relative">
+      <button
+        onClick={() => navigate("/profile")}
+        className="h-14 flex items-center gap-2.5 px-3 border-t border-border/40 bg-muted/30 shrink-0 hover:bg-muted/50 transition-colors w-full text-left"
+      >
+        <div className="relative shrink-0">
           <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-            <span className="text-xs font-semibold text-primary">AK</span>
+            <span className="text-xs font-semibold text-primary">
+              {profileName ? getInitials(profileName) : "…"}
+            </span>
           </div>
-          <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-success border-2 border-background" />
+          <span className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full ${dotColor} border-2 border-background`} />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-xs font-semibold truncate">Ahmed K.</p>
-          <p className="text-[10px] text-muted-foreground truncate">Online</p>
+          <p className="text-xs font-semibold truncate">{profileName || "Loading…"}</p>
+          <p className="text-[10px] text-muted-foreground truncate">{displayStatus}</p>
         </div>
-      </div>
+      </button>
     </div>
   );
 }

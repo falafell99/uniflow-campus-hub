@@ -1,111 +1,66 @@
-import { useState } from "react";
-import { Search, Star, ExternalLink, ChevronDown, ChevronUp, X, ThumbsUp, MessageSquare } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Search, Star, ChevronDown, ChevronUp, ThumbsUp, Send, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { useEffect } from "react";
+import { Textarea } from "@/components/ui/textarea";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "@/hooks/use-toast";
 
-type Professor = {
+type DBProfessor = {
   id: number;
   name: string;
   department: string;
   subjects: string[];
-  rating: number;
-  difficulty: number;
-  kindness: number;
-  tips: string[];
-  reviewCount: number;
-  reviews: { author: string; date: string; text: string; rating: number; helpful: number }[];
 };
 
-const professors: Professor[] = [
-  {
-    id: 1, name: "Dr. Kovács László", department: "Algebra & Number Theory",
-    subjects: ["Linear Algebra", "Abstract Algebra"], rating: 4.6, difficulty: 72, kindness: 88,
-    tips: [
-      "Focus on proofs in the textbook. He values logical reasoning over memorization.",
-      "Office hours on Wednesdays are the least crowded.",
-      "His exam questions often come from the problem sets — do all of them.",
-      "Bring examples to office hours, he responds better to specific questions.",
-    ],
-    reviewCount: 89,
-    reviews: [
-      { author: "Bence M.", date: "Dec 2024", text: "Excellent lecturer. Explains concepts clearly and gives great examples. Exams are fair if you attend lectures.", rating: 5, helpful: 23 },
-      { author: "Anna K.", date: "Nov 2024", text: "Very organized lectures. The problem sets are essential for the exam. He's strict but fair.", rating: 4, helpful: 15 },
-      { author: "Dániel T.", date: "Oct 2024", text: "Best math professor at ELTE. His proofs are elegant and he makes algebra interesting.", rating: 5, helpful: 31 },
-    ],
-  },
-  {
-    id: 2, name: "Dr. Tóth Mária", department: "Analysis",
-    subjects: ["Calculus I", "Calculus II"], rating: 4.2, difficulty: 85, kindness: 65,
-    tips: [
-      "Her exams are tough but fair. Practice all exercises from the problem sets.",
-      "She gives partial credit generously.",
-      "Don't skip lectures — she explains things that aren't in the textbook.",
-      "Form a study group, her material is dense.",
-    ],
-    reviewCount: 124,
-    reviews: [
-      { author: "Eszter N.", date: "Dec 2024", text: "Challenging but rewarding course. She pushes you to really understand the material.", rating: 4, helpful: 18 },
-      { author: "Gábor L.", date: "Nov 2024", text: "Very fast-paced lectures. You need to prepare before each class.", rating: 3, helpful: 12 },
-    ],
-  },
-  {
-    id: 3, name: "Dr. Szabó Péter", department: "Probability & Statistics",
-    subjects: ["Probability Theory", "Mathematical Statistics"], rating: 4.8, difficulty: 60, kindness: 95,
-    tips: [
-      "One of the best lecturers. Attend every lecture — his explanations are clearer than any textbook.",
-      "Very approachable during office hours.",
-      "He gives bonus problems that can boost your grade.",
-      "His slides are gold — download and annotate them.",
-    ],
-    reviewCount: 156,
-    reviews: [
-      { author: "Márton B.", date: "Dec 2024", text: "Absolutely amazing professor. Makes probability feel intuitive. 10/10 would recommend.", rating: 5, helpful: 42 },
-      { author: "Ahmed K.", date: "Nov 2024", text: "Best professor I've had at ELTE. Patient, clear, and genuinely cares about students.", rating: 5, helpful: 38 },
-    ],
-  },
-  {
-    id: 4, name: "Dr. Nagy András", department: "Computer Science",
-    subjects: ["Algorithms", "Data Structures"], rating: 3.9, difficulty: 90, kindness: 55,
-    tips: [
-      "Very strict grading. Make sure your code compiles before submission.",
-      "His problem sets are harder than the exam.",
-      "Study the textbook chapters he assigns — exam questions come from there.",
-      "Don't be afraid to ask questions, despite his stern demeanor he respects curiosity.",
-    ],
-    reviewCount: 98,
-    reviews: [
-      { author: "Bence M.", date: "Dec 2024", text: "Tough but you'll learn a lot. His course prepared me well for coding interviews.", rating: 4, helpful: 22 },
-      { author: "Anna K.", date: "Oct 2024", text: "Strict grading but clear expectations. Read the syllabus carefully.", rating: 3, helpful: 9 },
-    ],
-  },
-  {
-    id: 5, name: "Dr. Fehér Katalin", department: "Discrete Mathematics",
-    subjects: ["Discrete Math", "Graph Theory"], rating: 4.4, difficulty: 68, kindness: 82,
-    tips: [
-      "She loves when students participate in class. Bonus points for solving challenge problems.",
-      "Study groups are highly recommended.",
-      "Her graph theory examples are key for the exam.",
-      "Visit her office hours at least once — she remembers engaged students.",
-    ],
-    reviewCount: 72,
-    reviews: [
-      { author: "Dániel T.", date: "Nov 2024", text: "Great professor who makes discrete math fun. Lots of interactive examples.", rating: 5, helpful: 16 },
-      { author: "Eszter N.", date: "Oct 2024", text: "Fair exams and engaging lectures. One of the more approachable professors.", rating: 4, helpful: 11 },
-    ],
-  },
-];
+type DBRating = {
+  id: number;
+  professor_id: number;
+  student_name: string;
+  overall: number;
+  difficulty: number;
+  clarity: number;
+  comment: string | null;
+  subject: string | null;
+  created_at: string;
+};
+
+type ProfessorWithStats = DBProfessor & {
+  avgRating: number;
+  avgDifficulty: number;
+  avgClarity: number;
+  reviewCount: number;
+  reviews: DBRating[];
+};
 
 function StarRating({ rating }: { rating: number }) {
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex items-center gap-0.5">
       {[1, 2, 3, 4, 5].map((s) => (
         <Star key={s} className={`h-3.5 w-3.5 ${s <= Math.round(rating) ? "fill-warning text-warning" : "text-muted-foreground/30"}`} />
       ))}
       <span className="text-sm font-semibold ml-1">{rating.toFixed(1)}</span>
+    </div>
+  );
+}
+
+function StarPicker({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  const [hover, setHover] = useState(0);
+  return (
+    <div className="flex gap-1">
+      {[1, 2, 3, 4, 5].map((s) => (
+        <Star
+          key={s}
+          className={`h-5 w-5 cursor-pointer transition-colors ${s <= (hover || value) ? "fill-warning text-warning" : "text-muted-foreground/30"}`}
+          onMouseEnter={() => setHover(s)}
+          onMouseLeave={() => setHover(0)}
+          onClick={() => onChange(s)}
+        />
+      ))}
     </div>
   );
 }
@@ -124,16 +79,77 @@ function GaugeBar({ label, value, color }: { label: string; value: number; color
   );
 }
 
+function computeStats(reviews: DBRating[]): { avgRating: number; avgDifficulty: number; avgClarity: number } {
+  if (reviews.length === 0) return { avgRating: 0, avgDifficulty: 0, avgClarity: 0 };
+  const avg = (arr: number[]) => arr.reduce((a, b) => a + b, 0) / arr.length;
+  return {
+    avgRating: avg(reviews.map((r) => r.overall)),
+    avgDifficulty: avg(reviews.map((r) => r.difficulty)) * 20,
+    avgClarity: avg(reviews.map((r) => r.clarity)) * 20,
+  };
+}
+
 export default function ProfessorRadar() {
+  const { user } = useAuth();
+  const [professors, setProfessors] = useState<ProfessorWithStats[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [expanded, setExpanded] = useState<number | null>(null);
-  const [reviewModal, setReviewModal] = useState<Professor | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [ratingModal, setRatingModal] = useState<ProfessorWithStats | null>(null);
 
-  useEffect(() => {
-    const t = setTimeout(() => setLoading(false), 500);
-    return () => clearTimeout(t);
-  }, []);
+  // Rating form
+  const [overall, setOverall] = useState(0);
+  const [difficulty, setDifficulty] = useState(0);
+  const [clarity, setClarity] = useState(0);
+  const [comment, setComment] = useState("");
+  const [subject, setSubject] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const loadData = async () => {
+    setLoading(true);
+    const { data: profs } = await supabase.from("professors").select("*");
+    const { data: ratings } = await supabase.from("professor_ratings").select("*");
+
+    if (profs) {
+      const withStats: ProfessorWithStats[] = profs.map((p: DBProfessor) => {
+        const profRatings = (ratings || []).filter((r: DBRating) => r.professor_id === p.id);
+        const stats = computeStats(profRatings);
+        return { ...p, ...stats, reviewCount: profRatings.length, reviews: profRatings };
+      });
+      setProfessors(withStats);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => { loadData(); }, []);
+
+  const submitRating = async () => {
+    if (!ratingModal || overall === 0 || difficulty === 0 || clarity === 0) {
+      toast({ title: "Please fill all star ratings", variant: "destructive" });
+      return;
+    }
+    setSubmitting(true);
+    const displayName = user?.user_metadata?.display_name || user?.email?.split("@")[0] || "Anonymous";
+    const { error } = await supabase.from("professor_ratings").insert({
+      professor_id: ratingModal.id,
+      student_id: user?.id,
+      student_name: displayName,
+      overall,
+      difficulty,
+      clarity,
+      comment: comment || null,
+      subject: subject || null,
+    });
+    setSubmitting(false);
+    if (error) {
+      toast({ title: "Error submitting rating", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Rating submitted! ⭐", description: "Thank you for helping other students." });
+    setRatingModal(null);
+    setOverall(0); setDifficulty(0); setClarity(0); setComment(""); setSubject("");
+    loadData();
+  };
 
   const filtered = professors.filter((p) =>
     p.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -142,9 +158,15 @@ export default function ProfessorRadar() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">⭐ Professor Radar</h1>
-        <p className="text-muted-foreground mt-1">Find the right professor for your courses</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">⭐ Professor Radar</h1>
+          <p className="text-muted-foreground mt-1">Real ratings from ELTE students</p>
+        </div>
+        <Badge variant="outline" className="text-xs gap-1">
+          <span className="h-1.5 w-1.5 rounded-full bg-success inline-block" />
+          Live — {professors.reduce((a, p) => a + p.reviewCount, 0)} ratings
+        </Badge>
       </div>
 
       <div className="relative max-w-md">
@@ -161,10 +183,7 @@ export default function ProfessorRadar() {
                   <div className="space-y-2 flex-1">
                     <Skeleton className="h-5 w-40" />
                     <Skeleton className="h-3 w-32" />
-                    <div className="flex gap-1.5">
-                      <Skeleton className="h-5 w-20" />
-                      <Skeleton className="h-5 w-24" />
-                    </div>
+                    <div className="flex gap-1.5"><Skeleton className="h-5 w-20" /><Skeleton className="h-5 w-24" /></div>
                     <Skeleton className="h-4 w-28" />
                   </div>
                 </div>
@@ -175,17 +194,20 @@ export default function ProfessorRadar() {
                 <div className="flex items-start justify-between cursor-pointer" onClick={() => setExpanded(expanded === p.id ? null : p.id)}>
                   <div className="flex items-start gap-4">
                     <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                      <span className="text-sm font-bold text-primary">{p.name.split(" ").slice(-1)[0][0]}{p.name.split(" ").slice(-2)[0][0]}</span>
+                      <span className="text-sm font-bold text-primary">{p.name.split(" ").slice(-1)[0][0]}{p.name.split(" ").slice(-2)[0]?.[0]}</span>
                     </div>
                     <div>
                       <h3 className="font-semibold">{p.name}</h3>
                       <p className="text-xs text-muted-foreground">{p.department}</p>
-                      <div className="flex gap-1.5 mt-1.5">
+                      <div className="flex gap-1.5 mt-1.5 flex-wrap">
                         {p.subjects.map((s) => <Badge key={s} variant="outline" className="text-[10px]">{s}</Badge>)}
                       </div>
-                      <div className="mt-2">
-                        <StarRating rating={p.rating} />
-                        <span className="text-[10px] text-muted-foreground ml-1">({p.reviewCount} reviews)</span>
+                      <div className="mt-2 flex items-center gap-2">
+                        {p.reviewCount > 0 ? (
+                          <><StarRating rating={p.avgRating} /><span className="text-[10px] text-muted-foreground">({p.reviewCount} reviews)</span></>
+                        ) : (
+                          <span className="text-xs text-muted-foreground italic">No ratings yet — be the first!</span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -196,24 +218,38 @@ export default function ProfessorRadar() {
 
                 {expanded === p.id && (
                   <div className="mt-4 pt-4 border-t space-y-4 animate-fade-in">
-                    <div className="grid grid-cols-2 gap-4">
-                      <GaugeBar label="Difficulty" value={p.difficulty} color="bg-destructive/70" />
-                      <GaugeBar label="Kindness" value={p.kindness} color="bg-success/70" />
-                    </div>
+                    {p.reviewCount > 0 && (
+                      <div className="grid grid-cols-2 gap-4">
+                        <GaugeBar label="Difficulty" value={Math.round(p.avgDifficulty)} color="bg-destructive/70" />
+                        <GaugeBar label="Clarity" value={Math.round(p.avgClarity)} color="bg-success/70" />
+                      </div>
+                    )}
 
-                    {/* Student Tips Feed */}
-                    <div className="glass-subtle p-4 rounded-lg space-y-2.5">
-                      <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">💡 Student Tips — How to Pass</p>
-                      {p.tips.map((tip, i) => (
-                        <div key={i} className="flex items-start gap-2 text-sm">
-                          <span className="text-primary mt-0.5 text-xs">•</span>
-                          <span>{tip}</span>
+                    {/* Recent reviews */}
+                    {p.reviews.slice(0, 3).map((r, i) => (
+                      <div key={i} className="glass-subtle p-3 rounded-lg space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center">
+                              <span className="text-[10px] font-bold text-primary">{r.student_name.split(" ").map((n) => n[0]).join("").slice(0, 2)}</span>
+                            </div>
+                            <span className="text-xs font-medium">{r.student_name}</span>
+                            {r.subject && <Badge variant="outline" className="text-[10px] py-0">{r.subject}</Badge>}
+                          </div>
+                          <div className="flex gap-0.5">
+                            {[1,2,3,4,5].map((s) => <Star key={s} className={`h-3 w-3 ${s <= r.overall ? "fill-warning text-warning" : "text-muted-foreground/30"}`} />)}
+                          </div>
                         </div>
-                      ))}
-                    </div>
+                        {r.comment && <p className="text-sm text-muted-foreground">{r.comment}</p>}
+                      </div>
+                    ))}
 
-                    <Button variant="outline" size="sm" className="text-xs gap-1" onClick={(e) => { e.stopPropagation(); setReviewModal(p); }}>
-                      <ExternalLink className="h-3 w-3" /> View on RateMyTeacher
+                    <Button
+                      size="sm"
+                      className="gap-1.5 text-xs"
+                      onClick={(e) => { e.stopPropagation(); setRatingModal(p); }}
+                    >
+                      <Star className="h-3.5 w-3.5" /> Rate this professor
                     </Button>
                   </div>
                 )}
@@ -221,55 +257,37 @@ export default function ProfessorRadar() {
             ))}
       </div>
 
-      {/* RateMyTeacher Modal */}
-      <Dialog open={!!reviewModal} onOpenChange={(open) => !open && setReviewModal(null)}>
-        <DialogContent className="max-w-lg">
+      {/* Rating submission dialog */}
+      <Dialog open={!!ratingModal} onOpenChange={(open) => !open && setRatingModal(null)}>
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Star className="h-5 w-5 text-warning fill-warning" />
-              {reviewModal?.name} — Reviews
+              Rate {ratingModal?.name}
             </DialogTitle>
           </DialogHeader>
-          {reviewModal && (
-            <div className="space-y-4 pt-2">
-              <div className="flex items-center gap-4 glass-subtle p-3 rounded-lg">
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-foreground">{reviewModal.rating.toFixed(1)}</p>
-                  <StarRating rating={reviewModal.rating} />
-                  <p className="text-[10px] text-muted-foreground mt-1">{reviewModal.reviewCount} reviews</p>
+          <div className="space-y-4 pt-2">
+            <div className="space-y-3">
+              {([["Overall", overall, setOverall], ["Difficulty (1=Easy, 5=Hard)", difficulty, setDifficulty], ["Clarity of Explanation", clarity, setClarity]] as [string, number, (v: number) => void][]).map(([label, val, setVal]) => (
+                <div key={label} className="space-y-1">
+                  <p className="text-sm font-medium">{label}</p>
+                  <StarPicker value={val} onChange={setVal} />
                 </div>
-                <div className="flex-1 space-y-1.5">
-                  <GaugeBar label="Difficulty" value={reviewModal.difficulty} color="bg-destructive/70" />
-                  <GaugeBar label="Kindness" value={reviewModal.kindness} color="bg-success/70" />
-                </div>
-              </div>
-
-              <div className="space-y-3 max-h-64 overflow-y-auto">
-                {reviewModal.reviews.map((r, i) => (
-                  <div key={i} className="glass-subtle p-3 rounded-lg space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center">
-                          <span className="text-[10px] font-bold text-primary">{r.author.split(" ").map(n => n[0]).join("")}</span>
-                        </div>
-                        <span className="text-xs font-medium">{r.author}</span>
-                        <span className="text-[10px] text-muted-foreground">{r.date}</span>
-                      </div>
-                      <div className="flex items-center gap-0.5">
-                        {[1, 2, 3, 4, 5].map((s) => (
-                          <Star key={s} className={`h-3 w-3 ${s <= r.rating ? "fill-warning text-warning" : "text-muted-foreground/30"}`} />
-                        ))}
-                      </div>
-                    </div>
-                    <p className="text-sm">{r.text}</p>
-                    <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                      <ThumbsUp className="h-3 w-3" /> {r.helpful} found this helpful
-                    </div>
-                  </div>
-                ))}
-              </div>
+              ))}
             </div>
-          )}
+            <div className="space-y-1">
+              <p className="text-sm font-medium">Subject (optional)</p>
+              <Input placeholder="e.g. Linear Algebra" value={subject} onChange={(e) => setSubject(e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm font-medium">Comment (optional)</p>
+              <Textarea placeholder="Share your experience, tips for other students..." value={comment} onChange={(e) => setComment(e.target.value)} rows={3} />
+            </div>
+            <Button className="w-full gap-2" onClick={submitRating} disabled={submitting}>
+              {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              Submit Rating
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
