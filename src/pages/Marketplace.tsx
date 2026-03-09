@@ -156,9 +156,11 @@ export default function Marketplace() {
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setConfirmItem(null)}>Cancel</Button>
-            <Button onClick={handleBuy} disabled={confirmItem ? confirmItem.price > credits : false}>
-              {confirmItem?.price === 0 ? "Add to Library" : "Confirm Purchase"}
+            <Button variant="outline" onClick={() => setConfirmItem(null)} disabled={processing}>Cancel</Button>
+            <Button onClick={handleBuy} disabled={processing || (confirmItem ? confirmItem.price > credits : false)}>
+              {processing ? (
+                <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Processing...</>
+              ) : confirmItem?.price === 0 ? "Add to Library" : "Confirm Purchase"}
             </Button>
           </DialogFooter>
         </DialogContent>
