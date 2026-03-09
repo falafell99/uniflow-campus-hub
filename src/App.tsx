@@ -19,6 +19,10 @@ import PastExams from "@/pages/PastExams";
 import VoiceLounges from "@/pages/VoiceLounges";
 import Marketplace from "@/pages/Marketplace";
 import Internships from "@/pages/Internships";
+import Flashcards from "@/pages/Flashcards";
+import KnowledgeGraph from "@/pages/KnowledgeGraph";
+import Pomodoro from "@/pages/Pomodoro";
+import Workspace from "@/pages/Workspace";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
