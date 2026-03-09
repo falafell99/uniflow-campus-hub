@@ -1,73 +1,50 @@
-# Welcome to your Lovable project
+🎓 UniFlow: The Student OS
+A Unified Educational Ecosystem for ELTE University.
 
-## Project info
+UniFlow is a comprehensive "knowledge operating system" designed to centralize academic resources, foster peer-to-peer collaboration, and streamline the university experience. Built with a Discord-inspired navigation architecture, it moves beyond being a simple website to become a high-performance productivity hub for students.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+🏗 System Architecture
+The platform is organized into four core domains, each addressing a specific pain point in the student journey:
 
-## How can I edit this code?
+1. 📂 ACADEMIC (Knowledge Management)
 
-There are several ways of editing your application.
+The Vault: A high-density hierarchical repository (Faculty→Year→Subject→Professor) ensuring that academic heritage is preserved across generations of students.
 
-**Use Lovable**
+AI Oracle (RAG Tutor): A specialized AI assistant using Retrieval-Augmented Generation to provide answers based strictly on ELTE lecture materials. It features full LaTeX support for complex STEM variables:
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+P(A∣B)= 
+P(B)
+P(B∣A)P(A)
+​	
+ 
+Past Exams Hub: A mission-critical archive of exam papers and solutions from 2020–2025, categorized by difficulty and professor.
 
-Changes made via Lovable will be committed automatically to this repo.
+2. 🤝 SOCIAL (Real-time Collaboration)
 
-**Use your preferred IDE**
+Study Circles: A dynamic system for organizing on-campus or online study sessions with instant "Join Room" functionality.
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+Voice Lounges: Virtual audio/video rooms inspired by Discord, allowing students to study together in real-time.
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+Community Forums: Threaded discussions for technical help, career advice, and campus life.
 
-Follow these steps:
+3. 🏆 GROWTH & 🛠 UTILS (Professional Tools)
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+Professor Radar: An analytics-driven database of faculty members featuring student ratings, difficulty gauges, and "how-to-pass" insights.
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+Marketplace: An internal economy where students can exchange "Golden Notes" (premium summaries) for academic credits.
 
-# Step 3: Install the necessary dependencies.
-npm i
+Resource Toolbox: A centralized dashboard for essential links, including ELTE Canvas, Neptun, Overleaf, and STEM-specific tools.
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
+🎨 Technical Stack & UX
+Frontend: React with Glassmorphism effects and native-like Apple-style animations.
 
-**Edit a file directly in GitHub**
+Design System: High-end Slate & Steel UI with a custom Theme Engine supporting Obsidian Dark Mode.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+Navigation: Instant system-wide search and navigation via a Cmd+K Command Palette.
 
-**Use GitHub Codespaces**
+Backend Logic: Python-based services for document indexing and RAG-driven AI inference.
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+🚀 The Mission
+UniFlow solves the problem of "fragmented knowledge." By consolidating scattered notes, exam archives, and peer support into one fluid interface, we empower every ELTE student to excel through collective intelligence.
 
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+Lead Architect:  | CS Student @ ELTE Budapest | International STEM Olympiad Gold Medalist.
