@@ -42,6 +42,7 @@ const categories: { label: string; emoji: string; items: NavItem[] }[] = [
       { title: "Marketplace", url: "/marketplace", emoji: "🏪" },
       { title: "Pomodoro", url: "/pomodoro", emoji: "⏱" },
       { title: "Workspace", url: "/workspace", emoji: "📝" },
+      { title: "Studio", url: "/studio", emoji: "🎨" },
     ],
   },
 ];

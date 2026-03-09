@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { ChevronRight, ChevronDown, Folder, FileText, Upload, Search, Filter, Download, Eye, Check, Loader2, X } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { ChevronRight, ChevronDown, Folder, FileText, Upload, Search, Filter, Download, Eye, Check, Loader2, X, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -115,6 +116,7 @@ function FileTree({ items, depth = 0, onPreview }: { items: FileItem[]; depth?: 
 type UploadStage = "form" | "uploading" | "indexing" | "done";
 
 export default function Vault() {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [vaultData, setVaultData] = useState<FileItem[]>(initialVaultData);
   const [uploadOpen, setUploadOpen] = useState(false);
@@ -337,6 +339,16 @@ export default function Vault() {
                 </div>
                 <div className="pt-4 flex gap-2">
                   <Button className="gap-2"><Download className="h-4 w-4" /> Download PDF</Button>
+                  <Button
+                    variant="outline"
+                    className="gap-2"
+                    onClick={() => {
+                      setPreviewFile(null);
+                      navigate(`/studio?file=${encodeURIComponent(previewFile?.name || "")}`);
+                    }}
+                  >
+                    <Sparkles className="h-4 w-4" /> Open in Studio
+                  </Button>
                   <Button variant="outline" onClick={() => setPreviewFile(null)}>Close</Button>
                 </div>
               </div>

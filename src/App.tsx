@@ -23,6 +23,8 @@ import Flashcards from "@/pages/Flashcards";
 import KnowledgeGraph from "@/pages/KnowledgeGraph";
 import Pomodoro from "@/pages/Pomodoro";
 import Workspace from "@/pages/Workspace";
+import Studio from "@/pages/Studio";
+import MentalMap from "@/pages/MentalMap";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -54,6 +56,8 @@ const App = () => (
                   <Route path="/knowledge-graph" element={<KnowledgeGraph />} />
                   <Route path="/pomodoro" element={<Pomodoro />} />
                   <Route path="/workspace" element={<Workspace />} />
+                  <Route path="/studio" element={<Studio />} />
+                  <Route path="/mental-map" element={<MentalMap />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </Layout>
