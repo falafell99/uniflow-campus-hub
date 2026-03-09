@@ -50,6 +50,10 @@ const App = () => (
                   <Route path="/voice-lounges" element={<VoiceLounges />} />
                   <Route path="/marketplace" element={<Marketplace />} />
                   <Route path="/internships" element={<Internships />} />
+                  <Route path="/flashcards" element={<Flashcards />} />
+                  <Route path="/knowledge-graph" element={<KnowledgeGraph />} />
+                  <Route path="/pomodoro" element={<Pomodoro />} />
+                  <Route path="/workspace" element={<Workspace />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </Layout>

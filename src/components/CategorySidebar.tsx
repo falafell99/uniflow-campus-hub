@@ -40,6 +40,8 @@ const categories: { label: string; emoji: string; items: NavItem[] }[] = [
     items: [
       { title: "Resource Toolbox", url: "/toolbox", emoji: "🛠" },
       { title: "Marketplace", url: "/marketplace", emoji: "🏪" },
+      { title: "Pomodoro", url: "/pomodoro", emoji: "⏱" },
+      { title: "Workspace", url: "/workspace", emoji: "📝" },
     ],
   },
 ];
