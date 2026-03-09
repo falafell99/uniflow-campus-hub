@@ -1,50 +1,53 @@
-🎓 UniFlow: The Student OS
-A Unified Educational Ecosystem for ELTE University.
+# 🏛️ UniFlow: The Student OS | ELTE Edition
 
-UniFlow is a comprehensive "knowledge operating system" designed to centralize academic resources, foster peer-to-peer collaboration, and streamline the university experience. Built with a Discord-inspired navigation architecture, it moves beyond being a simple website to become a high-performance productivity hub for students.
+> **A Unified Educational Ecosystem designed for Eötvös Loránd University students. Built to centralize academic intelligence.**
 
-🏗 System Architecture
-The platform is organized into four core domains, each addressing a specific pain point in the student journey:
+---
 
-1. 📂 ACADEMIC (Knowledge Management)
+### 🚀 Overview
+**UniFlow** — это высокопроизводительная «Операционная Система Знаний», которая устраняет хаос в поиске учебных материалов. Платформа объединяет социальную динамику **Discord** с мощными инструментами **RAG AI**, создавая единую среду для обучения, обмена опытом и подготовки к экзаменам.
 
-The Vault: A high-density hierarchical repository (Faculty→Year→Subject→Professor) ensuring that academic heritage is preserved across generations of students.
+---
 
-AI Oracle (RAG Tutor): A specialized AI assistant using Retrieval-Augmented Generation to provide answers based strictly on ELTE lecture materials. It features full LaTeX support for complex STEM variables:
+## 🛠️ Core Academic & Social Modules
 
-P(A∣B)= 
-P(B)
-P(B∣A)P(A)
-​	
- 
-Past Exams Hub: A mission-critical archive of exam papers and solutions from 2020–2025, categorized by difficulty and professor.
+### 1️⃣ The Vault: Persistent Knowledge Base 📂
+* **Structure:** Hierarchical repository ($Faculty \to Year \to Subject \to Professor$) for systematic resource management.
+* **Content:** Centralized access to "Golden Notes," lecture slides, and a mission-critical **Past Exams Hub** (archives from 2020–2025).
 
-2. 🤝 SOCIAL (Real-time Collaboration)
+### 2️⃣ AI Oracle: RAG-Driven Research 🤖
+* **Core:** Advanced AI assistant utilizing **Retrieval-Augmented Generation**, trained specifically on ELTE academic materials.
+* **Mathematics:** Full **LaTeX** support for professional STEM rendering:
+  $$P(A|B) = \frac{P(B|A)P(A)}{P(B)}$$
 
-Study Circles: A dynamic system for organizing on-campus or online study sessions with instant "Join Room" functionality.
+### 3️⃣ Social Ecosystem & Collaboration 🤝
+* **Study Circles:** Instant meetup planning with a "Join Room" feature for real-time peer-to-peer learning.
+* **Voice Lounges:** Low-latency virtual study rooms designed for collective exam preparation and technical discussions.
 
-Voice Lounges: Virtual audio/video rooms inspired by Discord, allowing students to study together in real-time.
+### 4️⃣ Professor Radar & Credits 🏆
+* **Analytics:** Comprehensive database of faculty members with ratings, difficulty scales, and student-sourced "how-to-pass" guides.
+* **Economy:** Integrated **Credit System** for exchanging premium summaries and high-value materials within the community.
 
-Community Forums: Threaded discussions for technical help, career advice, and campus life.
+---
 
-3. 🏆 GROWTH & 🛠 UTILS (Professional Tools)
+## 💻 Technical Stack
+* **Frontend:** React, Tailwind CSS, Framer Motion (**Slate & Steel / Obsidian UI**).
+* **Intelligence:** Python-based indexing, Vector Databases, and RAG-driven AI inference.
+* **UX:** Native-app feel with **Glassmorphism**, fixed sidebars, and `Cmd+K` Command Palette navigation.
 
-Professor Radar: An analytics-driven database of faculty members featuring student ratings, difficulty gauges, and "how-to-pass" insights.
+---
 
-Marketplace: An internal economy where students can exchange "Golden Notes" (premium summaries) for academic credits.
+## 🏆 Developer & Education
+* **Lead Architect:** **Rafael Ibayev**
+* **University:** **Eötvös Loránd University (ELTE)**, Budapest.
+* **Background:** **International STEM Olympiad Gold Medalist**.
 
-Resource Toolbox: A centralized dashboard for essential links, including ELTE Canvas, Neptun, Overleaf, and STEM-specific tools.
+---
 
-🎨 Technical Stack & UX
-Frontend: React with Glassmorphism effects and native-like Apple-style animations.
+## 📬 Connectivity
+* **Location:** Budapest, Hungary.
+* **GitHub:** [https://github.com/falafell99](https://github.com/falafell99)
+* **Project Status:** Active Development / Beta Phase.
 
-Design System: High-end Slate & Steel UI with a custom Theme Engine supporting Obsidian Dark Mode.
-
-Navigation: Instant system-wide search and navigation via a Cmd+K Command Palette.
-
-Backend Logic: Python-based services for document indexing and RAG-driven AI inference.
-
-🚀 The Mission
-UniFlow solves the problem of "fragmented knowledge." By consolidating scattered notes, exam archives, and peer support into one fluid interface, we empower every ELTE student to excel through collective intelligence.
-
-Lead Architect:  | CS Student @ ELTE Budapest | International STEM Olympiad Gold Medalist.
+---
+*“UniFlow is about continuity: ensuring the hard work of seniors becomes the foundation for freshmen.”*
