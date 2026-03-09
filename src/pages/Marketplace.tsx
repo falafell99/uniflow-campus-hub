@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ShoppingCart, Star, Search, Tag, Check, TrendingUp, Flame } from "lucide-react";
+import { ShoppingCart, Star, Search, Tag, Check, TrendingUp, Flame, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
