@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import {
-  Award, BookOpen, Users, MessageSquare, Edit2, Check, X,
-  LogOut, Loader2, Shield, Coins, UploadCloud
+  Award, Users, Edit2, Check, X,
+  LogOut, Loader2, Shield, Coins, Smile
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +15,7 @@ import { useMeetups } from "@/contexts/MeetupContext";
 import { supabase } from "@/lib/supabase";
 import { toast } from "@/hooks/use-toast";
 
+// ─── Types ────────────────────────────────────────────────────────────────────
 type Profile = {
   display_name: string;
   email: string;
@@ -23,8 +24,11 @@ type Profile = {
   bio?: string;
   year?: string;
   program?: string;
+  avatar_color?: string;
+  avatar_emoji?: string;
 };
 
+// ─── Constants ────────────────────────────────────────────────────────────────
 const BADGES = [
   { name: "STEM Gold Medalist", emoji: "🏅", earned: true },
   { name: "Top Contributor", emoji: "⭐", earned: true },
@@ -36,10 +40,52 @@ const BADGES = [
 
 const STATUS_OPTIONS = ["🟢 Online", "🔴 Focusing", "☕ Taking a break", "📚 Studying", "🌙 Away"];
 
+export const AVATAR_COLORS = [
+  { from: "#6366f1", to: "#8b5cf6", label: "Violet" },
+  { from: "#10b981", to: "#059669", label: "Emerald" },
+  { from: "#f59e0b", to: "#d97706", label: "Amber" },
+  { from: "#ef4444", to: "#dc2626", label: "Red" },
+  { from: "#ec4899", to: "#db2777", label: "Pink" },
+  { from: "#3b82f6", to: "#2563eb", label: "Blue" },
+  { from: "#14b8a6", to: "#0d9488", label: "Teal" },
+  { from: "#f97316", to: "#ea580c", label: "Orange" },
+];
+
+const AVATAR_EMOJIS = [
+  "🦁", "🐻", "🦊", "🐺", "🦝", "🐼", "🐨", "🦄",
+  "🐸", "🦋", "🐙", "🦑", "🦔", "🐬", "🦅", "🦉",
+  "🚀", "⚡", "🔥", "💎", "🌙", "🌟", "🎯", "🎮",
+];
+
 function getInitials(name: string) {
   return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
 }
 
+// ─── Reusable Avatar Component ────────────────────────────────────────────────
+export function AvatarDisplay({
+  name,
+  avatarColor,
+  avatarEmoji,
+  size = "lg",
+}: {
+  name: string;
+  avatarColor?: string;
+  avatarEmoji?: string;
+  size?: "sm" | "md" | "lg";
+}) {
+  const sizeMap = { sm: "h-8 w-8 text-sm rounded-xl", md: "h-10 w-10 text-base rounded-xl", lg: "h-20 w-20 text-2xl rounded-2xl" };
+  const colorEntry = AVATAR_COLORS.find((c) => c.from === avatarColor) ?? AVATAR_COLORS[0];
+  return (
+    <div
+      className={`${sizeMap[size]} flex items-center justify-center shrink-0 font-bold text-white`}
+      style={{ background: `linear-gradient(135deg, ${colorEntry.from}, ${colorEntry.to})` }}
+    >
+      {avatarEmoji || getInitials(name || "?")}
+    </div>
+  );
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
 export default function Profile() {
   const { user, signOut } = useAuth();
   const { tutoringAvailable, setTutoringAvailable, credits } = useApp();
@@ -49,27 +95,23 @@ export default function Profile() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [showAvatarPicker, setShowAvatarPicker] = useState(false);
 
-  // Editable field states
   const [displayName, setDisplayName] = useState("");
   const [bio, setBio] = useState("");
   const [year, setYear] = useState("");
   const [program, setProgram] = useState("");
   const [status, setStatus] = useState("");
+  const [avatarColor, setAvatarColor] = useState(AVATAR_COLORS[0].from);
+  const [avatarEmoji, setAvatarEmoji] = useState("");
 
-  // Real stats derived from data
   const joinedMeetups = meetups.filter((m) => m.joined).length;
 
   useEffect(() => {
     const load = async () => {
       if (!user) return;
       setLoading(true);
-      const { data } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", user.id)
-        .single();
-
+      const { data } = await supabase.from("profiles").select("*").eq("id", user.id).single();
       const fallback: Profile = {
         display_name: user.user_metadata?.display_name || user.email?.split("@")[0] || "Student",
         email: user.email || "",
@@ -78,8 +120,9 @@ export default function Profile() {
         bio: "",
         year: "Year 1",
         program: "BSc Computer Science",
+        avatar_color: AVATAR_COLORS[0].from,
+        avatar_emoji: "",
       };
-
       const p = data ? { ...fallback, ...data } : fallback;
       setProfile(p);
       setDisplayName(p.display_name);
@@ -87,6 +130,8 @@ export default function Profile() {
       setYear(p.year || "Year 1");
       setProgram(p.program || "BSc Computer Science");
       setStatus(p.status || "🟢 Online");
+      setAvatarColor(p.avatar_color || AVATAR_COLORS[0].from);
+      setAvatarEmoji(p.avatar_emoji || "");
       setLoading(false);
     };
     load();
@@ -95,21 +140,17 @@ export default function Profile() {
   const saveProfile = async () => {
     if (!user) return;
     setSaving(true);
-    const updates = { display_name: displayName, bio, year, program, status };
+    const updates = { display_name: displayName, bio, year, program, status, avatar_color: avatarColor, avatar_emoji: avatarEmoji };
     const { error } = await supabase.from("profiles").upsert({ id: user.id, ...updates });
     setSaving(false);
     if (error) {
       toast({ title: "Save failed", description: error.message, variant: "destructive" });
     } else {
-      setProfile((p) => p ? { ...p, ...updates } : p);
+      setProfile((p) => (p ? { ...p, ...updates } : p));
       setEditing(false);
+      setShowAvatarPicker(false);
       toast({ title: "Profile saved ✓" });
     }
-  };
-
-  const handleSignOut = async () => {
-    await signOut();
-    toast({ title: "Signed out" });
   };
 
   if (loading) {
@@ -119,20 +160,16 @@ export default function Profile() {
         <div className="glass-card p-6">
           <div className="flex items-start gap-5">
             <Skeleton className="h-20 w-20 rounded-2xl" />
-            <div className="flex-1 space-y-2">
-              <Skeleton className="h-6 w-40" />
-              <Skeleton className="h-4 w-64" />
-              <Skeleton className="h-4 w-32" />
-            </div>
+            <div className="flex-1 space-y-2"><Skeleton className="h-6 w-40" /><Skeleton className="h-4 w-64" /><Skeleton className="h-4 w-32" /></div>
           </div>
         </div>
-        <div className="glass-card p-5"><Skeleton className="h-32 w-full" /></div>
       </div>
     );
   }
 
   return (
     <div className="space-y-6 animate-fade-in max-w-3xl">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight">👤 Profile</h1>
         <div className="flex items-center gap-2">
@@ -142,16 +179,15 @@ export default function Profile() {
             </Button>
           ) : (
             <>
-              <Button variant="ghost" size="sm" className="gap-1" onClick={() => setEditing(false)}>
+              <Button variant="ghost" size="sm" className="gap-1" onClick={() => { setEditing(false); setShowAvatarPicker(false); }}>
                 <X className="h-3.5 w-3.5" /> Cancel
               </Button>
               <Button size="sm" className="gap-1.5" onClick={saveProfile} disabled={saving}>
-                {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
-                Save
+                {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />} Save
               </Button>
             </>
           )}
-          <Button variant="outline" size="sm" className="gap-1.5 text-destructive hover:text-destructive" onClick={handleSignOut}>
+          <Button variant="outline" size="sm" className="gap-1.5 text-destructive hover:text-destructive" onClick={async () => { await signOut(); toast({ title: "Signed out" }); }}>
             <LogOut className="h-3.5 w-3.5" /> Sign Out
           </Button>
         </div>
@@ -161,48 +197,97 @@ export default function Profile() {
       <div className="glass-card p-6">
         <div className="flex items-start gap-5">
           {/* Avatar */}
-          <div className="h-20 w-20 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
-            <span className="text-2xl font-bold text-primary">
-              {getInitials(displayName || "?")}
-            </span>
+          <div className="relative">
+            <AvatarDisplay name={displayName} avatarColor={avatarColor} avatarEmoji={avatarEmoji} size="lg" />
+            {editing && (
+              <button
+                onClick={() => setShowAvatarPicker((v) => !v)}
+                className="absolute -bottom-2 -right-2 h-7 w-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-md hover:scale-110 transition-transform"
+              >
+                <Smile className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
 
+          {/* Info */}
           <div className="flex-1 space-y-2">
             {editing ? (
               <div className="space-y-2">
-                <Input
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  placeholder="Display name"
-                  className="text-lg font-bold h-9"
-                />
+                <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="Display name" className="text-lg font-bold h-9" />
                 <div className="flex gap-2">
                   <Input value={program} onChange={(e) => setProgram(e.target.value)} placeholder="e.g. BSc Computer Science" className="text-sm" />
                   <Input value={year} onChange={(e) => setYear(e.target.value)} placeholder="e.g. Year 2" className="text-sm w-28" />
                 </div>
-                <Textarea value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Short bio — tell others what you study and what you can help with..." rows={2} className="text-sm" />
+                <Textarea value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Short bio..." rows={2} className="text-sm" />
               </div>
             ) : (
               <>
                 <div className="flex items-center gap-2">
                   <h2 className="text-xl font-bold">{profile?.display_name}</h2>
+                  <span className="text-xs text-muted-foreground">{status}</span>
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  {profile?.program || "BSc Computer Science"} · {profile?.year || "Year 1"} · Faculty of Informatics, ELTE
-                </p>
+                <p className="text-sm text-muted-foreground">{profile?.program || "BSc Computer Science"} · {profile?.year || "Year 1"} · ELTE</p>
                 <p className="text-xs text-muted-foreground">{user?.email}</p>
                 {profile?.bio && <p className="text-sm">{profile.bio}</p>}
               </>
             )}
-
-            {/* Stats row */}
             <div className="flex items-center gap-4 pt-1 text-xs text-muted-foreground">
               <span className="flex items-center gap-1.5"><Coins className="h-3.5 w-3.5 text-warning" /> {credits} credits</span>
-              <span className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5" /> {joinedMeetups} meetups joined</span>
+              <span className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5" /> {joinedMeetups} meetups</span>
               <span className="flex items-center gap-1.5"><Shield className="h-3.5 w-3.5 text-primary" /> {user?.email?.split("@")[1] || "ELTE"}</span>
             </div>
           </div>
         </div>
+
+        {/* Avatar Picker */}
+        {showAvatarPicker && (
+          <div className="mt-5 pt-5 border-t border-border/30 space-y-4">
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground mb-2">Avatar Color</p>
+              <div className="flex gap-2 flex-wrap">
+                {AVATAR_COLORS.map((c) => (
+                  <button
+                    key={c.from}
+                    onClick={() => { setAvatarColor(c.from); setAvatarEmoji(""); }}
+                    title={c.label}
+                    className={`h-8 w-8 rounded-full transition-all hover:scale-110 ${avatarColor === c.from && !avatarEmoji ? "ring-2 ring-offset-2 ring-white/60" : ""}`}
+                    style={{ background: `linear-gradient(135deg, ${c.from}, ${c.to})` }}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground mb-2">Or pick an emoji avatar</p>
+              <div className="flex gap-1.5 flex-wrap">
+                <button
+                  onClick={() => setAvatarEmoji("")}
+                  className={`h-9 w-9 rounded-lg text-xs border transition-all flex items-center justify-center ${!avatarEmoji ? "border-primary bg-primary/10" : "border-border/50 hover:border-primary/50"}`}
+                >
+                  ABC
+                </button>
+                {AVATAR_EMOJIS.map((emoji) => (
+                  <button
+                    key={emoji}
+                    onClick={() => setAvatarEmoji(emoji)}
+                    className={`h-9 w-9 rounded-lg text-lg border transition-all hover:scale-110 ${avatarEmoji === emoji ? "border-primary bg-primary/10 scale-110" : "border-border/50 hover:border-primary/50"}`}
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Live preview */}
+            <div className="flex items-center gap-3 p-3 glass-subtle rounded-xl">
+              <AvatarDisplay name={displayName} avatarColor={avatarColor} avatarEmoji={avatarEmoji} size="md" />
+              <div>
+                <p className="text-sm font-medium">{displayName || "Your Name"}</p>
+                <p className="text-xs text-muted-foreground">{avatarEmoji ? "Emoji avatar" : "Initials avatar"}</p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Status Picker */}
@@ -214,16 +299,9 @@ export default function Profile() {
               key={s}
               onClick={async () => {
                 setStatus(s);
-                if (user) {
-                  await supabase.from("profiles").upsert({ id: user.id, status: s });
-                  toast({ title: `Status set to ${s}` });
-                }
+                if (user) { await supabase.from("profiles").upsert({ id: user.id, status: s }); toast({ title: `Status → ${s}` }); }
               }}
-              className={`px-3 py-1.5 rounded-full text-xs border transition-all ${
-                status === s
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "border-border/50 text-muted-foreground hover:border-primary/50"
-              }`}
+              className={`px-3 py-1.5 rounded-full text-xs border transition-all ${status === s ? "bg-primary text-primary-foreground border-primary" : "border-border/50 text-muted-foreground hover:border-primary/50"}`}
             >
               {s}
             </button>
@@ -238,39 +316,24 @@ export default function Profile() {
             🎓 Available for Tutoring
             {tutoringAvailable && <Badge className="text-[10px] h-4 bg-success text-white border-0">Active</Badge>}
           </h3>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Let other students know you can help with their courses
-          </p>
+          <p className="text-xs text-muted-foreground mt-0.5">Let other students know you can help</p>
         </div>
         <Switch checked={tutoringAvailable} onCheckedChange={setTutoringAvailable} />
       </div>
 
-      {/* Account Info */}
+      {/* Account */}
       <div className="glass-card p-5 space-y-3">
-        <h3 className="font-semibold text-sm flex items-center gap-2">
-          <Shield className="h-4 w-4 text-primary" /> Account
-        </h3>
-        <div className="space-y-2 text-sm">
-          <div className="flex items-center justify-between py-2 border-b border-border/30">
-            <span className="text-muted-foreground">Email</span>
-            <span className="font-medium">{user?.email}</span>
-          </div>
-          <div className="flex items-center justify-between py-2 border-b border-border/30">
-            <span className="text-muted-foreground">Account ID</span>
-            <span className="font-mono text-xs text-muted-foreground">{user?.id?.slice(0, 8)}…</span>
-          </div>
-          <div className="flex items-center justify-between py-2">
-            <span className="text-muted-foreground">Member since</span>
-            <span>{user?.created_at ? new Date(user.created_at).toLocaleDateString("en-GB", { month: "long", year: "numeric" }) : "—"}</span>
-          </div>
+        <h3 className="font-semibold text-sm flex items-center gap-2"><Shield className="h-4 w-4 text-primary" /> Account</h3>
+        <div className="space-y-0 text-sm divide-y divide-border/30">
+          <div className="flex items-center justify-between py-2"><span className="text-muted-foreground">Email</span><span className="font-medium">{user?.email}</span></div>
+          <div className="flex items-center justify-between py-2"><span className="text-muted-foreground">Account ID</span><span className="font-mono text-xs text-muted-foreground">{user?.id?.slice(0, 8)}…</span></div>
+          <div className="flex items-center justify-between py-2"><span className="text-muted-foreground">Member since</span><span>{user?.created_at ? new Date(user.created_at).toLocaleDateString("en-GB", { month: "long", year: "numeric" }) : "—"}</span></div>
         </div>
       </div>
 
-      {/* Badges */}
+      {/* Achievements */}
       <div className="glass-card p-5">
-        <h3 className="font-semibold flex items-center gap-2 mb-4">
-          <Award className="h-5 w-5 text-primary" /> Achievements
-        </h3>
+        <h3 className="font-semibold flex items-center gap-2 mb-4"><Award className="h-5 w-5 text-primary" /> Achievements</h3>
         <div className="grid grid-cols-3 gap-3">
           {BADGES.map((b) => (
             <div key={b.name} className={`glass-subtle p-3 text-center rounded-lg transition-all ${!b.earned ? "opacity-40 grayscale" : "hover:scale-105"}`}>

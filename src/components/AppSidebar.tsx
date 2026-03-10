@@ -4,11 +4,15 @@ import {
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
+import { useEffect, useState } from "react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent,
   SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader,
   SidebarFooter, useSidebar,
 } from "@/components/ui/sidebar";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/lib/supabase";
+import { AvatarDisplay, AVATAR_COLORS } from "@/pages/Profile";
 
 const navItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard, emoji: "🏠" },
@@ -21,10 +25,46 @@ const navItems = [
   { title: "Profile", url: "/profile", icon: UserCircle, emoji: "👤" },
 ];
 
+type ProfileSnap = { display_name: string; status: string; avatar_color?: string; avatar_emoji?: string };
+
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
+  const { user } = useAuth();
+
+  const [profile, setProfile] = useState<ProfileSnap | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    const load = async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("display_name, status, avatar_color, avatar_emoji")
+        .eq("id", user.id)
+        .single();
+      if (data) setProfile(data as ProfileSnap);
+      else {
+        setProfile({
+          display_name: user.user_metadata?.display_name || user.email?.split("@")[0] || "Student",
+          status: "🟢 Online",
+          avatar_color: AVATAR_COLORS[0].from,
+          avatar_emoji: "",
+        });
+      }
+    };
+    load();
+
+    // Re-fetch when the profile page saves (via a simple polling or channel)
+    const channel = supabase
+      .channel("sidebar-profile-sync")
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "profiles", filter: `id=eq.${user.id}` }, (payload) => {
+        setProfile((prev) => ({ ...prev!, ...payload.new as ProfileSnap }));
+      })
+      .subscribe();
+
+    return () => { channel.unsubscribe(); };
+  }, [user]);
 
   return (
     <Sidebar collapsible="icon" className="glass-sidebar">
@@ -50,11 +90,7 @@ export function AppSidebar() {
                 const isActive = location.pathname === item.url;
                 return (
                   <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={isActive}
-                      tooltip={item.title}
-                    >
+                    <SidebarMenuButton asChild isActive={isActive} tooltip={item.title}>
                       <NavLink
                         to={item.url}
                         end={item.url === "/"}
@@ -73,12 +109,29 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="p-4">
-        {!collapsed && (
-          <div className="glass-subtle p-3 text-center">
-            <p className="text-xs font-medium text-muted-foreground">Made for ELTE Students</p>
-            <p className="text-[10px] text-muted-foreground/60">Faculty of Informatics</p>
-          </div>
+      <SidebarFooter className="p-3">
+        {profile ? (
+          <NavLink to="/profile" className="flex items-center gap-2.5 p-2 rounded-lg hover:bg-sidebar-accent transition-colors group">
+            <AvatarDisplay
+              name={profile.display_name}
+              avatarColor={profile.avatar_color}
+              avatarEmoji={profile.avatar_emoji}
+              size="sm"
+            />
+            {!collapsed && (
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold truncate">{profile.display_name}</p>
+                <p className="text-[10px] text-muted-foreground truncate">{profile.status}</p>
+              </div>
+            )}
+          </NavLink>
+        ) : (
+          !collapsed && (
+            <div className="glass-subtle p-3 text-center">
+              <p className="text-xs font-medium text-muted-foreground">Made for ELTE Students</p>
+              <p className="text-[10px] text-muted-foreground/60">Faculty of Informatics</p>
+            </div>
+          )
         )}
       </SidebarFooter>
     </Sidebar>
