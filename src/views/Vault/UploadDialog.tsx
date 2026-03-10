@@ -1,200 +1,187 @@
-import { useState } from "react";
-import { Upload, Loader2, Search, Check } from "lucide-react";
+import { useState, useRef, DragEvent } from "react";
+import { Upload, Loader2, File, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Progress } from "@/components/ui/progress";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { BADGE_CONFIG } from "@/constants/theme";
-import { type FileItem } from "./FileTree";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "@/hooks/use-toast";
 
-type UploadStage = "form" | "uploading" | "indexing" | "done";
+const SUBJECTS = [
+  "General", "Calculus I", "Calculus II", "Linear Algebra",
+  "Discrete Mathematics", "Algorithms", "Data Structures",
+  "Probability & Statistics", "Operating Systems", "Computer Architecture",
+  "Programming", "Databases", "Networks", "Artificial Intelligence",
+];
+
+const FILE_TYPES = [
+  "Lecture Slides", "Exam Prep", "Student Notes",
+  "Cheat Sheet", "Practice Problems", "Lab Report", "Other",
+];
 
 interface UploadDialogProps {
-  onFileAdded: (file: FileItem) => void;
+  open: boolean;
+  onClose: () => void;
+  onUploaded: () => void;
 }
 
-const FOLDER_MAP: Record<string, string> = {
-  "linear-algebra": "11",
-  calculus: "4",
-  "discrete-math": "8",
-  algorithms: "15",
-};
+export function UploadDialog({ open, onClose, onUploaded }: UploadDialogProps) {
+  const { user } = useAuth();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const [subject, setSubject] = useState("General");
+  const [fileType, setFileType] = useState("Student Notes");
+  const [uploading, setUploading] = useState(false);
+  const [dragging, setDragging] = useState(false);
 
-export function UploadDialog({ onFileAdded }: UploadDialogProps) {
-  const [open, setOpen] = useState(false);
-  const [stage, setStage] = useState<UploadStage>("form");
-  const [progress, setProgress] = useState(0);
-  const [fileName, setFileName] = useState("");
-  const [folder, setFolder] = useState("linear-algebra");
-  const [tag, setTag] = useState("student-notes");
+  const pick = (f: File) => setFile(f);
 
-  const reset = () => {
-    setStage("form");
-    setProgress(0);
-    setFileName("");
-    setOpen(false);
+  const handleDrop = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setDragging(false);
+    const f = e.dataTransfer.files[0];
+    if (f) pick(f);
   };
 
-  const handleUpload = () => {
-    if (!fileName.trim()) return;
-    setStage("uploading");
-    setProgress(0);
+  const reset = () => {
+    setFile(null);
+    setSubject("General");
+    setFileType("Student Notes");
+    if (inputRef.current) inputRef.current.value = "";
+  };
 
-    const uploadInterval = setInterval(() => {
-      setProgress((p) => {
-        if (p >= 100) {
-          clearInterval(uploadInterval);
-          setStage("indexing");
-          let idx = 0;
-          const indexInterval = setInterval(() => {
-            idx += 8;
-            setProgress(idx);
-            if (idx >= 100) {
-              clearInterval(indexInterval);
-              setStage("done");
-              const cfg = BADGE_CONFIG[tag] ?? BADGE_CONFIG["student-notes"];
-              const newFile: FileItem = {
-                id: `new-${Date.now()}`,
-                name: fileName.endsWith(".pdf") ? fileName : `${fileName}.pdf`,
-                type: "file",
-                tag: cfg.tag,
-                tagClass: cfg.tagClass,
-                author: "Ahmed K.",
-                date: new Date().toISOString().split("T")[0],
-                downloads: 0,
-                isNew: true,
-              };
-              onFileAdded(newFile);
-            }
-          }, 120);
-          return 100;
-        }
-        return p + 5;
-      });
-    }, 80);
+  const handleUpload = async () => {
+    if (!file || !user) return;
+    setUploading(true);
+
+    const displayName = user.user_metadata?.display_name || user.email?.split("@")[0] || "Anonymous";
+    const path = `${user.id}/${Date.now()}_${file.name}`;
+
+    const { error: storageErr } = await supabase.storage.from("vault").upload(path, file);
+    if (storageErr) console.warn("Storage upload failed:", storageErr.message);
+
+    const { error: dbErr } = await supabase.from("vault_files").insert({
+      name: file.name,
+      subject,
+      file_type: fileType,
+      storage_path: storageErr ? null : path,
+      file_size: file.size,
+      uploader: displayName,
+      uploader_id: user.id,
+      downloads: 0,
+      stars: 0,
+    });
+
+    setUploading(false);
+    if (dbErr) {
+      toast({ title: "Upload failed", description: dbErr.message, variant: "destructive" });
+    } else {
+      toast({ title: "File uploaded! 📁", description: `${file.name} added to ${subject}.` });
+      reset();
+      onUploaded();
+      onClose();
+    }
   };
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) reset(); }}>
-      <DialogTrigger asChild>
-        <Button className="gap-2">
-          <Upload className="h-4 w-4" /> Upload Resource
-        </Button>
-      </DialogTrigger>
-      <DialogContent>
+    <Dialog open={open} onOpenChange={(v) => { if (!v) { reset(); onClose(); } }}>
+      <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Upload a Resource</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <Upload className="h-5 w-5 text-primary" /> Upload to The Vault
+          </DialogTitle>
         </DialogHeader>
 
-        {stage === "form" && (
-          <div className="space-y-4 pt-4">
-            <Input
-              placeholder="File title (e.g. Eigenvalue Summary Notes)"
-              value={fileName}
-              onChange={(e) => setFileName(e.target.value)}
+        <div className="space-y-4 pt-1">
+          {/* Drop zone */}
+          <div
+            onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={handleDrop}
+            onClick={() => inputRef.current?.click()}
+            className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all ${
+              dragging ? "border-primary bg-primary/5" : "border-border/50 hover:border-primary/50 hover:bg-muted/30"
+            }`}
+          >
+            <input
+              ref={inputRef}
+              type="file"
+              className="hidden"
+              accept=".pdf,.docx,.pptx,.xlsx,.txt,.md,.jpg,.jpeg,.png,.py,.js,.ts,.csv"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) pick(f); }}
             />
-            <Select value={folder} onValueChange={setFolder}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select subject" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="linear-algebra">Linear Algebra</SelectItem>
-                <SelectItem value="calculus">Calculus I</SelectItem>
-                <SelectItem value="discrete-math">Discrete Mathematics</SelectItem>
-                <SelectItem value="algorithms">Algorithms & Data Structures</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={tag} onValueChange={setTag}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select tag" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="student-notes">Student Notes (Golden)</SelectItem>
-                <SelectItem value="exam-prep">Exam Prep</SelectItem>
-                <SelectItem value="lecture-slides">Lecture Slides</SelectItem>
-              </SelectContent>
-            </Select>
-            <div className="border-2 border-dashed border-border rounded-lg p-8 text-center text-muted-foreground cursor-pointer hover:border-primary/50 transition-colors">
-              <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
-              <p className="text-sm">Drag & drop your file here, or click to browse</p>
-              <p className="text-xs mt-1">PDF, DOCX, PPTX up to 50MB</p>
-            </div>
-            <Button className="w-full" onClick={handleUpload} disabled={!fileName.trim()}>
-              Upload
-            </Button>
+            {file ? (
+              <div className="flex items-center gap-3 justify-center">
+                <File className="h-8 w-8 text-primary shrink-0" />
+                <div className="text-left min-w-0">
+                  <p className="text-sm font-medium truncate">{file.name}</p>
+                  <p className="text-xs text-muted-foreground">{(file.size / 1024).toFixed(0)} KB</p>
+                </div>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setFile(null); }}
+                  className="text-muted-foreground hover:text-destructive ml-auto shrink-0"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            ) : (
+              <>
+                <Upload className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                <p className="text-sm font-medium">Drop file here or click to browse</p>
+                <p className="text-xs text-muted-foreground mt-1">PDF, DOCX, PPTX, TXT, MD, images…</p>
+              </>
+            )}
           </div>
-        )}
 
-        {stage === "uploading" && (
-          <div className="py-8 space-y-4">
-            <div className="flex items-center justify-center">
-              <Loader2 className="h-8 w-8 text-primary animate-spin" />
+          {/* Subject picker */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-muted-foreground">Subject / Folder</label>
+            <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto custom-scroll">
+              {SUBJECTS.map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setSubject(s)}
+                  className={`px-2.5 py-1 rounded-full text-xs border transition-all ${
+                    subject === s
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "border-border/50 text-muted-foreground hover:border-primary/50"
+                  }`}
+                >
+                  {s}
+                </button>
+              ))}
             </div>
-            <div className="text-center">
-              <p className="font-medium text-sm">Uploading file...</p>
-              <p className="text-xs text-muted-foreground mt-1">{fileName}</p>
-            </div>
-            <Progress value={progress} className="h-2" />
-            <p className="text-xs text-center text-muted-foreground">{progress}% complete</p>
           </div>
-        )}
 
-        {stage === "indexing" && (
-          <div className="py-8 space-y-4">
-            <div className="flex items-center justify-center">
-              <div className="relative">
-                <Loader2 className="h-8 w-8 text-primary animate-spin" />
-                <Search className="h-3.5 w-3.5 text-primary absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
-              </div>
-            </div>
-            <div className="text-center">
-              <p className="font-medium text-sm">Processing & Indexing...</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Extracting text, tagging, and building search index
-              </p>
-            </div>
-            <Progress value={progress} className="h-2" />
-            <div className="space-y-1.5">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Check className="h-3 w-3 text-success" /> File uploaded successfully
-              </div>
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Loader2 className="h-3 w-3 animate-spin text-primary" /> Extracting text content...
-              </div>
-              <div className="flex items-center gap-2 text-xs text-muted-foreground opacity-50">
-                <div className="h-3 w-3" /> Building AI search index...
-              </div>
+          {/* File type picker */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-muted-foreground">File Type</label>
+            <div className="flex flex-wrap gap-1.5">
+              {FILE_TYPES.map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setFileType(t)}
+                  className={`px-2.5 py-1 rounded-full text-xs border transition-all ${
+                    fileType === t
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "border-border/50 text-muted-foreground hover:border-primary/50"
+                  }`}
+                >
+                  {t}
+                </button>
+              ))}
             </div>
           </div>
-        )}
 
-        {stage === "done" && (
-          <div className="py-8 space-y-4 text-center">
-            <div className="h-14 w-14 rounded-full bg-success/10 flex items-center justify-center mx-auto">
-              <Check className="h-7 w-7 text-success" />
-            </div>
-            <div>
-              <p className="font-semibold">Upload Complete!</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                "{fileName}" has been added to the vault and indexed for search.
-              </p>
-            </div>
-            <Button onClick={reset} className="w-full">Done</Button>
-          </div>
-        )}
+          {/* Upload button */}
+          <Button
+            className="w-full gap-2"
+            onClick={handleUpload}
+            disabled={!file || uploading}
+          >
+            {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+            {uploading ? "Uploading…" : `Upload to "${subject}"`}
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );

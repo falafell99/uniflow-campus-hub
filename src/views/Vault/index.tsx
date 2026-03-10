@@ -1,16 +1,17 @@
 import { useState, useEffect } from "react";
-import { Search, Filter, Upload, Loader2 } from "lucide-react";
+import { Search, Upload, LayoutGrid, List, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { GlassCard } from "@/components/GlassCard";
-import { FileTree, type FileItem } from "./FileTree";
+import { FileTree, FileCard, type FileItem } from "./FileTree";
 import { PreviewModal } from "./PreviewModal";
+import { UploadDialog } from "./UploadDialog";
 import { supabase } from "@/lib/supabase";
-import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 
+// ─── Types ────────────────────────────────────────────────────────────────────
 type VaultFile = {
   id: number;
   name: string;
@@ -20,11 +21,27 @@ type VaultFile = {
   downloads: number;
   stars: number;
   created_at: string;
+  storage_path?: string | null;
+  file_size?: number;
 };
 
-/** Convert flat DB rows into the nested FileItem tree structure */
-function buildTreeFromDB(files: VaultFile[]): FileItem[] {
-  // Group by subject
+const FILE_TYPE_FILTERS = ["All", "Lecture Slides", "Exam Prep", "Student Notes", "Cheat Sheet", "Practice Problems"];
+
+// ─── Build tree from DB rows with signed URLs ─────────────────────────────────
+async function buildTreeWithUrls(files: VaultFile[]): Promise<FileItem[]> {
+  // Batch-generate signed URLs for all files that have storage_path
+  const paths = files.map((f) => f.storage_path).filter(Boolean) as string[];
+  let urlMap: Record<string, string> = {};
+
+  if (paths.length > 0) {
+    const { data } = await supabase.storage.from("vault").createSignedUrls(paths, 60 * 60); // 1 hour
+    if (data) {
+      data.forEach((item) => {
+        if (item.signedUrl) urlMap[item.path] = item.signedUrl;
+      });
+    }
+  }
+
   const bySubject: Record<string, VaultFile[]> = {};
   files.forEach((f) => {
     const key = f.subject || "General";
@@ -32,11 +49,11 @@ function buildTreeFromDB(files: VaultFile[]): FileItem[] {
     bySubject[key].push(f);
   });
 
-  const subjectFolders: FileItem[] = Object.entries(bySubject).map(([subject, files]) => ({
+  const subjectFolders: FileItem[] = Object.entries(bySubject).map(([subject, subFiles]) => ({
     id: `subject-${subject}`,
     name: subject,
-    type: "folder",
-    children: files.map((f) => ({
+    type: "folder" as const,
+    children: subFiles.map((f) => ({
       id: String(f.id),
       name: f.name,
       type: "file" as const,
@@ -45,18 +62,16 @@ function buildTreeFromDB(files: VaultFile[]): FileItem[] {
       author: f.uploader,
       date: f.created_at.split("T")[0],
       downloads: f.downloads,
+      storage_path: f.storage_path ?? undefined,
+      storage_url: f.storage_path ? urlMap[f.storage_path] : undefined,
+      file_size: f.file_size,
     })),
   }));
 
-  return [{
-    id: "root",
-    name: "Faculty of Informatics",
-    type: "folder",
-    children: subjectFolders,
-  }];
+  return [{ id: "root", name: "Faculty of Informatics", type: "folder" as const, children: subjectFolders }];
 }
 
-// Static fallback tree (shown if DB is empty)
+// Static fallback
 const fallbackTree: FileItem[] = [
   {
     id: "1", name: "Faculty of Informatics", type: "folder", children: [
@@ -75,13 +90,25 @@ const fallbackTree: FileItem[] = [
   },
 ];
 
+// Flatten tree to get all file items (for grid and searching)
+function flattenFiles(items: FileItem[]): FileItem[] {
+  const result: FileItem[] = [];
+  for (const item of items) {
+    if (item.type === "file") result.push(item);
+    if (item.children) result.push(...flattenFiles(item.children));
+  }
+  return result;
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
 export default function Vault() {
-  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [vaultData, setVaultData] = useState<FileItem[]>(fallbackTree);
   const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState(false);
   const [previewFile, setPreviewFile] = useState<FileItem | null>(null);
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<"list" | "grid">("list");
+  const [typeFilter, setTypeFilter] = useState("All");
 
   const loadFiles = async () => {
     setLoading(true);
@@ -91,87 +118,126 @@ export default function Vault() {
       .order("created_at", { ascending: false });
 
     if (!error && data && data.length > 0) {
-      setVaultData(buildTreeFromDB(data as VaultFile[]));
+      const tree = await buildTreeWithUrls(data as VaultFile[]);
+      setVaultData(tree);
     }
     setLoading(false);
   };
 
   useEffect(() => { loadFiles(); }, []);
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
+  // Filter files for search + type filter
+  const allFiles = flattenFiles(vaultData);
+  const filtered = allFiles.filter((f) => {
+    const matchesSearch = !searchQuery.trim() ||
+      f.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (f.author?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
+    const matchesType = typeFilter === "All" || f.tag === typeFilter;
+    return matchesSearch && matchesType;
+  });
 
-    const displayName = user?.user_metadata?.display_name || user?.email?.split("@")[0] || "Anonymous";
-
-    // Upload file to Supabase Storage
-    const path = `${user?.id}/${Date.now()}_${file.name}`;
-    const { error: storageErr } = await supabase.storage.from("vault").upload(path, file);
-
-    if (storageErr) {
-      // If storage fails (e.g. bucket not configured), still save metadata
-      console.warn("Storage upload failed, saving metadata only:", storageErr.message);
+  // For grid view: group filtered files by subject folder
+  const subjectGroups = (() => {
+    const groups: Record<string, FileItem[]> = {};
+    // Walk the tree to know which subject each file belongs to
+    const root = vaultData[0];
+    if (root?.children) {
+      for (const folder of root.children) {
+        const name = folder.name;
+        const files = (folder.children ?? []).filter((f) =>
+          filtered.some((ff) => ff.id === f.id)
+        );
+        if (files.length > 0) groups[name] = files;
+      }
     }
+    return groups;
+  })();
 
-    // Insert metadata row
-    const { error: dbErr } = await supabase.from("vault_files").insert({
-      name: file.name,
-      subject: "General",
-      file_type: "Student Notes",
-      storage_path: storageErr ? null : path,
-      uploader: displayName,
-      uploader_id: user?.id,
-      downloads: 0,
-      stars: 0,
-    });
+  // For list search: filter the tree
+  function filterTree(items: FileItem[]): FileItem[] {
+    return items
+      .map((item) => {
+        if (item.type === "file") {
+          const matchesSearch = !searchQuery.trim() || item.name.toLowerCase().includes(searchQuery.toLowerCase()) || (item.author?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
+          const matchesType = typeFilter === "All" || item.tag === typeFilter;
+          return matchesSearch && matchesType ? item : null;
+        }
+        const filteredChildren = filterTree(item.children ?? []);
+        return filteredChildren.length > 0 ? { ...item, children: filteredChildren } : null;
+      })
+      .filter(Boolean) as FileItem[];
+  }
 
-    setUploading(false);
-    if (dbErr) {
-      toast({ title: "Upload failed", description: dbErr.message, variant: "destructive" });
-    } else {
-      toast({ title: "File uploaded! 📁", description: `${file.name} added to the Vault.` });
-      loadFiles();
-    }
-    // Reset input
-    e.target.value = "";
-  };
+  const treeToShow = (searchQuery || typeFilter !== "All") ? filterTree(vaultData) : vaultData;
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-5 animate-fade-in">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">📚 The Vault</h1>
-          <p className="text-muted-foreground mt-1">Browse and share academic resources</p>
+          <p className="text-muted-foreground mt-1 text-sm">Browse, preview, and share academic resources</p>
         </div>
-        <label>
-          <input type="file" className="hidden" accept=".pdf,.docx,.pptx,.xlsx,.txt,.md" onChange={handleUpload} />
-          <Button asChild className="gap-2 cursor-pointer" disabled={uploading}>
-            <span>
-              {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-              {uploading ? "Uploading..." : "Upload File"}
-            </span>
-          </Button>
-        </label>
-      </div>
-
-      <div className="flex gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search files..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-        <Button variant="outline" className="gap-2">
-          <Filter className="h-4 w-4" /> Filter
+        <Button className="gap-2" onClick={() => setUploadOpen(true)}>
+          <Upload className="h-4 w-4" /> Upload File
         </Button>
       </div>
 
-      <GlassCard padding="p-4">
-        {loading ? (
+      {/* Search + Filters + View toggle */}
+      <div className="flex flex-col gap-2">
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search files by name or author…"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <div className="flex items-center gap-1 glass-subtle rounded-lg p-1">
+            <Button
+              variant={viewMode === "list" ? "default" : "ghost"}
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => setViewMode("list")}
+              title="List view"
+            >
+              <List className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={viewMode === "grid" ? "default" : "ghost"}
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => setViewMode("grid")}
+              title="Grid view"
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+
+        {/* File type filter chips */}
+        <div className="flex gap-1.5 flex-wrap">
+          {FILE_TYPE_FILTERS.map((t) => (
+            <button
+              key={t}
+              onClick={() => setTypeFilter(t)}
+              className={`px-2.5 py-1 rounded-full text-xs border transition-all ${
+                typeFilter === t
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "border-border/50 text-muted-foreground hover:border-primary/50"
+              }`}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Content */}
+      {loading ? (
+        <GlassCard padding="p-4">
           <div className="space-y-2">
             {Array.from({ length: 8 }).map((_, i) => (
               <div key={i} className="flex items-center gap-2 py-1.5" style={{ paddingLeft: `${(i % 3) * 20 + 8}px` }}>
@@ -180,23 +246,48 @@ export default function Vault() {
               </div>
             ))}
           </div>
-        ) : (
-          <>
-            <div className="flex items-center justify-between mb-3 pb-2 border-b border-border/30">
-              <p className="text-xs text-muted-foreground">
-                Files are synced in real-time across all users
-              </p>
-              <Badge variant="outline" className="text-[10px] gap-1">
-                <span className="h-1.5 w-1.5 rounded-full bg-success inline-block" />
-                Live
-              </Badge>
-            </div>
-            <FileTree items={vaultData} onPreview={setPreviewFile} />
-          </>
-        )}
-      </GlassCard>
+        </GlassCard>
+      ) : viewMode === "list" ? (
+        <GlassCard padding="p-4">
+          <div className="flex items-center justify-between mb-3 pb-2 border-b border-border/30">
+            <p className="text-xs text-muted-foreground">
+              {filtered.length} file{filtered.length !== 1 ? "s" : ""} {typeFilter !== "All" ? `· ${typeFilter}` : ""}
+            </p>
+            <Badge variant="outline" className="text-[10px] gap-1">
+              <span className="h-1.5 w-1.5 rounded-full bg-success inline-block" /> Live
+            </Badge>
+          </div>
+          {treeToShow.length === 0 ? (
+            <p className="text-xs text-muted-foreground text-center py-8 italic">No files match your search.</p>
+          ) : (
+            <FileTree items={treeToShow} onPreview={setPreviewFile} />
+          )}
+        </GlassCard>
+      ) : (
+        // Grid view grouped by subject
+        <div className="space-y-6">
+          {Object.keys(subjectGroups).length === 0 ? (
+            <p className="text-xs text-muted-foreground text-center py-8 italic">No files match your search.</p>
+          ) : (
+            Object.entries(subjectGroups).map(([subject, files]) => (
+              <div key={subject}>
+                <h2 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                  📁 {subject}
+                  <span className="text-xs text-muted-foreground font-normal">{files.length} file{files.length !== 1 ? "s" : ""}</span>
+                </h2>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+                  {files.map((f) => (
+                    <FileCard key={f.id} item={f} onPreview={setPreviewFile} />
+                  ))}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
 
       <PreviewModal file={previewFile} onClose={() => setPreviewFile(null)} />
+      <UploadDialog open={uploadOpen} onClose={() => setUploadOpen(false)} onUploaded={loadFiles} />
     </div>
   );
 }
