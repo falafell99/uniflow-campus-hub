@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import {
-  MessageSquare, ThumbsUp, Clock, User, ArrowUp,
-  ChevronDown, ChevronUp, Send, Plus, Loader2, Zap
+  MessageSquare, Clock, User, ArrowUp,
+  ChevronDown, ChevronUp, Send, Plus, Loader2, Zap, Search
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -35,13 +35,14 @@ type Thread = {
   pinned: boolean;
   created_at: string;
   replies?: Reply[];
+  reply_count?: number;
 };
 
 // ─── Fallback demo threads ────────────────────────────────────────────────────
 const demoThreads: Thread[] = [
-  { id: 1, category: "general", title: "Tips for surviving first semester at ELTE Informatics?", author: "Bence M.", author_id: "", content: "Hey everyone! I'm starting my BSc CS journey next month. Any advice from seniors?", tags: ["Freshman", "Tips"], upvotes: 34, pinned: true, created_at: new Date(Date.now() - 7200000).toISOString(), replies: [] },
-  { id: 2, category: "technical", title: "Help with BFS vs DFS — when to use which?", author: "Eszter N.", author_id: "", content: "I'm confused about when to use BFS vs DFS for graph traversal problems. Can someone explain with examples?", tags: ["Algorithms", "Help"], upvotes: 21, pinned: false, created_at: new Date(Date.now() - 18000000).toISOString(), replies: [] },
-  { id: 3, category: "career", title: "Summer internship opportunities in Budapest for CS students", author: "Dániel T.", author_id: "", content: "Compiling a list of companies hiring CS interns in Budapest. Feel free to add!", tags: ["Internship", "Career"], upvotes: 56, pinned: false, created_at: new Date(Date.now() - 172800000).toISOString(), replies: [] },
+  { id: 1, category: "general", title: "Tips for surviving first semester at ELTE Informatics?", author: "Bence M.", author_id: "", content: "Hey everyone! I'm starting my BSc CS journey next month. Any advice from seniors?", tags: ["Freshman", "Tips"], upvotes: 34, pinned: true, created_at: new Date(Date.now() - 7200000).toISOString(), replies: [], reply_count: 0 },
+  { id: 2, category: "technical", title: "Help with BFS vs DFS — when to use which?", author: "Eszter N.", author_id: "", content: "I'm confused about when to use BFS vs DFS for graph traversal problems. Can someone explain with examples?", tags: ["Algorithms", "Help"], upvotes: 21, pinned: false, created_at: new Date(Date.now() - 18000000).toISOString(), replies: [], reply_count: 0 },
+  { id: 3, category: "career", title: "Summer internship opportunities in Budapest for CS students", author: "Dániel T.", author_id: "", content: "Compiling a list of companies hiring CS interns in Budapest. Feel free to add!", tags: ["Internship", "Career"], upvotes: 56, pinned: false, created_at: new Date(Date.now() - 172800000).toISOString(), replies: [], reply_count: 0 },
 ];
 
 function timeAgo(iso: string) {
@@ -75,13 +76,15 @@ function ReplyItem({ r }: { r: Reply }) {
 }
 
 // ─── Thread card ──────────────────────────────────────────────────────────────
-function ThreadCard({ t, onUpvote }: { t: Thread; onUpvote: (id: number) => void }) {
+function ThreadCard({ t, onUpvote, upvotedIds }: { t: Thread; onUpvote: (id: number) => void; upvotedIds: number[] }) {
   const [expanded, setExpanded] = useState(false);
   const [replyText, setReplyText] = useState("");
   const [replies, setReplies] = useState<Reply[]>(t.replies || []);
+  const [replyCount, setReplyCount] = useState(t.reply_count ?? replies.length);
   const [loadingReplies, setLoadingReplies] = useState(false);
   const [posting, setPosting] = useState(false);
   const { user } = useAuth();
+  const alreadyUpvoted = upvotedIds.includes(t.id);
 
   const loadReplies = async () => {
     if (loadingReplies) return;
@@ -91,7 +94,9 @@ function ThreadCard({ t, onUpvote }: { t: Thread; onUpvote: (id: number) => void
       .select("*")
       .eq("thread_id", t.id)
       .order("created_at", { ascending: true });
-    setReplies((data as Reply[]) || []);
+    const loaded = (data as Reply[]) || [];
+    setReplies(loaded);
+    setReplyCount(loaded.length);
     setLoadingReplies(false);
   };
 
@@ -115,6 +120,7 @@ function ThreadCard({ t, onUpvote }: { t: Thread; onUpvote: (id: number) => void
       return;
     }
     setReplies((prev) => [...prev, data as Reply]);
+    setReplyCount((c) => c + 1);
     setReplyText("");
   };
 
@@ -123,8 +129,9 @@ function ThreadCard({ t, onUpvote }: { t: Thread; onUpvote: (id: number) => void
       <div className="flex items-start gap-3 cursor-pointer" onClick={toggle}>
         {/* Upvote */}
         <button
-          className="flex flex-col items-center gap-0.5 pt-0.5 hover:text-primary transition-colors"
-          onClick={(e) => { e.stopPropagation(); onUpvote(t.id); }}
+          className={`flex flex-col items-center gap-0.5 pt-0.5 transition-colors ${alreadyUpvoted ? "text-primary" : "hover:text-primary"}`}
+          onClick={(e) => { e.stopPropagation(); if (!alreadyUpvoted) onUpvote(t.id); }}
+          title={alreadyUpvoted ? "Already upvoted" : "Upvote"}
         >
           <ArrowUp className="h-3.5 w-3.5" />
           <span className="text-xs font-semibold">{t.upvotes}</span>
@@ -139,7 +146,7 @@ function ThreadCard({ t, onUpvote }: { t: Thread; onUpvote: (id: number) => void
           <div className="flex items-center gap-3 mt-2 text-[11px] text-muted-foreground flex-wrap">
             <span className="flex items-center gap-1"><User className="h-3 w-3" />{t.author}</span>
             <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{timeAgo(t.created_at)}</span>
-            <span className="flex items-center gap-1"><MessageSquare className="h-3 w-3" />{replies.length} replies</span>
+            <span className="flex items-center gap-1"><MessageSquare className="h-3 w-3" />{replyCount} {replyCount === 1 ? "reply" : "replies"}</span>
           </div>
           <div className="flex gap-1.5 mt-2 flex-wrap">
             {t.tags.map((tag) => <Badge key={tag} variant="outline" className="text-[10px]">{tag}</Badge>)}
@@ -165,7 +172,7 @@ function ThreadCard({ t, onUpvote }: { t: Thread; onUpvote: (id: number) => void
           {/* Reply input */}
           <div className="space-y-2">
             <Textarea
-              placeholder="Write a reply..."
+              placeholder="Write a reply... (Ctrl+Enter to post)"
               className="text-sm resize-none"
               rows={2}
               value={replyText}
@@ -214,7 +221,7 @@ function NewThreadDialog({ open, onClose, onCreate }: { open: boolean; onClose: 
     setPosting(false);
     if (error) { toast({ title: "Failed to create thread", description: error.message, variant: "destructive" }); return; }
     toast({ title: "Thread created! 🎉" });
-    onCreate(data as Thread);
+    onCreate({ ...(data as Thread), reply_count: 0 });
     setTitle(""); setContent(""); setCategory("general"); setSelectedTags([]);
     onClose();
   };
@@ -278,19 +285,35 @@ export default function Forums() {
   const [loading, setLoading] = useState(true);
   const [newThreadOpen, setNewThreadOpen] = useState(false);
   const [isLive, setIsLive] = useState(false);
+  const [search, setSearch] = useState("");
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+
+  // Upvote deduplication – persisted in localStorage
+  const [upvotedIds, setUpvotedIds] = useState<number[]>(() => {
+    try {
+      const stored = localStorage.getItem("uniflow-upvoted-threads");
+      if (stored) return JSON.parse(stored);
+    } catch (_) { /* ignore */ }
+    return [];
+  });
+  useEffect(() => {
+    localStorage.setItem("uniflow-upvoted-threads", JSON.stringify(upvotedIds));
+  }, [upvotedIds]);
 
   const loadThreads = async () => {
     const { data, error } = await supabase
       .from("forum_posts")
-      .select("*")
+      .select("*, forum_replies(count)")
       .order("pinned", { ascending: false })
       .order("created_at", { ascending: false });
 
     if (!error && data && data.length > 0) {
-      setThreads(data as Thread[]);
+      const normalized = data.map((row) => ({
+        ...row,
+        reply_count: (row.forum_replies as unknown as { count: number }[])?.[0]?.count ?? 0,
+      })) as Thread[];
+      setThreads(normalized);
     } else {
-      // Use demo data if DB is empty
       setThreads(demoThreads);
     }
     setLoading(false);
@@ -299,24 +322,25 @@ export default function Forums() {
   useEffect(() => {
     loadThreads();
 
-    // Real-time: listen for new posts
     channelRef.current = supabase
       .channel("forum-posts-live")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "forum_posts" }, (payload) => {
-        setThreads((prev) => [payload.new as Thread, ...prev.filter((t) => !t.pinned)].sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0)));
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "forum_posts" }, () => {
+        loadThreads();
       })
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "forum_posts" }, (payload) => {
-        setThreads((prev) => prev.map((t) => t.id === (payload.new as Thread).id ? (payload.new as Thread) : t));
+        setThreads((prev) => prev.map((t) => t.id === (payload.new as Thread).id ? { ...t, ...payload.new as Thread } : t));
       })
       .subscribe((status) => setIsLive(status === "SUBSCRIBED"));
 
     return () => { channelRef.current?.unsubscribe(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleUpvote = async (id: number) => {
     const thread = threads.find((t) => t.id === id);
     if (!thread) return;
     setThreads((prev) => prev.map((t) => t.id === id ? { ...t, upvotes: t.upvotes + 1 } : t));
+    setUpvotedIds((prev) => [...prev, id]);
     await supabase.from("forum_posts").update({ upvotes: thread.upvotes + 1 }).eq("id", id);
   };
 
@@ -324,7 +348,44 @@ export default function Forums() {
     setThreads((prev) => [t, ...prev.filter((x) => !x.pinned)]);
   };
 
-  const byCategory = (cat: string) => threads.filter((t) => t.category === cat);
+  const filterThreads = (list: Thread[]) => {
+    if (!search.trim()) return list;
+    const q = search.toLowerCase();
+    return list.filter((t) =>
+      t.title.toLowerCase().includes(q) ||
+      t.content.toLowerCase().includes(q) ||
+      t.tags.some((tag) => tag.toLowerCase().includes(q)) ||
+      t.author.toLowerCase().includes(q)
+    );
+  };
+
+  const byCategory = (cat: string) => filterThreads(threads.filter((t) => t.category === cat));
+  const allFiltered = filterThreads(threads);
+
+  const renderList = (items: Thread[]) => {
+    if (loading) {
+      return Array.from({ length: 3 }).map((_, i) => (
+        <div key={i} className="glass-card p-4 space-y-2">
+          <Skeleton className="h-4 w-3/4" /><Skeleton className="h-3 w-full" /><Skeleton className="h-3 w-1/2" />
+        </div>
+      ));
+    }
+    if (items.length === 0) {
+      return (
+        <div className="glass-subtle rounded-xl p-12 text-center">
+          <p className="text-4xl mb-3">{search ? "🔍" : "💬"}</p>
+          <p className="font-medium">{search ? "No threads match your search" : "No threads yet"}</p>
+          <p className="text-sm text-muted-foreground mt-1">{search ? "Try different keywords" : "Start the conversation!"}</p>
+          {!search && (
+            <Button className="mt-4 gap-2" size="sm" onClick={() => setNewThreadOpen(true)}>
+              <Plus className="h-4 w-4" /> New Thread
+            </Button>
+          )}
+        </div>
+      );
+    }
+    return items.map((t) => <ThreadCard key={t.id} t={t} onUpvote={handleUpvote} upvotedIds={upvotedIds} />);
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -346,33 +407,31 @@ export default function Forums() {
         </div>
       </div>
 
-      <Tabs defaultValue="general">
+      {/* Search */}
+      <div className="relative max-w-md">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          placeholder="Search threads by title, tag, or author..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="pl-9"
+        />
+      </div>
+
+      <Tabs defaultValue="all">
         <TabsList>
+          <TabsTrigger value="all">📋 All ({allFiltered.length})</TabsTrigger>
           <TabsTrigger value="general">💬 General ({byCategory("general").length})</TabsTrigger>
           <TabsTrigger value="technical">⚙️ Technical ({byCategory("technical").length})</TabsTrigger>
           <TabsTrigger value="career">💼 Career ({byCategory("career").length})</TabsTrigger>
         </TabsList>
 
+        <TabsContent value="all" className="mt-4 space-y-3">
+          {renderList(allFiltered)}
+        </TabsContent>
         {(["general", "technical", "career"] as const).map((cat) => (
           <TabsContent key={cat} value={cat} className="mt-4 space-y-3">
-            {loading ? (
-              Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="glass-card p-4 space-y-2">
-                  <Skeleton className="h-4 w-3/4" /><Skeleton className="h-3 w-full" /><Skeleton className="h-3 w-1/2" />
-                </div>
-              ))
-            ) : byCategory(cat).length === 0 ? (
-              <div className="glass-subtle rounded-xl p-12 text-center">
-                <p className="text-4xl mb-3">💬</p>
-                <p className="font-medium">No threads yet</p>
-                <p className="text-sm text-muted-foreground mt-1">Start the conversation!</p>
-                <Button className="mt-4 gap-2" size="sm" onClick={() => setNewThreadOpen(true)}>
-                  <Plus className="h-4 w-4" /> New Thread
-                </Button>
-              </div>
-            ) : (
-              byCategory(cat).map((t) => <ThreadCard key={t.id} t={t} onUpvote={handleUpvote} />)
-            )}
+            {renderList(byCategory(cat))}
           </TabsContent>
         ))}
       </Tabs>
