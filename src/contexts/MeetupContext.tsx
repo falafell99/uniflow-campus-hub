@@ -35,9 +35,10 @@ const demoMeetups: Meetup[] = [
 
 export function MeetupProvider({ children }: { children: ReactNode }) {
   const [meetups, setMeetups] = useState<Meetup[]>(demoMeetups);
+  const [dbMeetups, setDbMeetups] = useState<Meetup[]>(demoMeetups);
   const [loading, setLoading] = useState(false);
 
-  // Initialize joined IDs from local storage (default to some demo IDs if empty)
+  // Initialize joined IDs from local storage
   const [joinedIds, setJoinedIds] = useState<number[]>(() => {
     try {
       const stored = localStorage.getItem("uniflow-joined-meetups");
@@ -45,7 +46,7 @@ export function MeetupProvider({ children }: { children: ReactNode }) {
     } catch (e) {
       console.error(e);
     }
-    return [1, 2]; // Match the default true values of demo data
+    return [1, 2];
   });
 
   // Keep localStorage in sync with our joinedIds array
@@ -53,11 +54,11 @@ export function MeetupProvider({ children }: { children: ReactNode }) {
     localStorage.setItem("uniflow-joined-meetups", JSON.stringify(joinedIds));
   }, [joinedIds]);
 
-  // Try to load from Supabase; fall back to demo data silently
+  // Hook 1: Subscribe to DB exactly once, fetch pure raw data
   useEffect(() => {
     let channel: ReturnType<typeof supabase.channel> | null = null;
 
-    const load = async () => {
+    const fetchRawData = async () => {
       setLoading(true);
       const { data, error } = await supabase
         .from("meetups")
@@ -65,50 +66,46 @@ export function MeetupProvider({ children }: { children: ReactNode }) {
         .order("created_at", { ascending: true });
 
       if (!error && data && data.length > 0) {
-        // Map the DB data to apply local 'joined' state
-        setMeetups(
-          (data as Meetup[]).map((m) => ({
-            ...m,
-            joined: joinedIds.includes(m.id),
-          }))
-        );
+        setDbMeetups(data as Meetup[]);
       }
       setLoading(false);
-
-      // Real-time subscription
-      channel = supabase
-        .channel("meetups-changes")
-        .on("postgres_changes", { event: "*", schema: "public", table: "meetups" }, () => {
-          load();
-        })
-        .subscribe();
     };
 
-    load();
+    fetchRawData();
+
+    // Set up the websocket once. Never tear it down unless component unmounts.
+    channel = supabase
+      .channel("meetups-changes")
+      .on("postgres_changes", { event: "*", schema: "public", table: "meetups" }, () => {
+        fetchRawData();
+      })
+      .subscribe();
+
     return () => {
       channel?.unsubscribe();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [joinedIds]); // Re-run load mapping if user joins/leaves securely locally
+  }, []);
+
+  // Hook 2: Merge the realtime raw db data with the purely local joined state
+  useEffect(() => {
+    if (dbMeetups === demoMeetups) return; // Only apply if we have real DB data
+
+    setMeetups(
+      dbMeetups.map((m) => ({
+        ...m,
+        joined: joinedIds.includes(m.id),
+      }))
+    );
+  }, [dbMeetups, joinedIds]);
 
   const toggleJoin = async (id: number) => {
     const isCurrentlyJoined = joinedIds.includes(id);
 
-    // 1. Optimistic UI update
+    // 1. Optimistic UI update securely
     setJoinedIds((prev) =>
       isCurrentlyJoined ? prev.filter((pid) => pid !== id) : [...prev, id]
     );
-    setMeetups((prev) =>
-      prev.map((m) =>
-        m.id === id
-          ? {
-              ...m,
-              joined: !isCurrentlyJoined,
-              attendees: isCurrentlyJoined ? Math.max(0, m.attendees - 1) : m.attendees + 1,
-            }
-          : m
-      )
-    );
+    // Instant mapping will automatically trigger Hook 2 for immediate UI feedback.
 
     // 2. Persist to DB securely by fetching current count first
     const { data: currentMeetup } = await supabase
@@ -127,12 +124,12 @@ export function MeetupProvider({ children }: { children: ReactNode }) {
   };
 
   const createMeetup = async (m: Omit<Meetup, "id" | "attendees" | "joined">) => {
-    const newMeetup = { ...m, attendees: 1, joined: true }; // Keep 'joined' true for Postgres default insert
+    const newMeetup = { ...m, attendees: 1, joined: true };
     const { data, error } = await supabase.from("meetups").insert(newMeetup).select().single();
     if (!error && data) {
       const inserted = data as Meetup;
       setJoinedIds((prev) => [...prev, inserted.id]);
-      setMeetups((prev) => [...prev, { ...inserted, joined: true }]);
+      // The websocket insert ping will instantly refetch 'dbMeetups' and do the rest!
     }
   };
 
