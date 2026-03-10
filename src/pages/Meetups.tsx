@@ -16,8 +16,16 @@ const TIME_SLOTS = ["Today, 14:00 - 16:00", "Today, 16:00 - 18:00", "Today, 18:0
 
 function MeetupCard({ m }: { m: Meetup }) {
   const { toggleJoin } = useMeetups();
-  const spotsLeft = m.max - m.attendees;
+  const [loading, setLoading] = useState(false);
+  const spotsLeft = Math.max(0, m.max - m.attendees);
   const full = m.attendees >= m.max;
+  const progressPercent = Math.min(100, (m.attendees / m.max) * 100);
+
+  const handleToggle = async () => {
+    setLoading(true);
+    await toggleJoin(m.id);
+    setLoading(false);
+  };
 
   return (
     <div className={`glass-card p-5 space-y-3 transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 ${m.joined ? "border-primary/30" : ""}`}>
@@ -46,8 +54,8 @@ function MeetupCard({ m }: { m: Meetup }) {
       <div className="space-y-1">
         <div className="h-1.5 rounded-full bg-muted overflow-hidden">
           <div
-            className={`h-full rounded-full transition-all duration-500 ${full ? "bg-destructive" : m.attendees / m.max > 0.7 ? "bg-warning" : "bg-success"}`}
-            style={{ width: `${(m.attendees / m.max) * 100}%` }}
+            className={`h-full rounded-full transition-all duration-500 ${full ? "bg-destructive" : progressPercent > 70 ? "bg-warning" : "bg-success"}`}
+            style={{ width: `${progressPercent}%` }}
           />
         </div>
         <p className="text-[10px] text-muted-foreground">{full ? "Session full" : `${spotsLeft} spot${spotsLeft === 1 ? "" : "s"} remaining`}</p>
@@ -55,12 +63,13 @@ function MeetupCard({ m }: { m: Meetup }) {
 
       <div className="flex gap-2 pt-1">
         <Button
-          onClick={() => toggleJoin(m.id)}
+          onClick={handleToggle}
           variant={m.joined ? "default" : "outline"}
           size="sm"
           className="flex-1 text-xs transition-all duration-300"
-          disabled={!m.joined && full}
+          disabled={loading || (!m.joined && full)}
         >
+          {loading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
           {m.joined ? "✓ Joined" : full ? "Full" : "Join Session"}
         </Button>
         <Button

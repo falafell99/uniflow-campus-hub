@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { GraduationCap, Loader2 } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 
 export default function Login() {
   const [mode, setMode] = useState<"signin" | "signup">("signin");
@@ -15,19 +16,45 @@ export default function Login() {
   const { signIn, signUp } = useAuth();
   const navigate = useNavigate();
 
+  useEffect(() => {
+    // Check for Supabase Auth callback params in the URL hash
+    const hash = window.location.hash;
+    if (hash) {
+      const params = new URLSearchParams(hash.replace("#", "?"));
+      const errorDesc = params.get("error_description");
+      const token = params.get("access_token");
+
+      if (errorDesc) {
+        toast({ title: "Authentication Error", description: errorDesc, variant: "destructive" });
+        window.history.replaceState(null, "", window.location.pathname);
+      } else if (token) {
+        toast({ title: "Email confirmed successfully! 🎉" });
+        window.history.replaceState(null, "", window.location.pathname);
+        navigate("/");
+      }
+    }
+  }, [navigate]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
+
     if (mode === "signin") {
       const { error } = await signIn(email, password);
       if (error) { setError(error); setLoading(false); return; }
+      navigate("/");
     } else {
       if (!displayName.trim()) { setError("Display name is required"); setLoading(false); return; }
       const { error } = await signUp(email, password, displayName);
       if (error) { setError(error); setLoading(false); return; }
+      
+      // Do not navigate immediately on sign up; they need to check email.
+      toast({ title: "Check your email", description: "A confirmation link has been sent to your inbox." });
+      setMode("signin"); // switch the UI back to signin mode
+      setPassword("");
+      setLoading(false);
     }
-    navigate("/");
   };
 
   return (
