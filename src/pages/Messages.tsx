@@ -251,19 +251,24 @@ export default function Messages() {
 
   // 4. Search directory for new chats
   useEffect(() => {
-    if (!newChatOpen || !searchQuery.trim()) {
+    if (!newChatOpen) {
       setSearchResults([]);
       return;
     }
     const delay = setTimeout(async () => {
       setSearching(true);
-      const { data } = await supabase
+      
+      let query = supabase
         .from("profiles")
         .select("id, display_name, status, avatar_color, avatar_emoji")
-        .ilike("display_name", `%${searchQuery}%`)
         .neq("id", user?.id)
-        .limit(10);
+        .limit(20);
+        
+      if (searchQuery.trim()) {
+        query = query.ilike("display_name", `%${searchQuery}%`);
+      }
       
+      const { data } = await query;
       setSearchResults((data as ProfileSnap[]) || []);
       setSearching(false);
     }, 300);
@@ -480,17 +485,13 @@ export default function Messages() {
             </div>
           </div>
           <div className="h-72 overflow-y-auto px-2 pb-2">
-            {!searchQuery.trim() ? (
-              <div className="flex flex-col items-center justify-center h-full text-muted-foreground opacity-60">
-                <Search className="h-8 w-8 mb-2" />
-                <p className="text-sm">Type a name to search the campus directory</p>
-              </div>
-            ) : searching ? (
+            {searching ? (
               <div className="flex justify-center py-8">
                 <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
               </div>
             ) : searchResults.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
+                <Search className="h-8 w-8 mx-auto mb-2 opacity-50" />
                 <p className="text-sm">No students found.</p>
               </div>
             ) : (
