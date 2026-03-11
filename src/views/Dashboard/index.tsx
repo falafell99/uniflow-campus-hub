@@ -10,11 +10,13 @@ import { TrendingSection } from "./TrendingSection";
 import { SubjectsSection } from "./SubjectsSection";
 import { GlassCard } from "@/components/GlassCard";
 import { Skeleton } from "@/components/ui/skeleton";
+import { PublicProfileModal } from "@/components/PublicProfileModal";
 
 type VaultResource = {
   id: string;
   title: string;
   author: string;
+  authorId?: string;
   downloads: number;
   tag: string;
   tagClass: string;
@@ -116,6 +118,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [statsLoading, setStatsLoading] = useState(true);
   const [trendingResources, setTrendingResources] = useState<VaultResource[]>(fallbackResources);
+  const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
 
   // Real stats from Supabase
   const [vaultCount, setVaultCount] = useState(0);
@@ -133,7 +136,7 @@ export default function Dashboard() {
       setLoading(true);
       const { data, error } = await supabase
         .from("vault_files")
-        .select("id, name, uploader, downloads, file_type")
+        .select("id, name, uploader, uploader_id, downloads, file_type")
         .order("created_at", { ascending: false })
         .limit(6);
 
@@ -143,6 +146,7 @@ export default function Dashboard() {
             id: String(f.id),
             title: f.name,
             author: f.uploader,
+            authorId: f.uploader_id,
             downloads: f.downloads || 0,
             tag: f.file_type || "Student Notes",
             tagClass: tagClassForType(f.file_type),
@@ -242,6 +246,7 @@ export default function Dashboard() {
             resources={trendingResources}
             favorites={favorites}
             onToggleFavorite={toggleFavorite}
+            onAuthorClick={(id) => setSelectedProfileId(id)}
             loading={loading}
           />
         </div>
@@ -250,6 +255,7 @@ export default function Dashboard() {
           <StatsSection stats={activityStats} loading={statsLoading} />
         </div>
       </div>
+      <PublicProfileModal userId={selectedProfileId} onClose={() => setSelectedProfileId(null)} />
     </div>
   );
 }

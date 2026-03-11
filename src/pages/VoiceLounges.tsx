@@ -17,6 +17,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useApp } from "@/contexts/AppContext";
 import { toast } from "@/hooks/use-toast";
 import { AvatarDisplay, AVATAR_COLORS } from "@/pages/Profile";
+import { PublicProfileModal } from "@/components/PublicProfileModal";
 
 // Fallback ensures App ID always has a value even if Vite env hasn't picked up .env.local
 const AGORA_APP_ID: string = import.meta.env.VITE_AGORA_APP_ID ?? "14ba5447c00842149f1b6ae0316a1ce1";
@@ -152,6 +153,7 @@ export default function VoiceLounges() {
   const [connecting, setConnecting] = useState(false);
   const [muted, setMuted] = useState(false);
   const [deafened, setDeafened] = useState(false);
+  const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
 
   // Participants: map from uid → Participant — initialized from module-level cache
   // so re-mounting the component never shows 0 when people are still in rooms
@@ -490,7 +492,10 @@ export default function VoiceLounges() {
                     const speaking = (volumeMap[p.uid] ?? 0) > 5 && !p.muted && isJoined;
                     return (
                       <div key={p.uid} className="flex flex-col items-center gap-0.5" title={p.display_name}>
-                        <div className={`relative transition-transform duration-150 ${speaking ? "scale-115" : ""}`}>
+                        <button 
+                          onClick={() => setSelectedProfileId(p.uid)}
+                          className={`relative transition-transform duration-150 outline-none hover:scale-110 focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded-2xl ${speaking ? "scale-115" : ""}`}
+                        >
                           <AvatarDisplay
                             name={p.display_name}
                             avatarColor={p.avatar_color ?? AVATAR_COLORS[0].from}
@@ -503,12 +508,14 @@ export default function VoiceLounges() {
                             </span>
                           )}
                           {p.muted && (
-                            <span className="absolute -bottom-1 -right-1 h-3.5 w-3.5 rounded-full bg-destructive border-2 border-background flex items-center justify-center">
-                              <MicOff className="h-2 w-2 text-white" />
-                            </span>
+                            <div className="absolute -bottom-1 -right-1 bg-destructive rounded-full p-0.5 border-2 border-background">
+                              <MicOff className="h-3 w-3 text-white" />
+                            </div>
                           )}
-                        </div>
-                        <span className="text-[10px] text-muted-foreground leading-none">{p.display_name.split(" ")[0]}</span>
+                        </button>
+                        <span className="text-[10px] font-medium text-muted-foreground truncate max-w-full px-1 text-center">
+                          {p.display_name}
+                        </span>
                       </div>
                     );
                   })}
@@ -558,6 +565,9 @@ export default function VoiceLounges() {
           );
         })}
       </div>
+
+      {/* Modal overlays */}
+      <PublicProfileModal userId={selectedProfileId} onClose={() => setSelectedProfileId(null)} />
 
       {/* Create Room Dialog */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Search, Star, ChevronDown, ChevronUp, ThumbsUp, Send, Loader2 } from "lucide-react";
+import { Search, Star, ChevronDown, ChevronUp, Send, Loader2, MapPin, Clock, Mail, Phone, Hash, Video } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +15,12 @@ type DBProfessor = {
   name: string;
   department: string;
   subjects: string[];
+  email?: string;
+  phone?: string;
+  neptun?: string;
+  teams_link?: string;
+  room?: string;
+  working_hours?: string;
 };
 
 type DBRating = {
@@ -218,6 +224,54 @@ export default function ProfessorRadar() {
 
                 {expanded === p.id && (
                   <div className="mt-4 pt-4 border-t space-y-4 animate-fade-in">
+                    
+                    {/* Contact & Details Section */}
+                    <div className="bg-card/40 border border-border/40 p-4 rounded-xl space-y-3">
+                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Contact & Details</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-3 gap-x-4">
+                        <div className="flex items-center gap-2.5">
+                          <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
+                          <span className="text-sm truncate font-medium">
+                            {p.email ? <a href={`mailto:${p.email}`} className="hover:text-primary transition-colors">{p.email}</a> : <span className="text-muted-foreground/60 italic font-normal">No email provided</span>}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2.5">
+                          <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
+                          <span className="text-sm truncate font-medium">
+                            {p.phone || <span className="text-muted-foreground/60 italic font-normal">No phone provided</span>}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2.5">
+                          <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
+                          <span className="text-sm truncate font-medium">
+                            {p.room ? `Room ${p.room}` : <span className="text-muted-foreground/60 italic font-normal">No office provided</span>}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2.5">
+                          <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
+                          <span className="text-sm truncate font-medium">
+                            {p.working_hours || <span className="text-muted-foreground/60 italic font-normal">No hours provided</span>}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2.5">
+                          <Hash className="h-4 w-4 text-muted-foreground shrink-0" />
+                          <span className="text-sm truncate font-medium">
+                            {p.neptun ? `Neptun: ${p.neptun}` : <span className="text-muted-foreground/60 italic font-normal">No neptun code</span>}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2.5">
+                          <Video className="h-4 w-4 text-muted-foreground shrink-0" />
+                          <span className="text-sm truncate font-medium">
+                            {p.teams_link ? (
+                              <a href={p.teams_link} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Meeting Link</a>
+                            ) : (
+                              <span className="text-muted-foreground/60 italic font-normal">No meeting link</span>
+                            )}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
                     {p.reviewCount > 0 && (
                       <div className="grid grid-cols-2 gap-4">
                         <GaugeBar label="Difficulty" value={Math.round(p.avgDifficulty)} color="bg-destructive/70" />

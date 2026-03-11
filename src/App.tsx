@@ -25,6 +25,7 @@ import Flashcards from "@/pages/Flashcards";
 import KnowledgeGraph from "@/pages/KnowledgeGraph";
 import Pomodoro from "@/pages/Pomodoro";
 import Workspace from "@/pages/Workspace";
+import Messages from "@/pages/Messages";
 import Studio from "@/pages/Studio";
 import MentalMap from "@/pages/MentalMap";
 import NotFound from "@/pages/NotFound";
@@ -73,6 +74,7 @@ function ProtectedApp() {
             <Route path="/knowledge-graph" element={<KnowledgeGraph />} />
             <Route path="/pomodoro" element={<Pomodoro />} />
             <Route path="/workspace" element={<Workspace />} />
+            <Route path="/messages" element={<Messages />} />
             <Route path="/studio" element={<Studio />} />
             <Route path="/mental-map" element={<MentalMap />} />
             <Route path="/login" element={<Navigate to="/" replace />} />

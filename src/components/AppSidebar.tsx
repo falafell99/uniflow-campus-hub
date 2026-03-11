@@ -20,6 +20,7 @@ const navItems = [
   { title: "AI Oracle", url: "/ai-oracle", icon: Bot, emoji: "🤖" },
   { title: "Meetups", url: "/meetups", icon: Users, emoji: "🤝" },
   { title: "Forums", url: "/forums", icon: MessageSquare, emoji: "💬" },
+  { title: "Messages", url: "/messages", icon: MessageSquare, emoji: "💬" },
   { title: "Professor Radar", url: "/professors", icon: Star, emoji: "⭐" },
   { title: "Toolbox", url: "/toolbox", icon: Wrench, emoji: "🛠" },
   { title: "Profile", url: "/profile", icon: UserCircle, emoji: "👤" },

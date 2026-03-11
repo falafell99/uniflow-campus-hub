@@ -10,6 +10,7 @@ interface Resource {
   id: string;
   title: string;
   author: string;
+  authorId?: string;
   downloads: number;
   tag: string;
   tagClass: string;
@@ -19,6 +20,7 @@ interface TrendingSectionProps {
   resources: Resource[];
   favorites: string[];
   onToggleFavorite: (id: string) => void;
+  onAuthorClick?: (id: string) => void;
   loading: boolean;
 }
 
@@ -26,6 +28,7 @@ export function TrendingSection({
   resources,
   favorites,
   onToggleFavorite,
+  onAuthorClick,
   loading,
 }: TrendingSectionProps) {
   const navigate = useNavigate();
@@ -68,8 +71,22 @@ export function TrendingSection({
                 </div>
                 <div className="min-w-0 flex-1">
                   <h3 className="text-sm font-medium truncate">{r.title}</h3>
-                  <p className="text-xs text-muted-foreground">
-                    by {r.author} · {r.downloads} downloads
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    by{" "}
+                    {r.authorId ? (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (onAuthorClick) onAuthorClick(r.authorId!);
+                        }}
+                        className="font-medium text-foreground hover:text-primary hover:underline transition-colors"
+                      >
+                        {r.author}
+                      </button>
+                    ) : (
+                      <span className="font-medium text-foreground">{r.author}</span>
+                    )}
+                    {" · "}{r.downloads} downloads
                   </p>
                 </div>
                 <button

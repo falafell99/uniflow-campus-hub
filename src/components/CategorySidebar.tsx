@@ -25,6 +25,7 @@ const categories: { label: string; emoji: string; items: NavItem[] }[] = [
     label: "SOCIAL", emoji: "🤝",
     items: [
       { title: "Lobby", url: "/forums", emoji: "💬" },
+      { title: "Messages", url: "/messages", emoji: "💌" },
       { title: "Study Circles", url: "/meetups", emoji: "🤝" },
       { title: "Voice Lounges", url: "/voice-lounges", emoji: "🎙" },
     ],

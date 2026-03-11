@@ -3,8 +3,10 @@ import { Users, Upload, BookOpen, MessageSquare, Zap } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useMeetups } from "@/contexts/MeetupContext";
 import { useNavigate } from "react-router-dom";
+import { PublicProfileModal } from "@/components/PublicProfileModal";
+import { AvatarDisplay } from "@/pages/Profile";
 
-type Profile = { id: string; display_name: string; status: string };
+type Profile = { id: string; display_name: string; status: string; avatar_color?: string; avatar_emoji?: string };
 type VaultFile = { id: number; name: string; subject: string; created_at: string; uploader: string };
 type ForumPost = { id: number; title: string; category: string; created_at: string; author: string };
 
@@ -52,13 +54,14 @@ export function ActivityFeed() {
   const [recentUploads, setRecentUploads] = useState<VaultFile[]>(fallbackUploads);
   const [recentPosts, setRecentPosts] = useState<ForumPost[]>(fallbackPosts);
   const [isLive, setIsLive] = useState(false);
+  const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   const loadData = async () => {
     // Online users from profiles
     const { data: profiles } = await supabase
       .from("profiles")
-      .select("id, display_name, status")
+      .select("id, display_name, status, avatar_color, avatar_emoji")
       .order("created_at", { ascending: false })
       .limit(8);
     if (profiles && profiles.length > 0) setOnlineUsers(profiles as Profile[]);
@@ -162,18 +165,25 @@ export function ActivityFeed() {
         </h3>
         <div className="space-y-1.5">
           {onlineUsers.slice(0, 4).map((u) => (
-            <div key={u.id} className="flex items-center gap-2 px-1 py-1">
+            <button
+              key={u.id}
+              onClick={() => setSelectedProfileId(u.id)}
+              className="flex items-center gap-2 px-1 py-1 w-full text-left rounded-md hover:bg-muted/50 transition-colors"
+            >
               <div className="relative shrink-0">
-                <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center">
-                  <span className="text-[10px] font-semibold text-primary">{getInitials(u.display_name)}</span>
-                </div>
+                <AvatarDisplay
+                  name={u.display_name}
+                  avatarColor={u.avatar_color}
+                  avatarEmoji={u.avatar_emoji}
+                  size="sm"
+                />
                 <span className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full ${statusDotColor(u.status)} border-2 border-background`} />
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-medium truncate">{u.display_name}</p>
                 <p className="text-[10px] text-muted-foreground truncate">{u.status.replace(/^[^ ]+ /, "")}</p>
               </div>
-            </div>
+            </button>
           ))}
         </div>
       </div>
@@ -221,6 +231,8 @@ export function ActivityFeed() {
           ))}
         </div>
       </div>
+
+      <PublicProfileModal userId={selectedProfileId} onClose={() => setSelectedProfileId(null)} />
     </div>
   );
 }
