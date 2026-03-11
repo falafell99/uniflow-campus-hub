@@ -138,7 +138,6 @@ export function UploadDialog({ open, onClose, onUploaded }: UploadDialogProps) {
       semester: semesterNum,
       file_type: section, // keep legacy compat
       storage_path: storageErr ? null : path,
-      file_size: file.size,
       uploader: displayName,
       uploader_id: user.id,
       downloads: 0,
