@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Users, Upload, BookOpen, MessageSquare, Zap } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useMeetups } from "@/contexts/MeetupContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { PublicProfileModal } from "@/components/PublicProfileModal";
 import { AvatarDisplay } from "@/pages/Profile";
@@ -48,6 +49,7 @@ const fallbackPosts: ForumPost[] = [
 ];
 
 export function ActivityFeed() {
+  const { onlineUsers: globalOnlineSet } = useAuth();
   const navigate = useNavigate();
   const { meetups } = useMeetups();
   const [onlineUsers, setOnlineUsers] = useState<Profile[]>(fallbackProfiles);
@@ -164,27 +166,33 @@ export function ActivityFeed() {
           <BookOpen className="h-3 w-3" /> Online Now
         </h3>
         <div className="space-y-1.5">
-          {onlineUsers.slice(0, 4).map((u) => (
-            <button
-              key={u.id}
-              onClick={() => setSelectedProfileId(u.id)}
-              className="flex items-center gap-2 px-1 py-1 w-full text-left rounded-md hover:bg-muted/50 transition-colors"
-            >
-              <div className="relative shrink-0">
-                <AvatarDisplay
-                  name={u.display_name}
-                  avatarColor={u.avatar_color}
-                  avatarEmoji={u.avatar_emoji}
-                  size="sm"
-                />
-                <span className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full ${statusDotColor(u.status)} border-2 border-background`} />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-medium truncate">{u.display_name}</p>
-                <p className="text-[10px] text-muted-foreground truncate">{u.status.replace(/^[^ ]+ /, "")}</p>
-              </div>
-            </button>
-          ))}
+          {onlineUsers
+            .filter(u => globalOnlineSet.has(u.id))
+            .slice(0, 5)
+            .map((u) => (
+              <button
+                key={u.id}
+                onClick={() => setSelectedProfileId(u.id)}
+                className="flex items-center gap-2 px-1 py-1 w-full text-left rounded-md hover:bg-muted/50 transition-colors"
+              >
+                <div className="relative shrink-0">
+                  <AvatarDisplay
+                    name={u.display_name}
+                    avatarColor={u.avatar_color}
+                    avatarEmoji={u.avatar_emoji}
+                    size="sm"
+                  />
+                  <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-success border-2 border-background" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-medium truncate">{u.display_name}</p>
+                  <p className="text-[10px] text-muted-foreground truncate">Online</p>
+                </div>
+              </button>
+            ))}
+          {onlineUsers.filter(u => globalOnlineSet.has(u.id)).length === 0 && (
+            <p className="text-[10px] text-muted-foreground italic px-2">No users online</p>
+          )}
         </div>
       </div>
 
