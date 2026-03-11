@@ -233,19 +233,33 @@ export default function VoiceLounges() {
     setConnecting(false);
   }, [user, myProfile, joinedRoom, setVoiceRoom, updateLobbyPresence]);
 
-  // ── Auto-rejoin on page refresh ───────────────────────────────────────────────
+  // ── Auto-rejoin / restore on navigation ──────────────────────────────────────
   useEffect(() => {
     const savedRoomId = sessionStorage.getItem(REJOIN_KEY);
     if (!savedRoomId || !myProfile) return;
 
     const allRoomsFlat = [...PRESET_ROOMS, ...userRooms];
     const room = allRoomsFlat.find((r) => r.id === savedRoomId);
-    if (room && !joinedRoom && !connecting) {
+    if (!room || joinedRoom || connecting) return;
+
+    const connectionState = _agoraClient?.connectionState;
+
+    if (connectionState === "CONNECTED" || connectionState === "CONNECTING") {
+      // Client is still connected from before navigation — just restore UI state
+      // No need to call joinRoom() again, would throw INVALID_OPERATION
+      clientRef.current = _agoraClient;
+      setJoinedRoom(room);
+      setVoiceRoom(room.name);
+      // Re-subscribe to remote audio for any already-connected users
+      _agoraClient?.remoteUsers.forEach((u) => { u.audioTrack?.play(); });
+    } else {
+      // Genuine page reload — client is disconnected, do a real rejoin
       toast({ title: "Reconnecting to voice room…", description: room.name });
       joinRoom(room);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [myProfile, userRooms]); // run once when profile + rooms are loaded
+
 
   // ── Leave room ────────────────────────────────────────────────────────────────
   const leaveRoom = useCallback(async () => {
