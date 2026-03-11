@@ -6,7 +6,7 @@ import AgoraRTC, {
 } from "agora-rtc-sdk-ng";
 import {
   Mic, MicOff, Volume2, VolumeX, Users, Lock, Plus,
-  PhoneOff, Radio, Loader2, Wifi
+  PhoneOff, Radio, Loader2, Wifi, Clock
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -69,6 +69,8 @@ let _lobbyChannel: ReturnType<typeof supabase.channel> | null = null;
 let _lobbyPresenceCache: Record<string, Participant> = {};
 // Stores OUR last tracked presence payload so navigation doesn't reset current_room
 let _myPresencePayload: Partial<Participant> = {};
+// Stores when the user joined so timer survives navigation
+let _joinTimestamp: number | null = null;
 type PresenceSyncListener = (map: Record<string, Participant>) => void;
 const _presenceListeners = new Set<PresenceSyncListener>();
 
@@ -160,7 +162,28 @@ export default function VoiceLounges() {
   const [myUid, setMyUid] = useState<string | null>(null);
   const [volumeMap, setVolumeMap] = useState<Record<string, number>>({});
 
-  // My profile
+  // Session timer
+  const [sessionTime, setSessionTime] = useState("00:00");
+  useEffect(() => {
+    if (!joinedRoom) return;
+    // Restore timestamp from sessionStorage if not in memory (page refresh)
+    if (!_joinTimestamp) {
+      const stored = sessionStorage.getItem(REJOIN_KEY + "-ts");
+      if (stored) _joinTimestamp = Number(stored);
+      else _joinTimestamp = Date.now();
+    }
+    const tick = () => {
+      const secs = Math.floor((Date.now() - (_joinTimestamp ?? Date.now())) / 1000);
+      const h = Math.floor(secs / 3600);
+      const m = Math.floor((secs % 3600) / 60);
+      const s = secs % 60;
+      const pad = (n: number) => String(n).padStart(2, "0");
+      setSessionTime(h > 0 ? `${pad(h)}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`);
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [joinedRoom]);
   const [myProfile, setMyProfile] = useState<{ display_name: string; avatar_color?: string; avatar_emoji?: string } | null>(null);
   useEffect(() => {
     if (!user) return;
@@ -259,8 +282,12 @@ export default function VoiceLounges() {
       // Update lobby presence with new room
       await updateLobbyPresence(room.id, false);
 
+      // Save join timestamp (module-level so it survives navigation)
+      _joinTimestamp = Date.now();
+
       // Save to sessionStorage for auto-rejoin on refresh
       sessionStorage.setItem(REJOIN_KEY, room.id);
+      sessionStorage.setItem(REJOIN_KEY + "-ts", String(_joinTimestamp));
 
       setJoinedRoom(room);
       setVoiceRoom(room.name);
@@ -318,7 +345,9 @@ export default function VoiceLounges() {
 
     // Reset lobby presence to "not in room"
     await updateLobbyPresence("", false);
+    _joinTimestamp = null;
     sessionStorage.removeItem(REJOIN_KEY);
+    sessionStorage.removeItem(REJOIN_KEY + "-ts");
 
     setJoinedRoom(null);
     setMyUid(null);
@@ -402,6 +431,11 @@ export default function VoiceLounges() {
             <div className="h-2 w-2 rounded-full bg-success animate-pulse" />
             <span className="text-sm font-semibold">{joinedRoom.emoji} {joinedRoom.name}</span>
             <span className="text-xs text-muted-foreground truncate hidden sm:block">{joinedRoom.topic}</span>
+          </div>
+          {/* Session timer */}
+          <div className="flex items-center gap-1 text-xs font-mono text-muted-foreground bg-muted/40 px-2.5 py-1 rounded-full">
+            <Clock className="h-3 w-3" />
+            {sessionTime}
           </div>
           <div className="flex items-center gap-1">
             <Button variant={muted ? "destructive" : "outline"} size="icon" className="h-8 w-8" onClick={toggleMute}>
