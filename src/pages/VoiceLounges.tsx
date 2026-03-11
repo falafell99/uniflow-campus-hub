@@ -55,8 +55,10 @@ const PRESET_ROOMS: Room[] = [
 
 const ROOM_EMOJIS = ["🎙", "💻", "📐", "🧪", "📝", "☕", "🚀", "🎮", "🎵", "🌙"];
 
-// ─── Agora client singleton ───────────────────────────────────────────────────
+// ─── Agora singletons ─────────────────────────────────────────────────────
+// Client and local audio track persist across navigation so mute always works
 let _agoraClient: IAgoraRTCClient | null = null;
+let _localAudioTrack: ILocalAudioTrack | null = null;
 function getAgoraClient() {
   if (!_agoraClient) _agoraClient = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
   return _agoraClient;
@@ -65,6 +67,8 @@ function getAgoraClient() {
 // ─── Lobby channel singleton (persists across navigation) ─────────────────────
 let _lobbyChannel: ReturnType<typeof supabase.channel> | null = null;
 let _lobbyPresenceCache: Record<string, Participant> = {};
+// Stores OUR last tracked presence payload so navigation doesn't reset current_room
+let _myPresencePayload: Partial<Participant> = {};
 type PresenceSyncListener = (map: Record<string, Participant>) => void;
 const _presenceListeners = new Set<PresenceSyncListener>();
 
@@ -82,18 +86,28 @@ function parseLobbyState(channel: ReturnType<typeof supabase.channel>): Record<s
   return map;
 }
 
-async function ensureLobbyChannel(userId: string, profile: { display_name: string; avatar_color?: string; avatar_emoji?: string; current_room?: string; muted?: boolean }) {
+async function ensureLobbyChannel(
+  userId: string,
+  profile: { display_name: string; avatar_color?: string; avatar_emoji?: string; current_room?: string; muted?: boolean },
+  options: { preserveRoom?: boolean } = {}
+) {
+  // Merge with cached payload — preserveRoom=true keeps existing current_room if caller passes ""
+  const payload: Participant = {
+    uid: userId,
+    display_name: profile.display_name,
+    avatar_color: profile.avatar_color ?? _myPresencePayload.avatar_color,
+    avatar_emoji: profile.avatar_emoji ?? _myPresencePayload.avatar_emoji,
+    muted: profile.muted ?? _myPresencePayload.muted ?? false,
+    // If preserveRoom is true (re-mount), keep existing room; otherwise use what caller provides
+    current_room: (options.preserveRoom && _myPresencePayload.current_room)
+      ? _myPresencePayload.current_room
+      : (profile.current_room ?? _myPresencePayload.current_room ?? ""),
+  };
+  // Save so future calls can preserve the state
+  _myPresencePayload = { ...payload };
+
   if (_lobbyChannel) {
-    // Already subscribed — just update our presence payload
-    await _lobbyChannel.track({
-      uid: userId,
-      display_name: profile.display_name,
-      avatar_color: profile.avatar_color,
-      avatar_emoji: profile.avatar_emoji,
-      muted: profile.muted ?? false,
-      current_room: profile.current_room ?? "",
-    } as Participant).catch(() => {});
-    // Sync current state to listeners
+    await _lobbyChannel.track(payload).catch(() => {});
     notifyPresenceListeners(parseLobbyState(_lobbyChannel));
     return _lobbyChannel;
   }
@@ -108,14 +122,7 @@ async function ensureLobbyChannel(userId: string, profile: { display_name: strin
   await new Promise<void>((resolve) => {
     channel.subscribe(async (status) => {
       if (status === "SUBSCRIBED") {
-        await channel.track({
-          uid: userId,
-          display_name: profile.display_name,
-          avatar_color: profile.avatar_color,
-          avatar_emoji: profile.avatar_emoji,
-          muted: profile.muted ?? false,
-          current_room: profile.current_room ?? "",
-        } as Participant);
+        await channel.track(payload);
         resolve();
       }
     });
@@ -182,7 +189,7 @@ export default function VoiceLounges() {
     _presenceListeners.add(listener);
 
     // Connect / update presence (idempotent — won't re-subscribe if already connected)
-    ensureLobbyChannel(user.id, { ...myProfile, current_room: "", muted: false });
+    ensureLobbyChannel(user.id, { ...myProfile, current_room: "", muted: false }, { preserveRoom: true });
 
     return () => {
       // Only remove the listener — keep the channel alive!
@@ -224,6 +231,7 @@ export default function VoiceLounges() {
         return;
       }
       localTrackRef.current = localAudio;
+      _localAudioTrack = localAudio; // persist at module level
 
       const uid = await client.join(AGORA_APP_ID, room.id, null, null);
       const uidStr = String(uid);
@@ -277,11 +285,15 @@ export default function VoiceLounges() {
 
     if (connectionState === "CONNECTED" || connectionState === "CONNECTING") {
       // Client is still connected from before navigation — just restore UI state
-      // No need to call joinRoom() again, would throw INVALID_OPERATION
       clientRef.current = _agoraClient;
+      localTrackRef.current = _localAudioTrack; // restore local audio track so mute works!
       setJoinedRoom(room);
       setVoiceRoom(room.name);
-      // Re-subscribe to remote audio for any already-connected users
+      // Restore muted state from presence cache
+      const myPresenceMuted = _myPresencePayload.muted ?? false;
+      setMuted(myPresenceMuted);
+      // Re-enable volume indicator and remote audio
+      _agoraClient?.enableAudioVolumeIndicator();
       _agoraClient?.remoteUsers.forEach((u) => { u.audioTrack?.play(); });
     } else {
       // Genuine page reload — client is disconnected, do a real rejoin
@@ -295,8 +307,9 @@ export default function VoiceLounges() {
   // ── Leave room ────────────────────────────────────────────────────────────────
   const leaveRoom = useCallback(async () => {
     try {
-      localTrackRef.current?.stop();
-      localTrackRef.current?.close();
+      _localAudioTrack?.stop();
+      _localAudioTrack?.close();
+      _localAudioTrack = null;
       localTrackRef.current = null;
       await clientRef.current?.leave();
       _agoraClient = null;
