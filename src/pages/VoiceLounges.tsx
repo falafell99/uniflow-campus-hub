@@ -18,7 +18,8 @@ import { useApp } from "@/contexts/AppContext";
 import { toast } from "@/hooks/use-toast";
 import { AvatarDisplay, AVATAR_COLORS } from "@/pages/Profile";
 
-const AGORA_APP_ID = import.meta.env.VITE_AGORA_APP_ID as string;
+// Fallback ensures App ID always has a value even if Vite env hasn't picked up .env.local
+const AGORA_APP_ID: string = import.meta.env.VITE_AGORA_APP_ID ?? "14ba5447c00842149f1b6ae0316a1ce1";
 const LOBBY_CHANNEL = "voice-lobby-global";
 const REJOIN_KEY = "uniflow-voice-rejoin";
 
@@ -120,15 +121,15 @@ export default function VoiceLounges() {
     lobbyChannelRef.current = channel;
 
     const syncPresence = () => {
-      const state = channel.presenceState() as Record<string, { metas: Participant[] }[]>;
+      // presenceState() returns Record<key, PresenceEntry[]>
+      // Each PresenceEntry is a flat object: { presence_ref, ...ourPayload }
+      const state = channel.presenceState() as Record<string, (Participant & { presence_ref: string })[]>;
       const map: Record<string, Participant> = {};
-      Object.values(state).forEach((arr) =>
-        arr.forEach((entry) => {
-          if (Array.isArray(entry.metas)) {
-            entry.metas.forEach((p) => { map[p.uid] = p; });
-          }
-        })
-      );
+      Object.values(state).forEach((entries) => {
+        entries.forEach((entry) => {
+          if (entry.uid) map[entry.uid] = entry;
+        });
+      });
       setAllPresence(map);
     };
 
