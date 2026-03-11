@@ -9,43 +9,31 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 
 type NavItem = { title: string; url: string; emoji: string };
 
-const categories: { label: string; emoji: string; items: NavItem[] }[] = [
+const categories: { label: string; items: NavItem[] }[] = [
   {
-    label: "ACADEMIC", emoji: "🎓",
+    label: "MAIN",
     items: [
       { title: "Dashboard", url: "/", emoji: "🏠" },
-      { title: "The Vault", url: "/vault", emoji: "📚" },
-      { title: "AI Oracle", url: "/ai-oracle", emoji: "🤖" },
-      { title: "Past Exams Hub", url: "/past-exams", emoji: "📝" },
-      { title: "Knowledge Graph", url: "/knowledge-graph", emoji: "🧠" },
-      { title: "Flashcards", url: "/flashcards", emoji: "🃏" },
+      { title: "Messages", url: "/messages", emoji: "💌" },
     ],
   },
   {
-    label: "SOCIAL", emoji: "🤝",
+    label: "STUDY",
+    items: [
+      { title: "The Vault", url: "/vault", emoji: "📚" },
+      { title: "Knowledge Graph", url: "/knowledge-graph", emoji: "🧠" },
+      { title: "AI Oracle", url: "/ai-oracle", emoji: "🤖" },
+      { title: "Workspace", url: "/workspace", emoji: "📝" },
+      { title: "Study Tools", url: "/flashcards", emoji: "🛠" }, // We'll eventually make this a sub-hub for Pomodoro/Flashcards
+    ],
+  },
+  {
+    label: "CAMPUS",
     items: [
       { title: "Lobby", url: "/forums", emoji: "💬" },
-      { title: "Messages", url: "/messages", emoji: "💌" },
       { title: "Study Circles", url: "/meetups", emoji: "🤝" },
       { title: "Voice Lounges", url: "/voice-lounges", emoji: "🎙" },
-    ],
-  },
-  {
-    label: "GROWTH", emoji: "🏆",
-    items: [
-      { title: "Professor Radar", url: "/professors", emoji: "⭐" },
-      { title: "Internship Board", url: "/internships", emoji: "💼" },
-      { title: "Mentorship", url: "/profile", emoji: "👤" },
-    ],
-  },
-  {
-    label: "UTILS", emoji: "🛠",
-    items: [
-      { title: "Resource Toolbox", url: "/toolbox", emoji: "🛠" },
-      { title: "Marketplace", url: "/marketplace", emoji: "🏪" },
-      { title: "Pomodoro", url: "/pomodoro", emoji: "⏱" },
-      { title: "Workspace", url: "/workspace", emoji: "📝" },
-      { title: "Studio", url: "/studio", emoji: "🎨" },
+      { title: "Marketplace & Internships", url: "/marketplace", emoji: "🏪" },
     ],
   },
 ];
@@ -60,7 +48,7 @@ export function CategorySidebar() {
   const { voiceRoom } = useApp();
   const { user } = useAuth();
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({
-    ACADEMIC: true, SOCIAL: true, GROWTH: true, UTILS: true,
+    MAIN: true, STUDY: true, CAMPUS: true,
   });
   const [profileName, setProfileName] = useState("");
   const [profileStatus, setProfileStatus] = useState("🟢 Online");
@@ -84,26 +72,23 @@ export function CategorySidebar() {
         }
       });
 
-    // Initial fetch of unread messages
-    supabase
-      .from("direct_messages")
-      .select("id", { count: "exact", head: true })
-      .eq("receiver_id", user.id)
-      .eq("read", false)
-      .then(({ count }) => {
-        setUnreadMsgs(count || 0);
-      });
+    const fetchUnreadCount = async () => {
+      const { count } = await supabase
+        .from("direct_messages")
+        .select("id", { count: "exact", head: true })
+        .eq("receiver_id", user.id)
+        .eq("read", false);
+      setUnreadMsgs(count || 0);
+    };
+
+    fetchUnreadCount();
 
     // Realtime subscription for global unread badge
+    // We refetch the count on any change because Supabase doesn't send payload.old values by default
     const channel = supabase
       .channel("global-unread")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "direct_messages", filter: `receiver_id=eq.${user.id}` }, () => {
-        setUnreadMsgs((prev) => prev + 1);
-      })
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "direct_messages", filter: `receiver_id=eq.${user.id}` }, (payload) => {
-        if (payload.new.read === true && payload.old.read === false) {
-          setUnreadMsgs((prev) => Math.max(0, prev - 1));
-        }
+      .on("postgres_changes", { event: "*", schema: "public", table: "direct_messages", filter: `receiver_id=eq.${user.id}` }, () => {
+        fetchUnreadCount();
       })
       .subscribe();
 
@@ -139,7 +124,7 @@ export function CategorySidebar() {
           >
             <CollapsibleTrigger className="flex items-center gap-1 w-full px-1 py-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors">
               <ChevronDown className={`h-3 w-3 transition-transform ${openCategories[cat.label] ? "" : "-rotate-90"}`} />
-              <span>{cat.emoji} {cat.label}</span>
+              <span>{cat.label}</span>
             </CollapsibleTrigger>
             <CollapsibleContent>
               <div className="space-y-0.5 mt-0.5">

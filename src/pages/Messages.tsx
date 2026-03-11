@@ -252,6 +252,13 @@ export default function Messages() {
     return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
   };
 
+  const handleMarkAllRead = async () => {
+    if (!user) return;
+    await supabase.from("direct_messages").update({ read: true }).eq("receiver_id", user.id).eq("read", false);
+    // Locally clear counts
+    setConversations(prev => prev.map(c => ({ ...c, unreadCount: 0 })));
+  };
+
   // 4. Search directory for new chats
   useEffect(() => {
     if (!newChatOpen) {
@@ -287,9 +294,14 @@ export default function Messages() {
           <h2 className="text-lg font-bold flex items-center gap-2">
             <MessageCircle className="h-5 w-5 text-primary" /> Messages
           </h2>
-          <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full bg-primary/10 text-primary hover:bg-primary/20" onClick={() => setNewChatOpen(true)}>
-            <Plus className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground" onClick={handleMarkAllRead} title="Mark all as read">
+              <CheckCheck className="h-4 w-4" />
+            </Button>
+            <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full bg-primary/10 text-primary hover:bg-primary/20" onClick={() => setNewChatOpen(true)}>
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
         
         <div className="p-3">
