@@ -62,6 +62,68 @@ function getAgoraClient() {
   return _agoraClient;
 }
 
+// ─── Lobby channel singleton (persists across navigation) ─────────────────────
+let _lobbyChannel: ReturnType<typeof supabase.channel> | null = null;
+let _lobbyPresenceCache: Record<string, Participant> = {};
+type PresenceSyncListener = (map: Record<string, Participant>) => void;
+const _presenceListeners = new Set<PresenceSyncListener>();
+
+function notifyPresenceListeners(map: Record<string, Participant>) {
+  _lobbyPresenceCache = map;
+  _presenceListeners.forEach((fn) => fn(map));
+}
+
+function parseLobbyState(channel: ReturnType<typeof supabase.channel>): Record<string, Participant> {
+  const state = channel.presenceState() as Record<string, (Participant & { presence_ref: string })[]>;
+  const map: Record<string, Participant> = {};
+  Object.values(state).forEach((entries) => {
+    entries.forEach((entry) => { if (entry.uid) map[entry.uid] = entry; });
+  });
+  return map;
+}
+
+async function ensureLobbyChannel(userId: string, profile: { display_name: string; avatar_color?: string; avatar_emoji?: string; current_room?: string; muted?: boolean }) {
+  if (_lobbyChannel) {
+    // Already subscribed — just update our presence payload
+    await _lobbyChannel.track({
+      uid: userId,
+      display_name: profile.display_name,
+      avatar_color: profile.avatar_color,
+      avatar_emoji: profile.avatar_emoji,
+      muted: profile.muted ?? false,
+      current_room: profile.current_room ?? "",
+    } as Participant).catch(() => {});
+    // Sync current state to listeners
+    notifyPresenceListeners(parseLobbyState(_lobbyChannel));
+    return _lobbyChannel;
+  }
+
+  const channel = supabase.channel(LOBBY_CHANNEL, { config: { presence: { key: userId } } });
+  _lobbyChannel = channel;
+
+  channel.on("presence", { event: "sync" }, () => {
+    notifyPresenceListeners(parseLobbyState(channel));
+  });
+
+  await new Promise<void>((resolve) => {
+    channel.subscribe(async (status) => {
+      if (status === "SUBSCRIBED") {
+        await channel.track({
+          uid: userId,
+          display_name: profile.display_name,
+          avatar_color: profile.avatar_color,
+          avatar_emoji: profile.avatar_emoji,
+          muted: profile.muted ?? false,
+          current_room: profile.current_room ?? "",
+        } as Participant);
+        resolve();
+      }
+    });
+  });
+
+  return channel;
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function VoiceLounges() {
   const { user } = useAuth();
@@ -82,12 +144,12 @@ export default function VoiceLounges() {
   const [muted, setMuted] = useState(false);
   const [deafened, setDeafened] = useState(false);
 
-  // Participants: map from uid → Participant (global across ALL rooms)
-  const [allPresence, setAllPresence] = useState<Record<string, Participant>>({});
+  // Participants: map from uid → Participant — initialized from module-level cache
+  // so re-mounting the component never shows 0 when people are still in rooms
+  const [allPresence, setAllPresence] = useState<Record<string, Participant>>(_lobbyPresenceCache);
 
   const clientRef = useRef<IAgoraRTCClient | null>(null);
   const localTrackRef = useRef<ILocalAudioTrack | null>(null);
-  const lobbyChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const [myUid, setMyUid] = useState<string | null>(null);
   const [volumeMap, setVolumeMap] = useState<Record<string, number>>({});
 
@@ -111,62 +173,31 @@ export default function VoiceLounges() {
   }, []);
   useEffect(() => { loadRooms(); }, [loadRooms]);
 
-  // ── Global lobby presence (everyone subscribes, counts visible for all rooms) ──
+  // ── Global lobby presence ─────────────────────────────────────────────────────
   useEffect(() => {
     if (!user || !myProfile) return;
 
-    const channel = supabase.channel(LOBBY_CHANNEL, {
-      config: { presence: { key: user.id } },
-    });
-    lobbyChannelRef.current = channel;
+    // Register this component as a listener for presence updates
+    const listener: PresenceSyncListener = (map) => setAllPresence({ ...map });
+    _presenceListeners.add(listener);
 
-    const syncPresence = () => {
-      // presenceState() returns Record<key, PresenceEntry[]>
-      // Each PresenceEntry is a flat object: { presence_ref, ...ourPayload }
-      const state = channel.presenceState() as Record<string, (Participant & { presence_ref: string })[]>;
-      const map: Record<string, Participant> = {};
-      Object.values(state).forEach((entries) => {
-        entries.forEach((entry) => {
-          if (entry.uid) map[entry.uid] = entry;
-        });
-      });
-      setAllPresence(map);
-    };
-
-    channel.on("presence", { event: "sync" }, syncPresence);
-
-    channel.subscribe(async (status) => {
-      if (status === "SUBSCRIBED") {
-        // Track as "not in any room" initially
-        await channel.track({
-          uid: user.id,
-          display_name: myProfile.display_name,
-          avatar_color: myProfile.avatar_color,
-          avatar_emoji: myProfile.avatar_emoji,
-          muted: false,
-          current_room: "",
-        } as Participant);
-      }
-    });
+    // Connect / update presence (idempotent — won't re-subscribe if already connected)
+    ensureLobbyChannel(user.id, { ...myProfile, current_room: "", muted: false });
 
     return () => {
-      channel.unsubscribe();
-      lobbyChannelRef.current = null;
+      // Only remove the listener — keep the channel alive!
+      _presenceListeners.delete(listener);
     };
   }, [user, myProfile]);
 
   // Update lobby presence whenever room/muted changes
   const updateLobbyPresence = useCallback(async (roomId: string, isMuted: boolean) => {
-    const channel = lobbyChannelRef.current;
-    if (!channel || !user || !myProfile) return;
-    await channel.track({
-      uid: user.id,
-      display_name: myProfile.display_name,
-      avatar_color: myProfile.avatar_color,
-      avatar_emoji: myProfile.avatar_emoji,
-      muted: isMuted,
+    if (!user || !myProfile) return;
+    await ensureLobbyChannel(user.id, {
+      ...myProfile,
       current_room: roomId,
-    } as Participant);
+      muted: isMuted,
+    });
   }, [user, myProfile]);
 
   // Compute per-room participant lists from global presence
@@ -290,7 +321,7 @@ export default function VoiceLounges() {
     const handleUnload = () => {
       if (joinedRoom) {
         clientRef.current?.leave().catch(() => {});
-        lobbyChannelRef.current?.untrack().catch(() => {});
+        _lobbyChannel?.untrack().catch(() => {});
       }
     };
     window.addEventListener("beforeunload", handleUnload);
