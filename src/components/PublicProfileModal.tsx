@@ -25,7 +25,7 @@ type PublicProfile = {
 };
 
 export function PublicProfileModal({ userId, onClose }: PublicProfileModalProps) {
-  const { user } = useAuth();
+  const { user, onlineUsers } = useAuth();
   const navigate = useNavigate();
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [loading, setLoading] = useState(false);
@@ -117,8 +117,8 @@ export function PublicProfileModal({ userId, onClose }: PublicProfileModalProps)
                         <MessageSquare className="h-3 w-3" /> Message
                       </Button>
                     )}
-                    <Badge variant={profile.status.includes("Online") ? "default" : "secondary"} className="bg-background border-border/40">
-                      {profile.status || "Offline"}
+                    <Badge variant={onlineUsers.has(userId) ? "default" : "secondary"} className="bg-background border-border/40">
+                      {onlineUsers.has(userId) ? "Online" : "Offline"}
                     </Badge>
                   </div>
                 </div>

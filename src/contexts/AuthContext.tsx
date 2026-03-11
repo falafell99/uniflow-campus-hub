@@ -7,6 +7,7 @@ type AuthContextType = {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  onlineUsers: Set<string>;
   signUp: (email: string, password: string, displayName: string) => Promise<{ error: string | null }>;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
@@ -34,6 +35,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
+
+  // Handle Global Presence
+  useEffect(() => {
+    if (!user) {
+      setOnlineUsers(new Set());
+      return;
+    }
+
+    const presenceChannel = supabase.channel('global_presence', {
+      config: { presence: { key: user.id } }
+    });
+
+    presenceChannel
+      .on('presence', { event: 'sync' }, () => {
+        const state = presenceChannel.presenceState();
+        setOnlineUsers(new Set(Object.keys(state)));
+      })
+      .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await presenceChannel.track({ online_at: new Date().toISOString() });
+        }
+      });
+
+    return () => {
+      presenceChannel.unsubscribe();
+    };
+  }, [user]);
 
   const signUp = async (email: string, password: string, displayName: string) => {
     const { error } = await supabase.auth.signUp({
@@ -68,7 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signUp, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, onlineUsers, signUp, signIn, signOut }}>
       {children}
     </AuthContext.Provider>
   );

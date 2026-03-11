@@ -33,7 +33,7 @@ type Conversation = {
 };
 
 export default function Messages() {
-  const { user } = useAuth();
+  const { user, onlineUsers } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialUserId = searchParams.get("user");
 
@@ -59,10 +59,16 @@ export default function Messages() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Use a ref to access activeUser inside the generic realtime listener
+  const activeUserRef = useRef<ProfileSnap | null>(null);
+  useEffect(() => {
+    activeUserRef.current = activeUser;
+  }, [activeUser]);
+
   // 1. Load Conversations (People we've chatted with)
-  const loadConversations = async () => {
+  const loadConversations = async (isBackgroundRefresh = false) => {
     if (!user) return;
-    setLoadingConvos(true);
+    if (!isBackgroundRefresh) setLoadingConvos(true);
 
     // Get all our messages (sent or received) to find unique conversational partners
     const { data: allMessages, error } = await supabase
@@ -89,8 +95,8 @@ export default function Messages() {
     }
 
     if (partnerIds.length === 0) {
-      setConversations([]);
-      setLoadingConvos(false);
+      if (!isBackgroundRefresh) setConversations([]);
+      if (!isBackgroundRefresh) setLoadingConvos(false);
       return;
     }
 
@@ -119,26 +125,23 @@ export default function Messages() {
       });
 
       setConversations(convos);
-
-      // If there's an initialUserId, automatically select them
-      if (initialUserId && !activeUser) {
-        const initialProfile = convos.find(c => c.user.id === initialUserId)?.user;
-        if (initialProfile) setActiveUser(initialProfile);
-      }
     }
     
-    setLoadingConvos(false);
+    if (!isBackgroundRefresh) setLoadingConvos(false);
   };
 
   useEffect(() => {
     loadConversations();
-  }, [user, initialUserId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
-  // Use a ref to access activeUser inside the generic realtime listener
-  const activeUserRef = useRef<ProfileSnap | null>(null);
+  // Handle URL-based initial user selection safely
   useEffect(() => {
-    activeUserRef.current = activeUser;
-  }, [activeUser]);
+    if (initialUserId && !activeUserRef.current && conversations.length > 0) {
+      const match = conversations.find(c => c.user.id === initialUserId);
+      if (match) setActiveUser(match.user);
+    }
+  }, [initialUserId, conversations]);
 
   // 2. Load Messages for Active Conversation
   useEffect(() => {
@@ -183,8 +186,8 @@ export default function Messages() {
         const record = (payload.new || payload.old) as Message;
         if (!record || (record.sender_id !== user.id && record.receiver_id !== user.id)) return;
 
-        // Any insert or update should refresh the conversation list
-        loadConversations();
+        // Any insert or update should refresh the conversation list silently
+        loadConversations(true);
 
         const currentActive = activeUserRef.current;
         if (currentActive && (
@@ -326,7 +329,7 @@ export default function Messages() {
                 >
                   <div className="relative shrink-0">
                     <AvatarDisplay name={c.user.display_name} avatarColor={c.user.avatar_color} avatarEmoji={c.user.avatar_emoji} size="md" />
-                    <span className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-background ${c.user.status.includes("Online") ? "bg-success" : "bg-muted-foreground"}`} />
+                    <span className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-background ${onlineUsers.has(c.user.id) ? "bg-success" : "bg-muted-foreground"}`} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-baseline mb-0.5">
@@ -371,10 +374,13 @@ export default function Messages() {
                 >
                   <ArrowLeft className="h-5 w-5" />
                 </Button>
-                <AvatarDisplay name={activeUser.display_name} avatarColor={activeUser.avatar_color} avatarEmoji={activeUser.avatar_emoji} size="md" />
+                <div className="relative">
+                  <AvatarDisplay name={activeUser.display_name} avatarColor={activeUser.avatar_color} avatarEmoji={activeUser.avatar_emoji} size="md" />
+                  <span className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-background ${onlineUsers.has(activeUser.id) ? "bg-success" : "bg-muted-foreground"}`} />
+                </div>
                 <div className="overflow-hidden">
                   <h3 className="font-semibold truncate">{activeUser.display_name}</h3>
-                  <p className="text-xs text-muted-foreground truncate">{activeUser.status}</p>
+                  <p className="text-xs text-muted-foreground truncate">{onlineUsers.has(activeUser.id) ? "Online" : "Offline"}</p>
                 </div>
               </div>
               <Button variant="ghost" size="icon" className="text-muted-foreground rounded-full shrink-0">
@@ -507,10 +513,13 @@ export default function Messages() {
                     }}
                     className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-muted/60 transition-colors text-left"
                   >
-                    <AvatarDisplay name={p.display_name} avatarColor={p.avatar_color} avatarEmoji={p.avatar_emoji} size="md" />
+                    <div className="relative">
+                      <AvatarDisplay name={p.display_name} avatarColor={p.avatar_color} avatarEmoji={p.avatar_emoji} size="md" />
+                      <span className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-background ${onlineUsers.has(p.id) ? "bg-success" : "bg-muted-foreground"}`} />
+                    </div>
                     <div>
                       <p className="font-semibold text-sm">{p.display_name}</p>
-                      <p className="text-xs text-muted-foreground">{p.status}</p>
+                      <p className="text-xs text-muted-foreground">{onlineUsers.has(p.id) ? "Online" : "Offline"}</p>
                     </div>
                   </button>
                 ))}
