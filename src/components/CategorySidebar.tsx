@@ -64,6 +64,7 @@ export function CategorySidebar() {
   });
   const [profileName, setProfileName] = useState("");
   const [profileStatus, setProfileStatus] = useState("🟢 Online");
+  const [unreadMsgs, setUnreadMsgs] = useState(0);
 
   // Load real name + status from profiles table
   useEffect(() => {
@@ -82,6 +83,31 @@ export function CategorySidebar() {
           setProfileStatus(data.status || "🟢 Online");
         }
       });
+
+    // Initial fetch of unread messages
+    supabase
+      .from("direct_messages")
+      .select("id", { count: "exact", head: true })
+      .eq("receiver_id", user.id)
+      .eq("read", false)
+      .then(({ count }) => {
+        setUnreadMsgs(count || 0);
+      });
+
+    // Realtime subscription for global unread badge
+    const channel = supabase
+      .channel("global-unread")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "direct_messages", filter: `receiver_id=eq.${user.id}` }, () => {
+        setUnreadMsgs((prev) => prev + 1);
+      })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "direct_messages", filter: `receiver_id=eq.${user.id}` }, (payload) => {
+        if (payload.new.read === true && payload.old.read === false) {
+          setUnreadMsgs((prev) => Math.max(0, prev - 1));
+        }
+      })
+      .subscribe();
+
+    return () => { channel.unsubscribe(); };
   }, [user]);
 
   const displayStatus = voiceRoom ? `🔈 In ${voiceRoom}` : profileStatus;
@@ -124,15 +150,22 @@ export function CategorySidebar() {
                       key={item.url}
                       to={item.url}
                       end={item.url === "/"}
-                      className={`flex items-center gap-2.5 px-2 py-1.5 rounded-md text-sm transition-all duration-200 ${
+                      className={`flex items-center justify-between gap-2.5 px-2 py-1.5 rounded-md text-sm transition-all duration-200 ${
                         isActive
                           ? "bg-primary/10 text-primary font-medium shadow-sm shadow-primary/10"
                           : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
                       }`}
                       activeClassName=""
                     >
-                      <span className="text-sm leading-none">{item.emoji}</span>
-                      <span className="truncate">{item.title}</span>
+                      <div className="flex items-center gap-2.5 overflow-hidden">
+                        <span className="text-sm leading-none shrink-0">{item.emoji}</span>
+                        <span className="truncate">{item.title}</span>
+                      </div>
+                      {item.title === "Messages" && unreadMsgs > 0 && (
+                        <span className="shrink-0 h-4 min-w-4 px-1 rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground flex items-center justify-center">
+                          {unreadMsgs}
+                        </span>
+                      )}
                     </NavLink>
                   );
                 })}

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Send, CheckCheck, Search, MessageCircle, MoreVertical, Loader2, Plus } from "lucide-react";
+import { Send, CheckCheck, Search, MessageCircle, MoreVertical, Loader2, Plus, ArrowLeft } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -134,6 +134,12 @@ export default function Messages() {
     loadConversations();
   }, [user, initialUserId]);
 
+  // Use a ref to access activeUser inside the generic realtime listener
+  const activeUserRef = useRef<ProfileSnap | null>(null);
+  useEffect(() => {
+    activeUserRef.current = activeUser;
+  }, [activeUser]);
+
   // 2. Load Messages for Active Conversation
   useEffect(() => {
     if (!user || !activeUser) return;
@@ -164,37 +170,48 @@ export default function Messages() {
 
     loadChat();
 
-    // Setup Realtime Subscription
+    loadChat();
+  }, [user, activeUser]);
+
+  // Global Realtime Subscription for Messages
+  useEffect(() => {
+    if (!user) return;
+
     const channel = supabase
-      .channel(`chat_${activeUser.id}`)
-      .on("postgres_changes", { 
-        event: "INSERT", 
-        schema: "public", 
-        table: "direct_messages" 
-      }, (payload) => {
-        const msg = payload.new as Message;
-        // Only append if it belongs to this active chat
-        if (
-          (msg.sender_id === user.id && msg.receiver_id === activeUser.id) ||
-          (msg.sender_id === activeUser.id && msg.receiver_id === user.id)
-        ) {
-          setMessages(prev => [...prev, msg]);
-          
-          // If they sent it, mark it as read immediately since we have the chat open
-          if (msg.sender_id === activeUser.id) {
-            supabase.from("direct_messages").update({ read: true }).eq("id", msg.id).then();
+      .channel('user_direct_messages')
+      .on("postgres_changes", { event: "*", schema: "public", table: "direct_messages" }, (payload) => {
+        const record = (payload.new || payload.old) as Message;
+        if (!record || (record.sender_id !== user.id && record.receiver_id !== user.id)) return;
+
+        // Any insert or update should refresh the conversation list
+        loadConversations();
+
+        const currentActive = activeUserRef.current;
+        if (currentActive && (
+          (record.sender_id === user.id && record.receiver_id === currentActive.id) ||
+          (record.sender_id === currentActive.id && record.receiver_id === user.id)
+        )) {
+          if (payload.eventType === 'INSERT') {
+            const newMsg = payload.new as Message;
+            setMessages(prev => {
+              if (prev.find(m => m.id === newMsg.id)) return prev;
+              return [...prev, newMsg];
+            });
+
+            // If we received it while chating with them, mark as read
+            if (newMsg.sender_id === currentActive.id && !newMsg.read) {
+              supabase.from("direct_messages").update({ read: true }).eq("id", newMsg.id).then();
+            }
+          } else if (payload.eventType === 'UPDATE') {
+            const updatedMsg = payload.new as Message;
+            setMessages(prev => prev.map(m => m.id === updatedMsg.id ? updatedMsg : m));
           }
         }
-        
-        // Refresh conversations list to update previews
-        loadConversations();
       })
       .subscribe();
 
-    return () => {
-      channel.unsubscribe();
-    };
-  }, [user, activeUser]);
+    return () => { channel.unsubscribe(); };
+  }, [user]);
 
 
   // 3. Send Message
@@ -254,10 +271,10 @@ export default function Messages() {
   }, [searchQuery, newChatOpen, user]);
 
   return (
-    <div className="flex h-[calc(100vh-6rem)] w-full max-w-6xl mx-auto rounded-xl border border-border/40 overflow-hidden bg-card/20 backdrop-blur-md animate-fade-in">
+    <div className="flex h-[calc(100vh-5rem)] md:h-[calc(100vh-6rem)] w-full max-w-6xl mx-auto md:rounded-xl border-x md:border-y border-border/40 overflow-hidden bg-card/20 backdrop-blur-md animate-fade-in -mx-4 md:mx-auto">
       
       {/* ─── LEFT PANE: Conversation List ─── */}
-      <div className="w-80 shrink-0 border-r border-border/40 flex flex-col bg-card/40">
+      <div className={`w-full md:w-80 shrink-0 md:border-r border-border/40 flex flex-col bg-card/40 ${activeUser ? 'hidden md:flex' : 'flex'}`}>
         <div className="p-4 border-b border-border/40 shrink-0 h-[72px] flex items-center justify-between">
           <h2 className="text-lg font-bold flex items-center gap-2">
             <MessageCircle className="h-5 w-5 text-primary" /> Messages
@@ -332,19 +349,30 @@ export default function Messages() {
       </div>
 
       {/* ─── RIGHT PANE: Chat View ─── */}
-      <div className="flex-1 flex flex-col min-w-0 bg-background/50">
+      <div className={`flex-1 flex-col min-w-0 bg-background/50 ${!activeUser ? 'hidden md:flex' : 'flex'}`}>
         {activeUser ? (
           <>
             {/* Chat Header */}
-            <div className="h-[72px] shrink-0 border-b border-border/40 px-6 flex items-center justify-between glass-subtle z-10">
-              <div className="flex items-center gap-3">
+            <div className="h-[72px] shrink-0 border-b border-border/40 px-4 md:px-6 flex items-center justify-between glass-subtle z-10 w-full">
+              <div className="flex items-center gap-2 md:gap-3">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="md:hidden -ml-2 text-muted-foreground mr-1"
+                  onClick={() => {
+                    setActiveUser(null);
+                    setSearchParams({});
+                  }}
+                >
+                  <ArrowLeft className="h-5 w-5" />
+                </Button>
                 <AvatarDisplay name={activeUser.display_name} avatarColor={activeUser.avatar_color} avatarEmoji={activeUser.avatar_emoji} size="md" />
-                <div>
-                  <h3 className="font-semibold">{activeUser.display_name}</h3>
-                  <p className="text-xs text-muted-foreground">{activeUser.status}</p>
+                <div className="overflow-hidden">
+                  <h3 className="font-semibold truncate">{activeUser.display_name}</h3>
+                  <p className="text-xs text-muted-foreground truncate">{activeUser.status}</p>
                 </div>
               </div>
-              <Button variant="ghost" size="icon" className="text-muted-foreground rounded-full">
+              <Button variant="ghost" size="icon" className="text-muted-foreground rounded-full shrink-0">
                 <MoreVertical className="h-4 w-4" />
               </Button>
             </div>
