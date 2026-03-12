@@ -28,6 +28,7 @@ import Workspace from "@/pages/Workspace";
 import Messages from "@/pages/Messages";
 import Studio from "@/pages/Studio";
 import Whiteboard from "@/pages/Whiteboard";
+import Calendar from "@/pages/Calendar";
 import NotFound from "@/pages/NotFound";
 import { Loader2 } from "lucide-react";
 
@@ -74,6 +75,7 @@ function ProtectedApp() {
             <Route path="/knowledge-graph" element={<KnowledgeGraph />} />
             <Route path="/pomodoro" element={<Pomodoro />} />
             <Route path="/workspace" element={<Workspace />} />
+            <Route path="/calendar" element={<Calendar />} />
             <Route path="/messages" element={<Messages />} />
             <Route path="/studio" element={<Studio />} />
             <Route path="/whiteboard" element={<Whiteboard />} />

@@ -1,9 +1,11 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { 
   Folder, Plus, MoreHorizontal, LayoutList, Kanban, 
   CalendarDays, Filter, ChevronDown, CheckCircle2, 
   Circle, Clock, Search, Info, FileText, Bookmark, 
-  FolderPlus, X, ChevronRight, Loader2, Trash2, Sparkles
+  FolderPlus, X, ChevronRight, Loader2, Trash2, Sparkles,
+  Upload, PieChart, List, Table2, Map, Activity,
+  BarChart2, Users, GanttChartSquare, AlignLeft, Pencil, Brain
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -96,6 +98,11 @@ export default function Workspace() {
   const [newTaskDate, setNewTaskDate] = useState("");
   
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
+  const [isViewPanelOpen, setIsViewPanelOpen] = useState(false);
+  const [viewSearch, setViewSearch] = useState("");
+  const [isDraggingOverResources, setIsDraggingOverResources] = useState(false);
+  const [resourceFiles, setResourceFiles] = useState<{name: string; size: string}[]>([]);
+  const viewPanelRef = useRef<HTMLDivElement>(null);
 
   const fetchData = useCallback(async () => {
     if (!user) return;
@@ -425,9 +432,62 @@ export default function Workspace() {
                   <TabsTrigger value="board" className="h-8 px-3 text-xs data-[state=active]:bg-transparent data-[state=active]:text-primary border-b-2 border-transparent data-[state=active]:border-primary rounded-none data-[state=active]:shadow-none">
                     <Kanban className="h-3.5 w-3.5 mr-1.5" /> Board
                   </TabsTrigger>
-                  <Button variant="ghost" size="sm" className="h-8 px-3 text-xs font-normal text-muted-foreground rounded-none">
-                     <Plus className="h-3 w-3 mr-1" /> View
-                  </Button>
+                  <div className="relative" ref={viewPanelRef}>
+                    <Button
+                      variant="ghost" size="sm"
+                      className={`h-8 px-3 text-xs font-normal rounded-none ${isViewPanelOpen ? "text-primary" : "text-muted-foreground"}`}
+                      onClick={() => setIsViewPanelOpen(v => !v)}
+                    >
+                      <Plus className="h-3 w-3 mr-1" /> View
+                    </Button>
+                    {isViewPanelOpen && (
+                      <div className="absolute top-full left-0 mt-1 w-[400px] bg-card border border-border/60 rounded-2xl shadow-2xl z-50 p-4 space-y-4 animate-in fade-in slide-in-from-top-2 duration-150">
+                        <div className="relative">
+                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                          <input className="w-full pl-9 h-9 bg-muted/20 border border-border/40 rounded-lg text-sm outline-none focus:ring-1 focus:ring-primary" placeholder="Search views..." value={viewSearch} onChange={e => setViewSearch(e.target.value)} />
+                        </div>
+                        <div className="space-y-3">
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Popular</p>
+                          <div className="grid grid-cols-2 gap-2">
+                            {[
+                              { icon: <List className="h-5 w-5" />, color: "bg-blue-600", label: "List", desc: "Track tasks, bugs, people & more" },
+                              { icon: <GanttChartSquare className="h-5 w-5" />, color: "bg-red-500", label: "Gantt", desc: "Plan dependencies & time" },
+                              { icon: <CalendarDays className="h-5 w-5" />, color: "bg-orange-500", label: "Calendar", desc: "Plan, schedule, & delegate" },
+                              { icon: <AlignLeft className="h-5 w-5" />, color: "bg-blue-400", label: "Doc", desc: "Collaborate & document anything" },
+                              { icon: <Kanban className="h-5 w-5" />, color: "bg-purple-600", label: "Board", desc: "Move tasks between columns" },
+                              { icon: <FileText className="h-5 w-5" />, color: "bg-purple-400", label: "Form", desc: "Collect, track, & report data" },
+                            ].filter(v => !viewSearch || v.label.toLowerCase().includes(viewSearch.toLowerCase())).map((v, i) => (
+                              <button key={i} onClick={() => { if (v.label === "List") setActiveTab("list"); else if (v.label === "Board") setActiveTab("board"); else { toast.info(`${v.label} view coming soon!`); } setIsViewPanelOpen(false); }} className="flex items-center gap-3 p-3 rounded-xl bg-muted/10 hover:bg-muted/20 border border-border/20 hover:border-primary/30 transition-all text-left">
+                                <div className={`h-8 w-8 rounded-lg ${v.color} flex items-center justify-center text-white shrink-0`}>{v.icon}</div>
+                                <div><p className="text-xs font-bold">{v.label}</p><p className="text-[10px] text-muted-foreground leading-tight">{v.desc}</p></div>
+                              </button>
+                            ))}
+                          </div>
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-2">More views</p>
+                          <div className="grid grid-cols-2 gap-2">
+                            {[
+                              { icon: <Table2 className="h-5 w-5" />, color: "bg-green-600", label: "Table", desc: "Structured table format" },
+                              { icon: <BarChart2 className="h-5 w-5" />, color: "bg-indigo-600", label: "Dashboard", desc: "Track metrics & insights" },
+                              { icon: <Clock className="h-5 w-5" />, color: "bg-green-500", label: "Timeline", desc: "See tasks by start & due date" },
+                              { icon: <Activity className="h-5 w-5" />, color: "bg-blue-500", label: "Activity", desc: "Real-time activity feed" },
+                              { icon: <Users className="h-5 w-5" />, color: "bg-orange-600", label: "Workload", desc: "Visualize team capacity" },
+                              { icon: <Pencil className="h-5 w-5" />, color: "bg-yellow-500", label: "Whiteboard", desc: "Visualize & brainstorm ideas" },
+                              { icon: <Brain className="h-5 w-5" />, color: "bg-pink-500", label: "Mind Map", desc: "Visual brainstorming of ideas" },
+                            ].filter(v => !viewSearch || v.label.toLowerCase().includes(viewSearch.toLowerCase())).map((v, i) => (
+                              <button key={i} onClick={() => { toast.info(`${v.label} view coming soon!`); setIsViewPanelOpen(false); }} className="flex items-center gap-3 p-3 rounded-xl bg-muted/10 hover:bg-muted/20 border border-border/20 hover:border-primary/30 transition-all text-left">
+                                <div className={`h-8 w-8 rounded-lg ${v.color} flex items-center justify-center text-white shrink-0`}>{v.icon}</div>
+                                <div><p className="text-xs font-bold">{v.label}</p><p className="text-[10px] text-muted-foreground leading-tight">{v.desc}</p></div>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-4 pt-2 border-t border-border/20 text-xs text-muted-foreground">
+                          <label className="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" className="rounded" /> Private view</label>
+                          <label className="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" className="rounded" /> Pin view</label>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </TabsList>
               </Tabs>
             </div>
@@ -539,16 +599,125 @@ export default function Workspace() {
                </div>
 
                {/* Folders Wide Card */}
-                <div className="rounded-xl border border-border/40 overflow-hidden flex flex-col shadow-sm h-64">
-                   <div className="p-4 font-bold text-sm border-b border-border/20">Folders</div>
-                   <div className="p-8 flex-1 flex flex-col items-center justify-center text-center gap-4">
-                      <FolderPlus className="h-12 w-12 text-muted-foreground/30" strokeWidth={1} />
-                      <p className="text-xs text-muted-foreground">Add new Folder to your Space</p>
-                      <Button variant="secondary" size="sm" className="mt-2 text-xs h-7 bg-primary/10 text-primary hover:bg-primary/20">Add Folder</Button>
+                 <div className="rounded-xl border border-border/40 overflow-hidden flex flex-col shadow-sm">
+                    <div className="p-4 font-bold text-sm border-b border-border/20">Folders</div>
+                    <div className="p-8 flex-1 flex flex-col items-center justify-center text-center gap-4">
+                       <FolderPlus className="h-12 w-12 text-muted-foreground/30" strokeWidth={1} />
+                       <p className="text-xs text-muted-foreground">Add new Folder to your Space</p>
+                       <Button variant="secondary" size="sm" className="mt-2 text-xs h-7 bg-primary/10 text-primary hover:bg-primary/20" onClick={() => setIsSpaceModalOpen(true)}>Add Folder</Button>
+                    </div>
+                 </div>
+
+               {/* ── LISTS TABLE ── */}
+               <div className="rounded-xl border border-border/40 overflow-hidden shadow-sm">
+                 <div className="flex items-center justify-between p-4 border-b border-border/20">
+                   <h3 className="font-bold text-sm">Lists</h3>
+                   <Button size="sm" variant="ghost" className="h-7 text-xs gap-1" onClick={() => setIsSpaceModalOpen(true)}>
+                     <Plus className="h-3 w-3" /> New List
+                   </Button>
+                 </div>
+                 <div className="overflow-x-auto">
+                   <table className="w-full text-xs">
+                     <thead>
+                       <tr className="border-b border-border/20 text-muted-foreground">
+                         <th className="text-left font-semibold px-4 py-2.5 w-[35%]">Name</th>
+                         <th className="text-left font-semibold px-3 py-2.5 w-[10%]">Color</th>
+                         <th className="text-left font-semibold px-3 py-2.5 w-[25%]">Progress</th>
+                         <th className="text-left font-semibold px-3 py-2.5">Priority</th>
+                         <th className="text-left font-semibold px-3 py-2.5">Owner</th>
+                       </tr>
+                     </thead>
+                     <tbody>
+                       {spaces.map((space, i) => {
+                         const spaceTasks = tasks.filter(t => t.space_id === space.id);
+                         const done = spaceTasks.filter(t => t.status === "done").length;
+                         const total = spaceTasks.length;
+                         const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+                         const colors = ["bg-blue-500","bg-purple-500","bg-green-500","bg-orange-500","bg-pink-500"];
+                         return (
+                           <tr key={space.id} className="border-b border-border/10 last:border-0 hover:bg-muted/10 cursor-pointer" onClick={() => setActiveCategory(space.id)}>
+                             <td className="px-4 py-3 font-medium"><div className="flex items-center gap-2"><span>{space.emoji||"\u{1F4C2}"}</span>{space.name}</div></td>
+                             <td className="px-3 py-3"><div className={`h-3 w-3 rounded-sm ${colors[i%colors.length]}`} /></td>
+                             <td className="px-3 py-3">
+                               <div className="flex items-center gap-2">
+                                 <div className="flex-1 bg-muted/30 rounded-full h-1.5 overflow-hidden min-w-[60px]">
+                                   <div className="h-full bg-primary rounded-full" style={{width:`${pct}%`}} />
+                                 </div>
+                                 <span className="text-muted-foreground">{done}/{total}</span>
+                               </div>
+                             </td>
+                             <td className="px-3 py-3 text-muted-foreground">&mdash;</td>
+                             <td className="px-3 py-3"><div className="h-5 w-5 rounded-full bg-primary/20 flex items-center justify-center text-primary text-[9px] font-bold">Me</div></td>
+                           </tr>
+                         );
+                       })}
+                       {spaces.length === 0 && <tr><td colSpan={5} className="px-4 py-6 text-center text-muted-foreground italic">No lists yet.</td></tr>}
+                     </tbody>
+                   </table>
+                   <div className="flex items-center gap-2 px-4 py-3 text-xs text-muted-foreground hover:bg-muted/10 cursor-pointer border-t border-border/10" onClick={() => setIsSpaceModalOpen(true)}>
+                     <Plus className="h-3.5 w-3.5" /> New List
                    </div>
-                </div>
-            </div>
-          )}
+                 </div>
+               </div>
+
+               {/* ── RESOURCES + WORKLOAD ── */}
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                 {/* Resources */}
+                 <div className="rounded-xl border border-border/40 overflow-hidden shadow-sm">
+                   <div className="flex items-center justify-between p-4 border-b border-border/20">
+                     <h3 className="font-bold text-sm flex items-center gap-2"><Upload className="h-4 w-4 text-muted-foreground" /> Resources</h3>
+                     <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => document.getElementById("resource-upload")?.click()}><Plus className="h-3 w-3" /></Button>
+                   </div>
+                   <div
+                     className={`m-3 p-6 flex flex-col items-center justify-center gap-3 min-h-[130px] border-2 border-dashed rounded-xl transition-colors ${isDraggingOverResources ? "border-primary bg-primary/5" : "border-border/30"}`}
+                     onDragOver={e => { e.preventDefault(); setIsDraggingOverResources(true); }}
+                     onDragLeave={() => setIsDraggingOverResources(false)}
+                     onDrop={e => { e.preventDefault(); setIsDraggingOverResources(false); const files = Array.from(e.dataTransfer.files); setResourceFiles(prev => [...prev, ...files.map(f => ({ name: f.name, size: (f.size/1024).toFixed(0)+" KB" }))]); toast.success(`${files.length} file(s) added`); }}
+                   >
+                     {resourceFiles.length > 0 ? (
+                       <div className="w-full space-y-1">
+                         {resourceFiles.map((f, i) => (
+                           <div key={i} className="flex items-center justify-between px-3 py-2 bg-muted/10 rounded-lg text-xs">
+                             <span className="flex items-center gap-2"><FileText className="h-3.5 w-3.5 text-primary" />{f.name}</span>
+                             <span className="text-muted-foreground">{f.size}</span>
+                           </div>
+                         ))}
+                       </div>
+                     ) : (
+                       <>
+                         <Upload className="h-8 w-8 text-muted-foreground/30" />
+                         <p className="text-xs text-muted-foreground">Drop files here or <span className="text-primary underline cursor-pointer" onClick={() => document.getElementById("resource-upload")?.click()}>attach</span></p>
+                       </>
+                     )}
+                   </div>
+                   <input id="resource-upload" type="file" multiple className="hidden" onChange={e => { if (!e.target.files) return; const files = Array.from(e.target.files); setResourceFiles(prev => [...prev, ...files.map(f => ({ name: f.name, size: (f.size/1024).toFixed(0)+" KB" }))]); toast.success(`${files.length} file(s) added`); }} />
+                 </div>
+
+                 {/* Workload by Status (SVG Pie) */}
+                 <div className="rounded-xl border border-border/40 overflow-hidden shadow-sm">
+                   <div className="flex items-center gap-2 p-4 border-b border-border/20">
+                     <PieChart className="h-4 w-4 text-muted-foreground" />
+                     <h3 className="font-bold text-sm">Workload by Status</h3>
+                   </div>
+                   <div className="p-4 flex items-center justify-center gap-8 min-h-[160px]">
+                     {(() => {
+                       const st = tasks.filter(t => t.space_id === activeCategory);
+                       const todo = st.filter(t => t.status==="todo").length;
+                       const inp = st.filter(t => t.status==="in-progress"||t.status==="review").length;
+                       const done = st.filter(t => t.status==="done").length;
+                       const total = st.length;
+                       if (!total) return <div className="flex flex-col items-center gap-2 opacity-30"><PieChart className="h-12 w-12" /><p className="text-xs">No tasks yet</p></div>;
+                       const segs = [{l:"IN PROGRESS",n:inp,c:"#7b68ee"},{l:"TO DO",n:todo,c:"#52525b"},{l:"DONE",n:done,c:"#22c55e"}].filter(s=>s.n>0);
+                       let ang = -Math.PI/2; const r=55,cx=70,cy=70;
+                       const paths = segs.map(s => { const sa=ang; const sw=s.n/total*2*Math.PI; ang+=sw; const lf=sw>Math.PI?1:0; return {...s, d:`M ${cx} ${cy} L ${(cx+r*Math.cos(sa)).toFixed(1)} ${(cy+r*Math.sin(sa)).toFixed(1)} A ${r} ${r} 0 ${lf} 1 ${(cx+r*Math.cos(ang)).toFixed(1)} ${(cy+r*Math.sin(ang)).toFixed(1)} Z`}; });
+                       return (<><svg width="140" height="140" className="shrink-0">{paths.map((p,i)=><path key={i} d={p.d} fill={p.c} opacity={0.85}/>)}<circle cx={cx} cy={cy} r={24} fill="var(--background)"/><text x={cx} y={cy} textAnchor="middle" dominantBaseline="middle" fontSize="12" fontWeight="bold" fill="currentColor">{total}</text><text x={cx} y={cy+14} textAnchor="middle" dominantBaseline="middle" fontSize="8" fill="gray">tasks</text></svg><div className="space-y-2">{paths.map((p,i)=><div key={i} className="flex items-center gap-2 text-xs"><div className="h-2.5 w-2.5 rounded-sm" style={{background:p.c}}/><span className="text-muted-foreground">{p.l}</span><span className="font-bold ml-auto pl-3">{p.n}</span></div>)}</div></>);
+                     })()}
+                   </div>
+                 </div>
+               </div>
+
+             </div>
+           )}
 
           {/* 📋 LIST VIEW */}
           {activeTab === "list" && (
@@ -662,6 +831,47 @@ export default function Workspace() {
                         </div>
                      </div>
                   </div>
+
+                   {/* Group: DONE */}
+                   {filteredTasks.filter(t => t.status === "done").length > 0 && (
+                     <div>
+                        <div className="flex items-center gap-2 mb-2 cursor-pointer">
+                           <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                           <Badge className="text-[10px] uppercase font-bold tracking-wider rounded-md bg-green-600 text-white border-0">
+                           DONE
+                           </Badge>
+                           <span className="text-muted-foreground text-xs ml-1 font-normal opacity-70">{filteredTasks.filter(t => t.status === "done").length}</span>
+                        </div>
+                        <div className="divide-y divide-border/20 border border-border/40 rounded-lg ml-6 overflow-hidden">
+                          {filteredTasks.filter(t => t.status === "done").map(task => (
+                            <div key={task.id} className="grid grid-cols-12 gap-4 p-2 items-center text-sm hover:bg-muted/10 transition-colors group/row opacity-60">
+                            <div className="col-span-6 md:col-span-6 flex items-center gap-3 pl-2">
+                               <button className="shrink-0" onClick={() => handleUpdateTaskStatus(task.id, "todo")}>{getStatusIcon(task.status)}</button>
+                               <span className="font-medium text-[13px] line-through">{task.title}</span>
+                               <div className="flex items-center gap-1 opacity-0 group-hover/row:opacity-100 ml-2">
+                                 <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleDeleteTask(task.id)}>
+                                   <Trash2 className="h-3 w-3 text-destructive" />
+                                 </Button>
+                               </div>
+                            </div>
+                            <div className="col-span-3 md:col-span-2">
+                               {task.assignee && (
+                                 <Avatar className="h-6 w-6 border-none ring-2 ring-background">
+                                    <AvatarFallback className="text-[10px] bg-[#6B4DFFFF] text-white font-bold">{task.assignee[0]}</AvatarFallback>
+                                 </Avatar>
+                               )}
+                            </div>
+                            <div className="hidden md:flex items-center gap-2 col-span-3 text-xs text-muted-foreground">
+                               <CalendarDays className="h-3.5 w-3.5" /> {task.due_date || "No date"}
+                            </div>
+                            <div className="col-span-3 md:col-span-1 flex justify-end pr-2">
+                               <Plus className="h-3 w-3 text-muted-foreground/30" />
+                            </div>
+                            </div>
+                          ))}
+                        </div>
+                     </div>
+                   )}
                </div>
 
             </div>

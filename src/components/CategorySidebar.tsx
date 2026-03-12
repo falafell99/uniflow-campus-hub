@@ -28,7 +28,7 @@ const categories: { label: string; items: NavItem[] }[] = [
       { title: "Past Exams", url: "/past-exams", emoji: "📝" },
       { title: "Flashcards", url: "/flashcards", emoji: "🗂️" },
       { title: "Pomodoro", url: "/pomodoro", emoji: "⏱️" },
-      { title: "Whiteboard", url: "/whiteboard", emoji: "🎨" },
+      { title: "Campus Calendar", url: "/calendar", emoji: "📅" },
     ],
   },
   {
