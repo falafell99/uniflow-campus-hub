@@ -11,8 +11,9 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "@/hooks/use-toast";
 import { StudioFileUpload, type UploadedFile } from "@/components/StudioFileUpload";
+import Whiteboard from "@/pages/Whiteboard";
 
-type ToolId = "audio" | "presentation" | "video" | "mentalmap" | "reports" | "infographics";
+type ToolId = "audio" | "presentation" | "video" | "mentalmap" | "reports" | "infographics" | "studio";
 
 type Tool = {
   id: ToolId;
@@ -29,6 +30,7 @@ const tools: Tool[] = [
   { id: "video", title: "Video Summary", description: "Create visual explainers from course material", icon: <PlayCircle className="h-6 w-6" />, color: "text-success" },
   { id: "mentalmap", title: "Unified Workspace", description: "Organize your study into spaces and tasks", icon: <Network className="h-6 w-6" />, color: "text-info" },
   { id: "reports", title: "Reports & Tests", description: "Generate quizzes and study reports", icon: <FileCheck className="h-6 w-6" />, color: "text-destructive" },
+  { id: "studio", title: "Team Studio", description: "Collaborative whiteboard for teamwork & diagrams", icon: <Pencil className="h-6 w-6" />, badge: "NEW", color: "text-primary" },
   { id: "infographics", title: "Infographics", description: "Turn data into beautiful visual summaries", icon: <BarChart3 className="h-6 w-6" />, badge: "BETA", color: "text-warning" },
 ];
 
@@ -480,6 +482,7 @@ export default function Studio() {
       case "video": return <VideoTool files={files} />;
       case "reports": return <ReportsTool files={files} />;
       case "infographics": return <InfographicsTool files={files} />;
+      case "studio": return <div className="h-[600px] w-full"><Whiteboard roomId="studio-global" embedded /></div>;
       default: return null;
     }
   };

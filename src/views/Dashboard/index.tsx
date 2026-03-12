@@ -8,6 +8,7 @@ import { FavoritesSection } from "./FavoritesSection";
 import { MeetupsSection } from "./MeetupsSection";
 import { TrendingSection } from "./TrendingSection";
 import { UpcomingEventsSection } from "./UpcomingEventsSection";
+import { LoungeActivity } from "./LoungeActivity";
 import { GlassCard } from "@/components/GlassCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PublicProfileModal } from "@/components/PublicProfileModal";
@@ -277,6 +278,7 @@ export default function Dashboard() {
           />
         </div>
         <div className="space-y-6">
+          <LoungeActivity />
           <UpcomingEventsSection />
           <StatsSection stats={activityStats} loading={statsLoading} />
         </div>

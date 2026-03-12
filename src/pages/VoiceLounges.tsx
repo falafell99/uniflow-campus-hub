@@ -34,6 +34,7 @@ type Room = {
   emoji: string;
   max_users: number;
   locked: boolean;
+  faculty?: string; // informatics, math, personal, or all
   created_by?: string;
 };
 
@@ -48,12 +49,12 @@ type Participant = {
 
 // ─── Predefined rooms ─────────────────────────────────────────────────────────
 const PRESET_ROOMS: Room[] = [
-  { id: "algo-grind",   name: "Algo Grind",       topic: "Dynamic Programming & Graphs",    emoji: "💻", max_users: 8,  locked: false },
-  { id: "math-chill",   name: "Math Chill Zone",  topic: "Analysis & Linear Algebra help",  emoji: "📐", max_users: 10, locked: false },
-  { id: "oop-session",  name: "OOP Session",      topic: "Design Patterns & Java",          emoji: "🧩", max_users: 6,  locked: false },
-  { id: "exam-prep",    name: "Exam Prep",        topic: "Any subject — focused mode",      emoji: "📝", max_users: 8,  locked: false },
-  { id: "lounge",       name: "Chill Lounge",     topic: "Hanging out between classes",     emoji: "☕", max_users: 20, locked: false },
-  { id: "project-room", name: "Project Room",     topic: "Team projects & code reviews",    emoji: "🚀", max_users: 6,  locked: false },
+  { id: "algo-grind",   name: "Algo Grind",       topic: "Dynamic Programming & Graphs",    emoji: "💻", max_users: 8,  locked: false, faculty: "informatics" },
+  { id: "math-chill",   name: "Math Chill Zone",  topic: "Analysis & Linear Algebra help",  emoji: "📐", max_users: 10, locked: false, faculty: "math" },
+  { id: "oop-session",  name: "OOP Session",      topic: "Design Patterns & Java",          emoji: "🧩", max_users: 6,  locked: false, faculty: "informatics" },
+  { id: "exam-prep",    name: "Exam Prep",        topic: "Any subject — focused mode",      emoji: "📝", max_users: 8,  locked: false, faculty: "all" },
+  { id: "lounge",       name: "Chill Lounge",     topic: "Hanging out between classes",     emoji: "☕", max_users: 20, locked: false, faculty: "all" },
+  { id: "project-room", name: "Project Room",     topic: "Team projects & code reviews",    emoji: "🚀", max_users: 6,  locked: false, faculty: "all" },
 ];
 
 const ROOM_EMOJIS = ["🎙", "💻", "📐", "🧪", "📝", "☕", "🚀", "🎮", "🎵", "🌙"];
@@ -139,7 +140,7 @@ async function ensureLobbyChannel(
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function VoiceLounges() {
   const { user } = useAuth();
-  const { setVoiceRoom } = useApp();
+  const { setVoiceRoom, activeCommunity } = useApp();
 
   // Room list
   const [userRooms, setUserRooms] = useState<Room[]>([]);
@@ -404,6 +405,7 @@ export default function VoiceLounges() {
       emoji: newRoomEmoji,
       max_users: 10,
       locked: false,
+      faculty: activeCommunity,
       created_by: user.id,
     });
     setCreating(false);
@@ -414,7 +416,9 @@ export default function VoiceLounges() {
     loadRooms();
   };
 
-  const allRooms = [...PRESET_ROOMS, ...userRooms];
+  const allRooms = [...PRESET_ROOMS, ...userRooms].filter(r => 
+    !r.faculty || r.faculty === "all" || r.faculty === activeCommunity
+  );
 
   // ── Render ────────────────────────────────────────────────────────────────────
   return (

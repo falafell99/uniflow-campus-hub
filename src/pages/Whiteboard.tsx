@@ -276,9 +276,9 @@ export default function Whiteboard({ roomId, embedded = false }: WhiteboardProps
   };
 
   return (
-    <div className={`animate-fade-in flex flex-col relative overflow-hidden bg-[#121212] ${embedded ? "h-full rounded-2xl border border-border/40" : "h-[calc(100vh-5rem)]"}`}>
+    <div className={`animate-fade-in flex flex-col relative overflow-hidden bg-[#121212] ${embedded ? "h-full rounded-2xl border border-border/40 shadow-2xl" : "h-[calc(100vh-5rem)]"}`}>
       {/* Header */}
-      <div className="absolute top-4 left-4 right-4 z-50 flex items-center justify-between pointer-events-none">
+      <div className={`absolute top-4 left-4 right-4 z-50 flex items-center justify-between pointer-events-none ${embedded ? "px-2" : ""}`}>
         <div className="flex items-center gap-3 pointer-events-auto">
           {!embedded && (
             <Button variant="ghost" size="sm" onClick={() => navigate("/studio")} className="bg-background/80 backdrop-blur-md">

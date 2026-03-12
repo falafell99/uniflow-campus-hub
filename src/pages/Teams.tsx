@@ -23,6 +23,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import { PublicProfileModal } from "@/components/PublicProfileModal";
 
 interface Team {
   id: string;
@@ -37,6 +38,7 @@ interface TeamMember {
   team_id: string;
   user_id: string;
   role: string;
+  status: 'pending' | 'accepted' | 'rejected';
   profiles?: {
     display_name: string;
     avatar_color?: string;
@@ -96,6 +98,13 @@ export default function Teams() {
   // General
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [searchResults, setSearchResults] = useState<{ id: string; display_name: string; avatar_color?: string }[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [selectedUserProfileId, setSelectedUserProfileId] = useState<string | null>(null);
+
+  // Invitations state
+  const [invitations, setInvitations] = useState<(TeamMember & { teams: Team })[]>([]);
+  const [isLoadingInvites, setIsLoadingInvites] = useState(false);
 
   // Load user
   useEffect(() => {
@@ -104,31 +113,113 @@ export default function Teams() {
     });
   }, []);
 
-  // Fetch all teams
+  // Search for users to invite
+  useEffect(() => {
+    if (!inviteSearch.trim() || inviteSearch.length < 2) {
+      setSearchResults([]);
+      return;
+    }
+
+    const searchUsers = async () => {
+      setIsSearching(true);
+      const { data } = await supabase
+        .from("profiles")
+        .select("id, display_name, avatar_color")
+        .ilike("display_name", `%${inviteSearch}%`)
+        .limit(5);
+      
+      // Filter out users who are already in the team or already invited
+      const existingIds = new Set(teamMembers.map(m => m.user_id));
+      setSearchResults((data || []).filter(u => !existingIds.has(u.id)));
+      setIsSearching(false);
+    };
+
+    const timer = setTimeout(searchUsers, 300);
+    return () => clearTimeout(timer);
+  }, [inviteSearch, teamMembers, isLoadingMembers]);
+
+  // Fetch all teams (where I am a member)
   const fetchTeams = useCallback(async () => {
     try {
       setLoading(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Simplified query to reduce RLS overhead during initial load
       const { data, error } = await supabase
-        .from("teams")
-        .select("*")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      setTeams(data || []);
+        .from("team_members")
+        .select(`
+          team_id,
+          status,
+          teams (*)
+        `)
+        .eq("user_id", user.id)
+        .eq("status", "accepted");
+
+      if (error) {
+        console.error("fetchTeams error:", error);
+        throw error;
+      }
+      
+      const formattedTeams = data?.map((m: any) => {
+        const team = Array.isArray(m.teams) ? m.teams[0] : m.teams;
+        if (!team) return null;
+        return {
+          ...team,
+          member_count: 0 // Will be updated by fetchTeamMembers when selected
+        };
+      }).filter(Boolean) || [];
+      
+      setTeams(formattedTeams);
     } catch (e: any) {
-      toast.error("Failed to load teams");
+      console.error("Failed to load teams:", e);
+      toast.error(`Failed to load teams: ${e.message || "Unknown error"}`);
     } finally {
       setLoading(false);
     }
   }, []);
 
+  // Fetch pending invitations
+  const fetchInvitations = useCallback(async () => {
+    try {
+      setIsLoadingInvites(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from("team_members")
+        .select("team_id, role, status, teams (*)")
+        .eq("user_id", user.id)
+        .eq("status", "pending");
+
+      if (error) throw error;
+      setInvitations(data?.map((inv: any) => ({
+        ...inv,
+        teams: Array.isArray(inv.teams) ? inv.teams[0] : inv.teams,
+        user_id: user.id // Explicitly adding user_id to satisfy TeamMember type
+      })).filter(inv => inv.teams) || []);
+    } catch (e: any) {
+      console.error("Failed to load invitations", e);
+    } finally {
+      setIsLoadingInvites(false);
+    }
+  }, []);
+
   useEffect(() => {
     fetchTeams();
-    const channel = supabase
+    fetchInvitations();
+
+    const teamsChannel = supabase
       .channel("teams_changes")
       .on("postgres_changes", { event: "*", schema: "public", table: "teams" }, fetchTeams)
+      .on("postgres_changes", { event: "*", schema: "public", table: "team_members" }, () => {
+        fetchTeams();
+        fetchInvitations();
+      })
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [fetchTeams]);
+
+    return () => { supabase.removeChannel(teamsChannel); };
+  }, [fetchTeams, fetchInvitations]);
 
   // Fetch all people across teams
   const fetchAllPeople = useCallback(async () => {
@@ -151,9 +242,20 @@ export default function Teams() {
     setIsLoadingMembers(true);
     const { data, error } = await supabase
       .from("team_members")
-      .select("role, user_id, profiles:user_id (display_name, avatar_color, status)")
+      .select("role, user_id, status, profiles:user_id (display_name, avatar_color, status)")
       .eq("team_id", teamId);
-    if (!error) setTeamMembers(data || []);
+
+    if (error) {
+      console.error("Error fetching team members:", error);
+    }
+    
+    if (!error && data) {
+      setTeamMembers(data.map((m: any) => ({
+        ...m,
+        team_id: teamId,
+        profiles: Array.isArray(m.profiles) ? m.profiles[0] : m.profiles
+      })));
+    }
     setIsLoadingMembers(false);
   }, []);
 
@@ -180,10 +282,16 @@ export default function Teams() {
         owner_id: user.id,
       }]).select().single();
       if (error) throw error;
-      await supabase.from("team_members").insert([{ team_id: data.id, user_id: user.id, role: "owner" }]);
+      await supabase.from("team_members").insert([{ 
+        team_id: data.id, 
+        user_id: user.id, 
+        role: "owner",
+        status: "accepted"
+      }]);
       toast.success("Team created!");
       setIsCreateModalOpen(false);
       setNewTeamName(""); setNewTeamDescription(""); setNewTeamEmoji("👥");
+      fetchTeams();
     } catch (e: any) {
       toast.error(e.message);
     } finally {
@@ -220,21 +328,21 @@ export default function Teams() {
   };
 
   // Invite member
-  const handleInviteMember = async () => {
-    if (!inviteSearch.trim() || !selectedTeam) return;
+  const handleInviteMember = async (targetId?: string) => {
+    const userIdToInvite = targetId;
+    if (!userIdToInvite || !selectedTeam) return;
+    
     setIsSubmitting(true);
     try {
-      const { data: profile, error: se } = await supabase
-        .from("profiles")
-        .select("id")
-        .ilike("display_name", inviteSearch.trim())
-        .single();
-      if (se || !profile) throw new Error("User not found. Make sure you enter their exact display name.");
-      const { error } = await supabase.from("team_members").insert([
-        { team_id: selectedTeam.id, user_id: profile.id, role: inviteRole }
-      ]);
+      const { error } = await supabase.from("team_members").upsert([
+        { team_id: selectedTeam.id, user_id: userIdToInvite, role: inviteRole, status: "pending" }
+      ], { onConflict: 'team_id,user_id' });
       if (error) throw error;
-      toast.success("Member added!"); setIsInviteModalOpen(false); setInviteSearch("");
+      toast.success("Invitation sent!"); 
+      setIsInviteModalOpen(false); 
+      setInviteSearch("");
+      setSearchResults([]);
+      fetchTeamMembers(selectedTeam.id);
     } catch (e: any) {
       toast.error(e.message);
     } finally {
@@ -257,6 +365,36 @@ export default function Teams() {
     const { error } = await supabase.from("team_members").update({ role }).eq("team_id", selectedTeam.id).eq("user_id", userId);
     if (error) toast.error(error.message);
     else toast.success("Role updated");
+  };
+
+  // Accept/Decline invitation
+  const handleInvitationResponse = async (teamId: string, accept: boolean) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      if (accept) {
+        const { error } = await supabase
+          .from("team_members")
+          .update({ status: "accepted" })
+          .eq("team_id", teamId)
+          .eq("user_id", user.id);
+        if (error) throw error;
+        toast.success("Joined team!");
+      } else {
+        const { error } = await supabase
+          .from("team_members")
+          .delete()
+          .eq("team_id", teamId)
+          .eq("user_id", user.id);
+        if (error) throw error;
+        toast.success("Invitation declined");
+      }
+      fetchTeams();
+      fetchInvitations();
+    } catch (e: any) {
+      toast.error(e.message);
+    }
   };
 
   const filteredTeams = teams.filter(t => t.name.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -298,37 +436,75 @@ export default function Teams() {
           ))}
         </div>
 
-        <div className="px-4 pt-4 pb-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+        <div className="px-4 pt-4 pb-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center justify-between">
           My Teams
+          <Badge variant="outline" className="text-[9px] h-3.5 px-1 bg-muted/30 border-0">{teams.length}</Badge>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-2 py-1 space-y-0.5 custom-scroll">
+        <div className="overflow-y-auto px-2 py-1 space-y-0.5 max-h-[40vh] custom-scroll">
           {teams.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8 text-center opacity-40 space-y-2">
-              <div className="h-10 w-10 rounded-xl border-2 border-dashed border-border flex items-center justify-center">
-                <Users className="h-5 w-5 text-muted-foreground" />
-              </div>
-              <p className="text-[11px] text-muted-foreground px-2">Once you join or create a Team you will see it here</p>
+            <div className="flex flex-col items-center justify-center py-4 text-center opacity-40 space-y-1">
+              <Users className="h-4 w-4 text-muted-foreground" />
+              <p className="text-[10px] text-muted-foreground">No teams yet</p>
             </div>
           ) : (
             teams.map(team => (
               <button
                 key={team.id}
                 onClick={() => { setSelectedTeam(team); setTeamTab("overview"); }}
-                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all ${
+                className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-all ${
                   selectedTeam?.id === team.id
                     ? "bg-primary/10 text-primary font-medium"
                     : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
                 }`}
               >
-                <div className="h-6 w-6 rounded-md bg-primary/10 flex items-center justify-center text-primary text-[11px] font-bold shrink-0">
+                <div className="h-5 w-5 rounded bg-primary/10 flex items-center justify-center text-primary text-[9px] font-bold shrink-0">
                   {team.name.charAt(0).toUpperCase()}
                 </div>
-                <span className="truncate flex-1 text-left">{team.name}</span>
+                <span className="truncate flex-1 text-left text-xs">{team.name}</span>
               </button>
             ))
           )}
         </div>
+
+        {/* Pending Invitations Section */}
+        {invitations.length > 0 && (
+          <>
+            <div className="px-4 pt-4 pb-1 text-[10px] font-bold uppercase tracking-widest text-orange-400 flex items-center justify-between">
+              Invitations
+              <Badge className="bg-orange-500 text-white text-[9px] h-3.5 px-1 border-0">{invitations.length}</Badge>
+            </div>
+            <div className="overflow-y-auto px-2 py-1 space-y-1.5 max-h-[30vh] custom-scroll">
+              {invitations.map(inv => (
+                <div key={inv.team_id} className="p-2.5 rounded-xl border border-orange-500/20 bg-orange-500/5 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <div className="h-6 w-6 rounded bg-orange-500/20 flex items-center justify-center text-orange-400 text-[10px] font-bold shrink-0">
+                      {inv.teams.name.charAt(0).toUpperCase()}
+                    </div>
+                    <span className="truncate text-xs font-semibold text-orange-100">{inv.teams.name}</span>
+                  </div>
+                  <div className="flex gap-1.5">
+                    <Button 
+                      size="sm" 
+                      className="h-6 px-0 flex-1 text-[10px] bg-orange-500 hover:bg-orange-600 rounded-lg"
+                      onClick={() => handleInvitationResponse(inv.team_id, true)}
+                    >
+                      Accept
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="h-6 px-0 flex-1 text-[10px] text-muted-foreground hover:text-foreground hover:bg-muted/20 border border-border/20 rounded-lg"
+                      onClick={() => handleInvitationResponse(inv.team_id, false)}
+                    >
+                      Ignore
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
       </div>
 
       {/* ─── MAIN CONTENT ─── */}
@@ -404,7 +580,7 @@ export default function Teams() {
                     <h1 className="text-xl font-bold tracking-tight">{selectedTeam.name}</h1>
                     <span className="text-xs text-muted-foreground font-mono">@{selectedTeam.name.toLowerCase().replace(/\s+/g, "")}</span>
                   </div>
-                  <p className="text-sm text-muted-foreground mt-0.5">{teamMembers.length} members</p>
+                  <p className="text-sm text-muted-foreground mt-0.5">{selectedTeam.member_count || teamMembers.length} members</p>
                 </div>
               </div>
 
@@ -518,7 +694,11 @@ export default function Teams() {
                         {isLoadingMembers ? (
                           <div className="flex justify-center p-4"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
                         ) : teamMembers.slice(0, 5).map((m, i) => (
-                          <div key={i} className="flex items-center gap-2.5 p-2 rounded-lg hover:bg-muted/10">
+                          <div 
+                            key={i} 
+                            className="flex items-center gap-2.5 p-2 rounded-lg hover:bg-muted/10 cursor-pointer"
+                            onClick={() => setSelectedUserProfileId(m.user_id)}
+                          >
                             <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs font-bold shrink-0">
                               {m.profiles?.display_name?.charAt(0) || "?"}
                             </div>
@@ -638,12 +818,18 @@ export default function Teams() {
                       </div>
                     ) : teamMembers.map((m, i) => (
                       <div key={i} className="grid grid-cols-12 gap-4 px-5 py-3.5 items-center border-b border-border/10 last:border-0 hover:bg-muted/5 transition-colors group">
-                        <div className="col-span-5 flex items-center gap-3">
-                          <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-primary text-sm font-bold shrink-0">
+                        <div 
+                          className="col-span-5 flex items-center gap-3 cursor-pointer group/member"
+                          onClick={() => setSelectedUserProfileId(m.user_id)}
+                        >
+                          <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-primary text-sm font-bold shrink-0 group-hover/member:bg-primary/20 transition-colors">
                             {m.profiles?.display_name?.charAt(0) || "?"}
                           </div>
                           <div>
-                            <p className="font-semibold text-sm">{m.profiles?.display_name || "Unknown User"}</p>
+                            <div className="flex items-center gap-2">
+                              <p className="font-semibold text-sm group-hover/member:text-primary transition-colors">{m.profiles?.display_name || "Unknown User"}</p>
+                              {m.status === 'pending' && <Badge variant="outline" className="text-[9px] h-3.5 px-1 border-orange-500/30 text-orange-400 bg-orange-500/5">Invited</Badge>}
+                            </div>
                             <p className="text-[10px] text-muted-foreground opacity-60">{m.user_id.slice(0, 8)}…</p>
                           </div>
                         </div>
@@ -868,11 +1054,14 @@ export default function Teams() {
                     </div>
                   ) : allPeople.map((m, i) => (
                     <div key={i} className="grid grid-cols-12 gap-4 px-5 py-3.5 items-center border-b border-border/10 last:border-0 hover:bg-muted/5">
-                      <div className="col-span-5 flex items-center gap-3">
-                        <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-primary text-sm font-bold">
+                      <div 
+                        className="col-span-5 flex items-center gap-3 cursor-pointer group/person"
+                        onClick={() => setSelectedUserProfileId(m.user_id)}
+                      >
+                        <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-primary text-sm font-bold group-hover/person:bg-primary/20 transition-colors">
                           {m.profiles?.display_name?.charAt(0) || "?"}
                         </div>
-                        <p className="font-semibold text-sm">{m.profiles?.display_name || "Unknown"}</p>
+                        <p className="font-semibold text-sm group-hover/person:text-primary transition-colors">{m.profiles?.display_name || "Unknown"}</p>
                       </div>
                       <div className="col-span-4">
                         <Badge variant="outline" className={`text-[10px] font-bold uppercase tracking-wider gap-1 ${ROLE_COLORS[m.role] || ""}`}>
@@ -955,14 +1144,53 @@ export default function Teams() {
         <DialogContent className="sm:max-w-[440px] bg-[#1a1a1a] border-border/40 text-white">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold">Invite to {selectedTeam?.name}</DialogTitle>
-            <DialogDescription className="text-muted-foreground">Add a user by their exact display name.</DialogDescription>
+            <DialogDescription className="text-muted-foreground">Selected user will receive an invitation to join the team.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-5 py-4">
             <div className="space-y-2">
               <label className="text-sm font-semibold">Display Name</label>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Enter user's display name..." className="bg-background/50 border-border/40 h-11 pl-10" value={inviteSearch} onChange={e => setInviteSearch(e.target.value)} onKeyDown={e => e.key === "Enter" && handleInviteMember()} />
+                <Input 
+                  placeholder="Enter user's display name..." 
+                  className="bg-background/50 border-border/40 h-11 pl-10" 
+                  value={inviteSearch} 
+                  onChange={e => setInviteSearch(e.target.value)} 
+                />
+                
+                {/* Search Results Dropdown */}
+                {inviteSearch.trim().length >= 2 && (
+                  <div className="absolute top-full left-0 right-0 mt-2 bg-[#1a1a1a] border border-border/40 rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                    {isSearching ? (
+                      <div className="p-4 flex items-center justify-center text-xs text-muted-foreground gap-2">
+                        <Loader2 className="h-3 w-3 animate-spin" /> Searching students...
+                      </div>
+                    ) : searchResults.length === 0 ? (
+                      <div className="p-4 text-center text-xs text-muted-foreground italic">
+                        No students found matching "{inviteSearch}"
+                      </div>
+                    ) : (
+                      <div className="py-1">
+                        {searchResults.map(u => (
+                          <button
+                            key={u.id}
+                            onClick={() => handleInviteMember(u.id)}
+                            className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-white/5 transition-colors text-left group"
+                          >
+                            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs font-bold">
+                              {u.display_name.charAt(0).toUpperCase()}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">{u.display_name}</p>
+                              <p className="text-[10px] text-muted-foreground">Select to invite</p>
+                            </div>
+                            <Plus className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-all mr-1" />
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
             <div className="space-y-2">
@@ -987,13 +1215,18 @@ export default function Teams() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setIsInviteModalOpen(false)}>Cancel</Button>
-            <Button onClick={handleInviteMember} disabled={isSubmitting || !inviteSearch.trim()} className="bg-[#7b68ee] hover:bg-[#6a5acd] px-8">
-              {isSubmitting && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Add Member
+            <Button variant="ghost" onClick={() => { setIsInviteModalOpen(false); setSearchResults([]); setInviteSearch(""); }}>Cancel</Button>
+            <Button onClick={() => searchResults[0] && handleInviteMember(searchResults[0].id)} disabled={isSubmitting || searchResults.length === 0} className="bg-[#7b68ee] hover:bg-[#6a5acd] px-8">
+              {isSubmitting && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Invite Selected
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      
+      <PublicProfileModal 
+        userId={selectedUserProfileId} 
+        onClose={() => setSelectedUserProfileId(null)} 
+      />
     </div>
   );
 }

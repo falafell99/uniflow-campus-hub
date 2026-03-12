@@ -10,6 +10,8 @@ import { PreviewModal } from "./PreviewModal";
 import { UploadDialog, SEMESTER_COURSES, ELECTIVE_COURSES, SECTIONS } from "./UploadDialog";
 import { supabase } from "@/lib/supabase";
 import { LiveNoteEditor } from "./LiveNoteEditor";
+import { formatDistanceToNow } from "date-fns";
+import { FileText as FileTextIcon, History } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type VaultFile = {
@@ -174,6 +176,8 @@ export default function Vault() {
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
   const [typeFilter, setTypeFilter] = useState("All");
   const [noteOpen, setNoteOpen] = useState(false);
+  const [liveNotes, setLiveNotes] = useState<any[]>([]);
+  const [selectedNote, setSelectedNote] = useState<any | null>(null);
 
   const loadFiles = async () => {
     setLoading(true);
@@ -195,6 +199,14 @@ export default function Vault() {
     } else {
       setVaultTree(baseTree);
     }
+    // 2. Fetch live notes
+    const { data: notes } = await supabase
+      .from("live_notes")
+      .select("id, title, updated_at")
+      .order("updated_at", { ascending: false })
+      .limit(5);
+    if (notes) setLiveNotes(notes);
+
     setLoading(false);
   };
 
@@ -268,6 +280,35 @@ export default function Vault() {
           ))}
         </div>
       </div>
+      
+      {/* Recent Notes Section */}
+      {liveNotes.length > 0 && !searchQuery && typeFilter === "All" && (
+        <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-500">
+          <div className="flex items-center gap-2 text-muted-foreground ml-1">
+            <History className="h-4 w-4" />
+            <h2 className="text-xs font-semibold uppercase tracking-wider">Recent Live Notes</h2>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+            {liveNotes.map((note) => (
+              <button
+                key={note.id}
+                onClick={() => { setSelectedNote(note); setNoteOpen(true); }}
+                className="glass-subtle p-3 rounded-xl text-left hover:bg-muted/40 transition-all border border-transparent hover:border-primary/20 group hover:shadow-lg"
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="h-7 w-7 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                    <FileTextIcon className="h-4 w-4 text-primary" />
+                  </div>
+                  <h3 className="text-sm font-semibold truncate group-hover:text-primary transition-colors">{note.title}</h3>
+                </div>
+                <p className="text-[10px] text-muted-foreground ml-9">
+                  Edited {formatDistanceToNow(new Date(note.updated_at))} ago
+                </p>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Content */}
       {loading ? (
@@ -314,7 +355,17 @@ export default function Vault() {
 
       <PreviewModal file={previewFile} onClose={() => setPreviewFile(null)} />
       <UploadDialog open={uploadOpen} onClose={() => setUploadOpen(false)} onUploaded={loadFiles} />
-      <LiveNoteEditor open={noteOpen} onOpenChange={setNoteOpen} />
+      <LiveNoteEditor 
+        open={noteOpen} 
+        onOpenChange={(open) => {
+          setNoteOpen(open);
+          if (!open) {
+            setSelectedNote(null);
+            loadFiles(); // Refresh list on close
+          }
+        }} 
+        note={selectedNote}
+      />
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import {
   Send, Sparkles, User, Copy, Check,
-  Loader2, BookOpen, Zap, RotateCcw, Paperclip, X, FileText
+  Loader2, BookOpen, Zap, RotateCcw, Paperclip, X, FileText, History as HistoryIcon
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -15,6 +15,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { VaultFilePicker } from "@/components/VaultFilePicker";
 import { supabase } from "@/lib/supabase";
 import { useLocation, useNavigate } from "react-router-dom";
+import { ChatHistorySidebar } from "./ChatHistorySidebar";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Message = {
@@ -100,6 +101,10 @@ export default function AITutor() {
   const [contextText, setContextText] = useState<string | null>(null);
   const [extractingContext, setExtractingContext] = useState(false);
 
+  // Chat History state
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+
   const chatRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const location = useLocation();
@@ -150,6 +155,40 @@ export default function AITutor() {
     }]);
   };
 
+  const loadSession = async (id: string, title: string) => {
+    setSessionId(id);
+    setHistoryOpen(false);
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("chat_messages")
+        .select("*")
+        .eq("session_id", id)
+        .order("created_at", { ascending: true });
+      
+      if (!error && data) {
+        setMessages([
+          { id: 1, role: "assistant", content: `You're viewing the chat: **${title}**` },
+          ...data.map((m: any, idx: number) => ({
+            id: idx + 2,
+            role: m.role as "user" | "assistant",
+            content: m.content
+          }))
+        ]);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const saveMessage = async (sId: string, role: "user" | "assistant", content: string) => {
+    await supabase.from("chat_messages").insert({
+      session_id: sId,
+      role,
+      content
+    });
+  };
+
   const sendMessage = async (text?: string) => {
     const query = (text || input).trim();
     if (!query || loading) return;
@@ -158,12 +197,31 @@ export default function AITutor() {
       return;
     }
 
+    let currentSessionId = sessionId;
+
+    // Create session if first non-greeting message
+    if (!currentSessionId && user) {
+      const title = query.length > 50 ? query.slice(0, 47) + "..." : query;
+      const { data } = await supabase
+        .from("chat_sessions")
+        .insert({ title, user_id: user.id })
+        .select("id")
+        .single();
+      if (data?.id) {
+        currentSessionId = data.id;
+        setSessionId(data.id);
+      }
+    }
+
     const userMsgId = Date.now();
     const userMsg: Message = { id: userMsgId, role: "user", content: query };
     setMessages((p) => [...p, userMsg]);
     setInput("");
     setLoading(true);
     setStreamContent("");
+
+    // Persist user message
+    if (currentSessionId) saveMessage(currentSessionId, "user", query);
 
     try {
       // Build system prompt — inject document context if available
@@ -226,6 +284,9 @@ export default function AITutor() {
 
       const assistantMsgId = Date.now() + 1;
       setMessages((p) => [...p, { id: assistantMsgId, role: "assistant", content: fullText }]);
+      
+      // Persist assistant message
+      if (currentSessionId) saveMessage(currentSessionId, "assistant", fullText);
     } catch (err: unknown) {
       const errMsg = err instanceof Error ? err.message : "Unknown error";
       const assistantErrId = Date.now() + 1;
@@ -250,6 +311,7 @@ export default function AITutor() {
   };
 
   const clearChat = () => {
+    setSessionId(null);
     setMessages([{
       id: Date.now(),
       role: "assistant",
@@ -271,6 +333,9 @@ export default function AITutor() {
           <p className="text-muted-foreground mt-1">Your personal ELTE research assistant</p>
         </div>
         <div className="flex items-center gap-3">
+          <Button variant="ghost" size="sm" className="gap-1.5 text-xs text-muted-foreground" onClick={() => setHistoryOpen(!historyOpen)}>
+            <HistoryIcon className="h-3.5 w-3.5" />History
+          </Button>
           <div className="flex items-center gap-2 glass-subtle px-3 py-1.5 rounded-full">
             <BookOpen className="h-3.5 w-3.5 text-primary" />
             <span className="text-xs font-medium">Study Mode</span>
@@ -282,6 +347,13 @@ export default function AITutor() {
         </div>
       </div>
 
+      <div className="flex-1 flex flex-col min-h-0 relative">
+        <ChatHistorySidebar 
+          open={historyOpen} 
+          onClose={() => setHistoryOpen(false)} 
+          onSelectSession={loadSession}
+          activeSessionId={sessionId}
+        />
       {/* Active context banner */}
       {contextFile && (
         <div className={`flex items-center gap-2 px-3 py-2 rounded-xl mb-3 shrink-0 border ${extractingContext ? "bg-muted/30 border-border/40" : "bg-primary/5 border-primary/20"}`}>
@@ -351,7 +423,6 @@ export default function AITutor() {
           </div>
         )}
       </div>
-
       {/* Quick prompts */}
       {messages.length === 1 && API_KEY && !contextFile && (
         <div className="flex flex-wrap gap-2 mb-3 shrink-0">
@@ -413,5 +484,6 @@ export default function AITutor() {
         onSelect={handleAttachFile}
       />
     </div>
+  </div>
   );
 }
