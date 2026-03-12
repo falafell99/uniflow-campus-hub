@@ -1,229 +1,1006 @@
-import { useState, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { 
-  ReactFlow, 
-  Controls, 
-  Background, 
-  useNodesState, 
-  useEdgesState, 
-  MarkerType,
-  Handle,
-  Position,
-  NodeProps,
-  Edge
-} from "@xyflow/react";
-import "@xyflow/react/dist/style.css";
+  Folder, Plus, MoreHorizontal, LayoutList, Kanban, 
+  CalendarDays, Filter, ChevronDown, CheckCircle2, 
+  Circle, Clock, Search, Info, FileText, Bookmark, 
+  FolderPlus, X, ChevronRight, Loader2, Trash2, Sparkles
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { FileText, BookOpen, CheckCircle2, Lock, PlayCircle } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/contexts/AuthContext";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
 
-// --- Custom Node Implementation ---
-const SubjectNode = ({ data }: NodeProps) => {
-  const isLocked = data.status === "locked";
-  const isCompleted = data.status === "completed";
-  const isCurrent = data.status === "current";
+// --- Types ---
+type TaskStatus = "todo" | "in-progress" | "review" | "done";
 
-  const statusColors = {
-    completed: "bg-success/20 border-success/40 text-success",
-    current: "bg-primary/20 border-primary/40 text-primary",
-    locked: "bg-muted/50 border-border/40 text-muted-foreground grayscale",
+interface WorkspaceSpace {
+  id: string;
+  name: string;
+  emoji?: string;
+  user_id: string;
+  created_at?: string;
+}
+
+interface WorkspaceTask {
+  id: string;
+  space_id: string;
+  title: string;
+  status: TaskStatus;
+  priority: string;
+  due_date?: string;
+  assignee?: string;
+  user_id: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+const getStatusIcon = (status: TaskStatus) => {
+  switch (status) {
+    case "done": return <CheckCircle2 className="h-4 w-4 text-success" />;
+    case "in-progress": return <Clock className="h-4 w-4 text-primary" />;
+    case "review": return <Circle className="h-4 w-4 text-warning fill-warning/20" />;
+    case "todo": return <Circle className="h-4 w-4 text-muted-foreground stroke-dashed" />;
+    default: return <Circle className="h-4 w-4 text-muted-foreground" />;
+  }
+};
+
+const getStatusColor = (status: TaskStatus) => {
+  switch (status) {
+    case "done": return "text-success bg-success/10 border-success/20";
+    case "in-progress": return "text-primary bg-primary/10 border-primary/20";
+    case "review": return "text-warning bg-warning/10 border-warning/20";
+    default: return "text-muted-foreground bg-muted/50 border-border/40";
+  }
+};
+
+const getPriorityColor = (priority: string) => {
+  switch (priority) {
+    case "High": return "text-destructive bg-destructive/10 border-destructive/20";
+    case "Medium": return "text-warning bg-warning/10 border-warning/20";
+    default: return "text-muted-foreground bg-muted/50 border-border/40";
+  }
+};
+
+export default function Workspace() {
+  const { user } = useAuth();
+  const [spaces, setSpaces] = useState<WorkspaceSpace[]>([]);
+  const [tasks, setTasks] = useState<WorkspaceTask[]>([]);
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState("overview");
+  const [loading, setLoading] = useState(true);
+  const [newTaskTitle, setNewTaskTitle] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isSpaceModalOpen, setIsSpaceModalOpen] = useState(false);
+  const [newSpaceName, setNewSpaceName] = useState("");
+  const [newSpaceEmoji, setNewSpaceEmoji] = useState("📂");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+  const [targetSpaceId, setTargetSpaceId] = useState<string | null>(null);
+  const [targetStatus, setTargetStatus] = useState<TaskStatus>("todo");
+  const [newTaskDescription, setNewTaskDescription] = useState("");
+  const [newTaskPriority, setNewTaskPriority] = useState<string>("Medium");
+  const [newTaskDate, setNewTaskDate] = useState("");
+  
+  const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
+
+  const fetchData = useCallback(async () => {
+    if (!user) return;
+    setLoading(true);
+    
+    // 1. Fetch Spaces
+    const { data: spacesData, error: spacesError } = await supabase
+      .from("workspace_spaces")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: true });
+
+    if (spacesError) {
+      console.error("Error fetching spaces:", spacesError);
+    } else if (spacesData && spacesData.length > 0) {
+      setSpaces(spacesData);
+      setActiveCategory(spacesData[0].id);
+    } else {
+      // Create a default space if none exists
+      const { data: defaultSpace, error: createError } = await supabase
+        .from("workspace_spaces")
+        .insert({ name: "Default Space", user_id: user.id })
+        .select()
+        .single();
+      
+      if (!createError && defaultSpace) {
+        setSpaces([defaultSpace]);
+        setActiveCategory(defaultSpace.id);
+      }
+    }
+
+    // 2. Fetch Tasks
+    const { data: tasksData, error: tasksError } = await supabase
+      .from("workspace_tasks")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false });
+
+    if (tasksError) {
+      console.error("Error fetching tasks:", tasksError);
+    } else if (tasksData) {
+      setTasks(tasksData);
+    }
+    
+    setLoading(false);
+  }, [user]);
+
+  useEffect(() => {
+    fetchData();
+
+    // Set up real-time subscription
+    if (!user) return;
+    
+    const spacesChannel = supabase
+      .channel("workspace_spaces_changes")
+      .on("postgres_changes", { event: "*", schema: "public", table: "workspace_spaces", filter: `user_id=eq.${user.id}` }, () => {
+        fetchData();
+      })
+      .subscribe();
+
+    const tasksChannel = supabase
+      .channel("workspace_tasks_changes")
+      .on("postgres_changes", { event: "*", schema: "public", table: "workspace_tasks", filter: `user_id=eq.${user.id}` }, () => {
+        fetchData();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(spacesChannel);
+      supabase.removeChannel(tasksChannel);
+    };
+  }, [user, fetchData]);
+
+  const handleAddTask = async () => {
+    if (!user || !newTaskTitle.trim() || !targetSpaceId) return;
+
+    try {
+      setIsSubmitting(true);
+      const { error } = await supabase
+        .from("workspace_tasks")
+        .insert({
+          title: newTaskTitle,
+          description: newTaskDescription,
+          space_id: targetSpaceId,
+          status: targetStatus,
+          user_id: user.id,
+          priority: newTaskPriority,
+          due_date: newTaskDate || null,
+          assignee: "You"
+        });
+
+      if (error) throw error;
+      
+      setNewTaskTitle("");
+      setNewTaskDescription("");
+      setNewTaskDate("");
+      setIsTaskModalOpen(false);
+      toast.success("Task added!");
+    } catch (error: any) {
+      toast.error(error.message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const statusIcons = {
-    completed: <CheckCircle2 className="h-3 w-3" />,
-    current: <PlayCircle className="h-3 w-3" />,
-    locked: <Lock className="h-3 w-3" />,
+  const openTaskModal = (spaceId: string, status: TaskStatus = "todo") => {
+    setTargetSpaceId(spaceId);
+    setTargetStatus(status);
+    setIsTaskModalOpen(true);
   };
+
+  const handleApplyTemplate = async (template: { title: string; priority: string; description: string }) => {
+    if (!user || !activeCategory) return;
+    
+    try {
+      setIsSubmitting(true);
+      const { error } = await supabase
+        .from("workspace_tasks")
+        .insert({
+          title: template.title,
+          description: template.description,
+          space_id: activeCategory,
+          status: "todo",
+          user_id: user.id,
+          priority: template.priority,
+          assignee: "You"
+        });
+
+      if (error) throw error;
+      toast.success(`Template '${template.title}' applied!`);
+      setIsTemplateModalOpen(false);
+    } catch (error: any) {
+      toast.error(error.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleUpdateTaskStatus = async (taskId: string, newStatus: TaskStatus) => {
+    await supabase
+      .from("workspace_tasks")
+      .update({ status: newStatus })
+      .eq("id", taskId);
+  };
+
+  const handleDeleteTask = async (taskId: string) => {
+    await supabase
+      .from("workspace_tasks")
+      .delete()
+      .eq("id", taskId);
+  };
+
+  const handleAddSpace = async () => {
+    if (!user || !newSpaceName.trim()) return;
+
+    try {
+      setIsSubmitting(true);
+      const { data, error } = await supabase
+        .from("workspace_spaces")
+        .insert({ 
+          name: newSpaceName, 
+          emoji: newSpaceEmoji,
+          user_id: user.id 
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      
+      toast.success("Space created!");
+      setIsSpaceModalOpen(false);
+      setNewSpaceName("");
+      if (data) setActiveCategory(data.id);
+    } catch (error: any) {
+      toast.error(error.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleRenameSpace = async (spaceId: string) => {
+    const space = spaces.find(s => s.id === spaceId);
+    if (!space) return;
+    
+    const newName = prompt("Enter new name for the space:", space.name);
+    if (!newName || newName === space.name) return;
+
+    try {
+      const { error } = await supabase
+        .from("workspace_spaces")
+        .update({ name: newName })
+        .eq("id", spaceId);
+
+      if (error) throw error;
+      toast.success("Space renamed");
+    } catch (error: any) {
+      toast.error(error.message);
+    }
+  };
+
+  const handleDeleteSpace = async (spaceId: string) => {
+    if (!confirm("Are you sure you want to delete this space and all its tasks?")) return;
+    
+    try {
+      const { error } = await supabase
+        .from("workspace_spaces")
+        .delete()
+        .eq("id", spaceId);
+
+      if (error) throw error;
+      toast.success("Space deleted");
+      if (activeCategory === spaceId) {
+        const remaining = spaces.filter(s => s.id !== spaceId);
+        setActiveCategory(remaining[0]?.id || "");
+      }
+    } catch (error: any) {
+      toast.error(error.message);
+    }
+  };
+
+  const filteredTasks = tasks.filter(t => {
+    const matchesSpace = t.space_id === activeCategory;
+    const matchesSearch = t.title.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesSpace && matchesSearch;
+  });
+
+  const recentTasks = [...tasks].sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()).slice(0, 5);
+  const activeSpace = spaces.find(s => s.id === activeCategory);
+
+  if (loading && spaces.length === 0) {
+    return (
+      <div className="flex h-[calc(100vh-6rem)] w-full items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
-    <div className={`px-4 py-3 rounded-xl border ${statusColors[data.status as keyof typeof statusColors]} backdrop-blur-md w-48 shadow-lg transition-transform hover:scale-105 cursor-pointer`}>
-      <Handle type="target" position={Position.Top} className="w-2 h-2 !bg-muted-foreground border-none" />
+    <div className="flex h-[calc(100vh-5rem)] md:h-[calc(100vh-6rem)] w-full max-w-[1400px] mx-auto md:rounded-xl border-x md:border-y border-border/40 overflow-hidden bg-background">
       
-      <div className="flex flex-col gap-1.5">
-        <div className="flex justify-between items-start">
-          <Badge variant="outline" className="text-[9px] px-1.5 py-0 uppercase tracking-wider bg-background/50 border-inherit text-inherit">
-            {data.category as string}
-          </Badge>
-          <div className="opacity-80">
-            {statusIcons[data.status as keyof typeof statusIcons]}
+      <div className="w-64 border-r border-border/40 bg-card/10 flex flex-col hidden md:flex shrink-0">
+        <div className="p-4 border-b border-border/20 flex items-center justify-between">
+          <span className="font-semibold text-sm">Spaces</span>
+          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleAddSpace}>
+            <Plus className="h-4 w-4" />
+          </Button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-2 space-y-0.5 custom-scroll">
+            {spaces.map(cat => (
+              <div key={cat.id} className="group relative">
+                <button
+                   onClick={() => setActiveCategory(cat.id)}
+                   className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-all ${
+                     activeCategory === cat.id 
+                       ? "bg-primary/10 text-primary font-medium" 
+                       : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                   }`}
+                >
+                  <div className="flex items-center gap-2">
+                     <div className={`h-5 w-5 rounded-md flex items-center justify-center transition-colors ${activeCategory === cat.id ? "bg-primary text-primary-foreground" : "bg-muted group-hover:bg-muted-foreground/20 text-muted-foreground"}`}>
+                        <span className="text-[10px] font-bold">{cat.emoji || "📂"}</span>
+                     </div>
+                    <span className="truncate max-w-[120px]">{cat.name}</span>
+                  </div>
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-5 w-5 hover:bg-primary/10 hover:text-primary"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRenameSpace(cat.id);
+                      }}
+                    >
+                      <Plus className="h-3 w-3 rotate-45" /> {/* Using rotate-45 for a simple pencil-like look or just Edit */}
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-5 w-5 hover:bg-destructive/10 hover:text-destructive"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteSpace(cat.id);
+                      }}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </button>
+              </div>
+            ))}
+          </div>
+          
+          <div className="p-4 border-t border-border/20">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="w-full h-8 text-xs border-dashed border-border/60 hover:border-primary/40 hover:bg-primary/5"
+              onClick={() => setIsSpaceModalOpen(true)}
+            >
+              <Plus className="h-3 w-3 mr-2" /> Add Space
+            </Button>
           </div>
         </div>
-        
-        <div className="font-semibold text-sm leading-tight text-foreground">
-          {data.label as string}
-        </div>
-      </div>
 
-      <Handle type="source" position={Position.Bottom} className="w-2 h-2 !bg-muted-foreground border-none" />
-    </div>
-  );
-};
-
-const nodeTypes = {
-  subject: SubjectNode,
-};
-
-// --- Initial Data ---
-const initialNodes = [
-  // SEMESTER 1 (Level 1)
-  { id: "1", type: "subject", position: { x: 0, y: 0 }, data: { label: "Basic Mathematics", category: "Math", status: "completed" } },
-  { id: "2", type: "subject", position: { x: 300, y: 0 }, data: { label: "Programming", category: "CS", status: "completed" } },
-  { id: "3", type: "subject", position: { x: 550, y: 0 }, data: { label: "Imperative Programming", category: "CS", status: "completed" } },
-  { id: "4", type: "subject", position: { x: 800, y: 0 }, data: { label: "Computer Systems", category: "Systems", status: "completed" } },
-  { id: "5", type: "subject", position: { x: 1050, y: 0 }, data: { label: "Functional Programming", category: "CS", status: "completed" } },
-
-  // SEMESTER 2 (Level 2)
-  { id: "6", type: "subject", position: { x: -100, y: 150 }, data: { label: "Analysis I", category: "Math", status: "current" } },
-  { id: "7", type: "subject", position: { x: 150, y: 150 }, data: { label: "Discrete Mathematics", category: "Math", status: "current" } },
-  { id: "8", type: "subject", position: { x: 400, y: 150 }, data: { label: "Algorithms & Data Structures I", category: "CS", status: "current" } },
-  { id: "9", type: "subject", position: { x: 650, y: 150 }, data: { label: "Object Oriented Programming", category: "CS", status: "current" } },
-  { id: "10", type: "subject", position: { x: 550, y: 280 }, data: { label: "Programming Languages", category: "CS", status: "locked" } },
-  { id: "11", type: "subject", position: { x: 800, y: 150 }, data: { label: "Web Development", category: "Systems", status: "current" } },
-
-  // SEMESTER 3 (Level 3)
-  { id: "12", type: "subject", position: { x: -100, y: 300 }, data: { label: "Analysis II", category: "Math", status: "locked" } },
-  { id: "13", type: "subject", position: { x: 150, y: 300 }, data: { label: "Application of Discrete Models", category: "Math", status: "locked" } },
-  { id: "14", type: "subject", position: { x: 400, y: 300 }, data: { label: "Algorithms & Data Structures II", category: "CS", status: "locked" } },
-  { id: "15", type: "subject", position: { x: 650, y: 300 }, data: { label: "Programming Technology", category: "CS", status: "locked" } },
-  { id: "16", type: "subject", position: { x: 800, y: 300 }, data: { label: "Web Programming", category: "Systems", status: "locked" } },
-
-  // SEMESTER 4 (Level 4)
-  { id: "17", type: "subject", position: { x: -100, y: 450 }, data: { label: "Numerical Methods", category: "Math", status: "locked" } },
-  { id: "18", type: "subject", position: { x: 150, y: 450 }, data: { label: "Theory of Computation I", category: "Math", status: "locked" } },
-  { id: "19", type: "subject", position: { x: 400, y: 450 }, data: { label: "Databases I", category: "Systems", status: "locked" } },
-  { id: "20", type: "subject", position: { x: 650, y: 450 }, data: { label: "Software Technology", category: "CS", status: "locked" } },
-  { id: "21", type: "subject", position: { x: 800, y: 450 }, data: { label: "Operating Systems", category: "Systems", status: "locked" } },
-
-  // SEMESTER 5 (Level 5)
-  { id: "22", type: "subject", position: { x: -100, y: 600 }, data: { label: "Probability and Statistics", category: "Math", status: "locked" } },
-  { id: "23", type: "subject", position: { x: 150, y: 600 }, data: { label: "Theory of Computation II", category: "Math", status: "locked" } },
-  { id: "24", type: "subject", position: { x: 300, y: 600 }, data: { label: "Artificial Intelligence", category: "CS", status: "locked" } },
-  { id: "25", type: "subject", position: { x: 500, y: 600 }, data: { label: "Databases II", category: "Systems", status: "locked" } },
-  { id: "26", type: "subject", position: { x: 700, y: 600 }, data: { label: "Telecommunication Networks", category: "Systems", status: "locked" } },
-  { id: "27", type: "subject", position: { x: 900, y: 600 }, data: { label: "Concurrent Programming", category: "CS", status: "locked" } },
-];
-
-const defaultEdgeOptions = {
-  type: "smoothstep",
-  animated: false,
-  markerEnd: { type: MarkerType.ArrowClosed, color: "hsl(var(--muted-foreground))" },
-  style: { stroke: "hsl(var(--muted-foreground))", strokeWidth: 2, opacity: 0.5 },
-};
-
-const initialEdges: Edge[] = [
-  // L1 -> L2
-  { id: "e1-6", source: "1", target: "6", ...defaultEdgeOptions },
-  { id: "e1-7", source: "1", target: "7", ...defaultEdgeOptions },
-  { id: "e2-8", source: "2", target: "8", ...defaultEdgeOptions },
-  { id: "e2-9", source: "2", target: "9", ...defaultEdgeOptions },
-  { id: "e3-10", source: "3", target: "10", ...defaultEdgeOptions },
-  { id: "e4-11", source: "4", target: "11", ...defaultEdgeOptions },
-
-  // L2 -> L3
-  { id: "e6-12", source: "6", target: "12", ...defaultEdgeOptions },
-  { id: "e7-13", source: "7", target: "13", ...defaultEdgeOptions },
-  { id: "e8-14", source: "8", target: "14", ...defaultEdgeOptions },
-  { id: "e9-15", source: "9", target: "15", ...defaultEdgeOptions },
-  { id: "e11-16", source: "11", target: "16", ...defaultEdgeOptions },
-
-  // L3 -> L4
-  { id: "e12-17", source: "12", target: "17", ...defaultEdgeOptions },
-  { id: "e7-18", source: "7", target: "18", ...defaultEdgeOptions }, // Discrete Math -> ToC I
-  { id: "e14-19", source: "14", target: "19", ...defaultEdgeOptions },
-  { id: "e15-20", source: "15", target: "20", ...defaultEdgeOptions },
-  { id: "e16-21", source: "16", target: "21", ...defaultEdgeOptions },
-
-  // L4 -> L5
-  { id: "e12-22", source: "12", target: "22", ...defaultEdgeOptions }, // Analysis II -> Prob & Stats
-  { id: "e18-23", source: "18", target: "23", ...defaultEdgeOptions },
-  { id: "e19-24", source: "19", target: "24", ...defaultEdgeOptions },
-  { id: "e19-25", source: "19", target: "25", ...defaultEdgeOptions },
-  
-  // Mixed L3/L4 -> L5
-  { id: "e10-26", source: "10", target: "26", ...defaultEdgeOptions }, // Prog Langs -> Telecom
-  { id: "e10-27", source: "10", target: "27", ...defaultEdgeOptions }, // Prog Langs -> Concurrent Prog
-  { id: "e21-27", source: "21", target: "27", ...defaultEdgeOptions }, // OS -> Concurrent Prog
-];
-
-export default function KnowledgeGraph() {
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
-  const [selectedNode, setSelectedNode] = useState<any | null>(null);
-
-  const onNodeClick = useCallback((_: any, node: any) => {
-    setSelectedNode(node);
-  }, []);
-
-  return (
-    <div className="animate-fade-in space-y-4 h-[calc(100vh-5rem)] flex flex-col">
-      <div className="flex items-center justify-between shrink-0">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">🗺️ Curriculum Roadmap</h1>
-          <p className="text-muted-foreground mt-1">Track your progress and prerequisites</p>
-        </div>
-        <div className="flex gap-4 text-xs font-medium">
-          <div className="flex items-center gap-1.5"><CheckCircle2 className="h-3.5 w-3.5 text-success" /> Completed</div>
-          <div className="flex items-center gap-1.5"><PlayCircle className="h-3.5 w-3.5 text-primary" /> Current</div>
-          <div className="flex items-center gap-1.5"><Lock className="h-3.5 w-3.5 text-muted-foreground" /> Locked</div>
-        </div>
-      </div>
-
-      <div className="flex-1 glass-card overflow-hidden rounded-xl border border-border/40 relative">
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onNodeClick={onNodeClick}
-          nodeTypes={nodeTypes}
-          fitView
-          fitViewOptions={{ padding: 0.2 }}
-          minZoom={0.2}
-          maxZoom={2}
-          defaultEdgeOptions={defaultEdgeOptions}
-          proOptions={{ hideAttribution: true }}
-        >
-          <Background color="hsl(var(--muted-foreground))" gap={16} size={1} opacity={0.1} />
-          <Controls className="bg-background/80 backdrop-blur-md border border-border/50 rounded-md overflow-hidden" showInteractive={false} />
-        </ReactFlow>
-      </div>
-
-      {/* Detail Dialog */}
-      <Dialog open={!!selectedNode} onOpenChange={(open) => !open && setSelectedNode(null)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <BookOpen className="h-5 w-5 text-primary" />
-              {selectedNode?.data.label}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 mt-2">
-            <div className="p-3 glass-subtle rounded-lg flex justify-between items-center text-sm">
-              <span className="text-muted-foreground font-medium">Status</span>
-              <Badge variant="outline" className="capitalize">{selectedNode?.data.status}</Badge>
+      {/* ─── MAIN CONTENT ─── */}
+      <div className="flex-1 flex flex-col min-w-0 bg-background">
+        {/* Header Ribbon */}
+        <div className="h-14 border-b border-border/20 flex flex-col px-4 shrink-0 bg-background/50 backdrop-blur-sm z-10 justify-center">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 mr-4 text-sm">
+                 <div className="h-5 w-5 rounded-md bg-primary text-primary-foreground flex items-center justify-center">
+                    <span className="text-[10px] font-bold">{activeSpace?.emoji || activeSpace?.name?.[0] || "S"}</span>
+                 </div>
+                 <span className="font-semibold">{activeSpace?.name || "Space"}</span>
+                 <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+              </div>
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-auto">
+                <TabsList className="h-8 bg-transparent p-0 gap-1 hidden md:flex">
+                  <TabsTrigger value="overview" className="h-8 px-3 text-xs data-[state=active]:bg-transparent data-[state=active]:text-primary border-b-2 border-transparent data-[state=active]:border-primary rounded-none data-[state=active]:shadow-none">
+                    <Info className="h-3.5 w-3.5 mr-1.5" /> Overview
+                  </TabsTrigger>
+                  <TabsTrigger value="list" className="h-8 px-3 text-xs data-[state=active]:bg-transparent data-[state=active]:text-primary border-b-2 border-transparent data-[state=active]:border-primary rounded-none data-[state=active]:shadow-none">
+                    <LayoutList className="h-3.5 w-3.5 mr-1.5" /> List
+                  </TabsTrigger>
+                  <TabsTrigger value="board" className="h-8 px-3 text-xs data-[state=active]:bg-transparent data-[state=active]:text-primary border-b-2 border-transparent data-[state=active]:border-primary rounded-none data-[state=active]:shadow-none">
+                    <Kanban className="h-3.5 w-3.5 mr-1.5" /> Board
+                  </TabsTrigger>
+                  <Button variant="ghost" size="sm" className="h-8 px-3 text-xs font-normal text-muted-foreground rounded-none">
+                     <Plus className="h-3 w-3 mr-1" /> View
+                  </Button>
+                </TabsList>
+              </Tabs>
             </div>
             
-            <div className="space-y-2">
-              <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Available Resources</p>
-              
-              <div className="flex items-center gap-3 p-3 glass-subtle rounded-lg cursor-pointer hover:bg-muted/60 transition-colors">
-                <FileText className="h-5 w-5 text-primary shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium">Lecture Notes & Slides</p>
-                  <p className="text-[11px] text-muted-foreground">3 files in The Vault</p>
-                </div>
-                <Badge variant="secondary" className="text-[10px]">Open</Badge>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center text-xs text-muted-foreground">
+                 <Filter className="h-3.5 w-3.5 mr-1.5" /> Filter
               </div>
-
-              <div className="flex items-center gap-3 p-3 glass-subtle rounded-lg cursor-pointer hover:bg-muted/60 transition-colors">
-                <CheckCircle2 className="h-5 w-5 text-success shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium">Past Exams</p>
-                  <p className="text-[11px] text-muted-foreground">2 exams available</p>
-                </div>
-                <Badge variant="secondary" className="text-[10px]">Open</Badge>
+              <div className="relative hidden lg:flex">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <Input 
+                  placeholder="Search tasks..." 
+                  className="h-8 w-40 pl-8 text-xs bg-muted/20 border-transparent rounded-full" 
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+              <div className="flex gap-1">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="h-8 rounded-md text-xs font-medium px-3 border-dashed border-border/40 hover:bg-muted/10 group" 
+                  onClick={() => setIsTemplateModalOpen(true)}
+                >
+                  <Bookmark className="h-3 w-3 mr-1.5 text-muted-foreground group-hover:text-primary transition-colors" /> Templates
+                </Button>
+                <Button 
+                  size="sm" 
+                  className="h-8 rounded-md text-xs font-medium px-4 shadow-lg shadow-primary/20" 
+                  onClick={() => activeCategory && openTaskModal(activeCategory)}
+                >
+                  <Plus className="h-3.5 w-3.5 mr-1.5" /> Task
+                </Button>
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Dynamic Views */}
+        <div className="flex-1 overflow-auto custom-scroll">
+          
+          {/* ℹ️ OVERVIEW TAB */}
+          {activeTab === "overview" && (
+            <div className="p-4 md:p-8 animate-in fade-in duration-300 max-w-5xl mx-auto space-y-6">
+               {/* Banner */}
+               <div className="flex items-center justify-center p-3 text-sm bg-muted/20 border border-border/40 rounded-lg text-muted-foreground relative">
+                  <p>Get the most out of your Overview! Add, reorder, and resize cards to customize this page <a href="#" className="underline text-foreground">Get Started</a></p>
+                  <X className="h-4 w-4 absolute right-4 cursor-pointer hover:text-foreground" />
+               </div>
+
+               <div className="flex items-center gap-4 justify-end text-xs text-muted-foreground">
+                 <span>Refreshed: just now</span>
+                 <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 rounded-full font-normal"><Circle className="h-2 w-2 fill-primary mr-1.5" /> Auto refresh: On</Badge>
+                 <Button size="sm" className="h-7 text-xs rounded"><Plus className="h-3 w-3 mr-1" /> Card</Button>
+               </div>
+
+               {/* 3 Column Grid */}
+               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {/* Recent Card */}
+                  <div className="rounded-xl border border-border/40 overflow-hidden flex flex-col shadow-sm">
+                     <div className="p-4 font-bold text-sm border-b border-border/20">Recent</div>
+                     <div className="p-2 space-y-1 flex-1 overflow-y-auto max-h-[300px] custom-scroll">
+                        {recentTasks.length > 0 ? recentTasks.map(task => (
+                          <div key={task.id} className="flex items-center gap-3 p-2 hover:bg-muted/30 rounded-md cursor-pointer text-sm transition-colors group">
+                             {getStatusIcon(task.status)}
+                             <span className="font-medium truncate max-w-[150px]">{task.title}</span>
+                             <span className="text-muted-foreground text-[10px] ml-auto">
+                               in {spaces.find(s => s.id === task.space_id)?.name || "Space"}
+                             </span>
+                          </div>
+                        )) : (
+                          <div className="p-8 text-center text-xs text-muted-foreground italic">No recent tasks</div>
+                        )}
+                        {!loading && recentTasks.length === 0 && (
+                          <div className="flex items-center gap-3 p-2 hover:bg-muted/30 rounded-md cursor-pointer text-sm transition-colors">
+                             <LayoutList className="h-4 w-4 text-muted-foreground" />
+                             <span className="font-medium">Welcome to Campus Hub 🙌</span>
+                             <span className="text-muted-foreground text-xs ml-auto">in Space</span>
+                          </div>
+                        )}
+                     </div>
+                  </div>
+
+                  {/* Docs Card */}
+                  <div className="rounded-xl border border-border/40 overflow-hidden flex flex-col shadow-sm">
+                     <div className="p-4 font-bold text-sm border-b border-border/20">Docs</div>
+                     <div className="p-8 flex-1 flex flex-col items-center justify-center text-center gap-4">
+                        <div className="relative">
+                           <FileText className="h-12 w-12 text-muted-foreground/30" strokeWidth={1} />
+                           <Plus className="h-4 w-4 absolute -bottom-1 -right-1 text-primary bg-background rounded-full border border-background" />
+                        </div>
+                        <p className="text-xs text-muted-foreground">There are no Docs in this location yet.</p>
+                        <Button variant="secondary" size="sm" className="mt-2 text-xs h-7 bg-primary/10 text-primary hover:bg-primary/20">Add a Doc</Button>
+                     </div>
+                  </div>
+
+                  {/* Bookmarks Card */}
+                  <div className="rounded-xl border border-border/40 overflow-hidden flex flex-col shadow-sm">
+                     <div className="p-4 font-bold text-sm border-b border-border/20">Bookmarks</div>
+                     <div className="p-8 flex-1 flex flex-col items-center justify-center text-center gap-4">
+                        <div className="relative">
+                           <Bookmark className="h-12 w-12 text-muted-foreground/30" strokeWidth={1} />
+                           <Plus className="h-4 w-4 absolute -bottom-1 -right-1 text-primary bg-background rounded-full border border-background" />
+                        </div>
+                        <p className="text-xs text-muted-foreground">Bookmarks make it easy to save items or any URL from around the web.</p>
+                        <Button variant="secondary" size="sm" className="mt-2 text-xs h-7 bg-primary/10 text-primary hover:bg-primary/20">Add Bookmark</Button>
+                     </div>
+                  </div>
+               </div>
+
+               {/* Folders Wide Card */}
+                <div className="rounded-xl border border-border/40 overflow-hidden flex flex-col shadow-sm h-64">
+                   <div className="p-4 font-bold text-sm border-b border-border/20">Folders</div>
+                   <div className="p-8 flex-1 flex flex-col items-center justify-center text-center gap-4">
+                      <FolderPlus className="h-12 w-12 text-muted-foreground/30" strokeWidth={1} />
+                      <p className="text-xs text-muted-foreground">Add new Folder to your Space</p>
+                      <Button variant="secondary" size="sm" className="mt-2 text-xs h-7 bg-primary/10 text-primary hover:bg-primary/20">Add Folder</Button>
+                   </div>
+                </div>
+            </div>
+          )}
+
+          {/* 📋 LIST VIEW */}
+          {activeTab === "list" && (
+            <div className="animate-in fade-in duration-300">
+               
+              {/* List Header */}
+               <div className="grid grid-cols-12 gap-4 px-8 py-2 text-xs font-semibold text-muted-foreground border-b border-border/40 sticky top-0 bg-background/95 backdrop-blur z-10">
+                 <div className="col-span-6 md:col-span-6 flex items-center">Name</div>
+                 <div className="col-span-3 md:col-span-2 text-left">Assignee</div>
+                 <div className="hidden md:block col-span-3 text-left">Due date</div>
+                 <div className="col-span-3 md:col-span-1 text-right flex justify-end items-center"><Plus className="h-3.5 w-3.5" /></div>
+               </div>
+
+               <div className="p-8 space-y-8">
+                  {/* Group: IN PROGRESS */}
+                  <div className="">
+                     <div className="flex items-center gap-2 mb-2 group cursor-pointer">
+                        <ChevronRight className="h-4 w-4 rotate-90 transition-transform text-muted-foreground" />
+                        <Badge variant="outline" className="text-[10px] uppercase font-bold tracking-wider rounded-md border-primary bg-primary text-primary-foreground">
+                        IN PROGRESS
+                        </Badge>
+                        <span className="text-muted-foreground text-xs ml-1 font-normal opacity-70">2</span>
+                     </div>
+                     
+                     <div className="divide-y divide-border/20 border border-border/40 rounded-lg ml-6 overflow-hidden">
+                        {filteredTasks.filter(t => t.status === "in-progress" || t.status === "review").map(task => (
+                           <div key={task.id} className="grid grid-cols-12 gap-4 p-2 items-center text-sm hover:bg-muted/10 transition-colors group/row">
+                           <div className="col-span-6 md:col-span-6 flex items-center gap-3 pl-2">
+                              <button className="shrink-0" onClick={() => handleUpdateTaskStatus(task.id, task.status === "done" ? "todo" : "done")}>{getStatusIcon(task.status)}</button>
+                              <span className="font-medium text-[13px]">{task.title}</span>
+                              <div className="flex items-center gap-1 opacity-0 group-hover/row:opacity-100 ml-2">
+                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleDeleteTask(task.id)}>
+                                  <Trash2 className="h-3 w-3 text-destructive" />
+                                </Button>
+                              </div>
+                           </div>
+                           <div className="col-span-3 md:col-span-2">
+                              {task.assignee && (
+                                <Avatar className="h-6 w-6 border-none ring-2 ring-background">
+                                   <AvatarFallback className="text-[10px] bg-[#6B4DFFFF] text-white font-bold">{task.assignee[0]}</AvatarFallback>
+                                </Avatar>
+                              )}
+                           </div>
+                           <div className="hidden md:flex items-center gap-2 col-span-3 text-xs text-muted-foreground">
+                              <CalendarDays className="h-3.5 w-3.5" /> {task.due_date || "No date"}
+                           </div>
+                           <div className="col-span-3 md:col-span-1 flex justify-end pr-2">
+                              <Plus className="h-3 w-3 text-muted-foreground/30 hover:text-muted-foreground transition-colors cursor-pointer" />
+                           </div>
+                           </div>
+                        ))}
+                        <div className="p-2 pl-4 text-xs text-muted-foreground/60 font-medium hover:bg-muted/10 cursor-pointer flex items-center gap-2">
+                           <Plus className="h-3.5 w-3.5" /> 
+                           <input 
+                             placeholder="Add Task" 
+                             className="bg-transparent border-none outline-none flex-1"
+                             value={newTaskTitle}
+                             onChange={(e) => setNewTaskTitle(e.target.value)}
+                             onKeyDown={(e) => e.key === "Enter" && activeCategory && openTaskModal(activeCategory, "in-progress")}
+                           />
+                        </div>
+                     </div>
+                  </div>
+
+                  {/* Group: TO DO */}
+                  <div className="">
+                     <div className="flex items-center gap-2 mb-2 group cursor-pointer">
+                        <ChevronRight className="h-4 w-4 rotate-90 transition-transform text-muted-foreground" />
+                        <Badge variant="outline" className="text-[10px] uppercase font-bold tracking-wider rounded-md border-muted-foreground border-dashed bg-transparent text-muted-foreground">
+                        TO DO
+                        </Badge>
+                        <span className="text-muted-foreground text-xs ml-1 font-normal opacity-70">3</span>
+                     </div>
+                     
+                     <div className="divide-y divide-border/20 border border-border/40 rounded-lg ml-6 overflow-hidden">
+                        {filteredTasks.filter(t => t.status === "todo").map(task => (
+                           <div key={task.id} className="grid grid-cols-12 gap-4 p-2 items-center text-sm hover:bg-muted/10 transition-colors group/row">
+                           <div className="col-span-6 md:col-span-6 flex items-center gap-3 pl-2">
+                              <button className="shrink-0" onClick={() => handleUpdateTaskStatus(task.id, "done")}>{getStatusIcon(task.status)}</button>
+                              <span className="font-medium text-[13px]">{task.title}</span>
+                              <div className="flex items-center gap-1 opacity-0 group-hover/row:opacity-100 ml-2">
+                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleDeleteTask(task.id)}>
+                                  <Trash2 className="h-3 w-3 text-destructive" />
+                                </Button>
+                              </div>
+                           </div>
+                           <div className="col-span-3 md:col-span-2">
+                              {task.assignee && (
+                                <Avatar className="h-6 w-6 border-none ring-2 ring-background">
+                                   <AvatarFallback className="text-[10px] bg-[#6B4DFFFF] text-white font-bold">{task.assignee[0]}</AvatarFallback>
+                                </Avatar>
+                              )}
+                           </div>
+                           <div className="hidden md:flex items-center gap-2 col-span-3 text-xs text-muted-foreground">
+                              <CalendarDays className="h-3.5 w-3.5" /> {task.due_date || "No date"}
+                           </div>
+                           <div className="col-span-3 md:col-span-1 flex justify-end pr-2">
+                              <Plus className="h-3 w-3 text-muted-foreground/30 hover:text-muted-foreground transition-colors cursor-pointer" />
+                           </div>
+                           </div>
+                        ))}
+                        <div className="p-2 pl-4 text-xs text-muted-foreground/60 font-medium hover:bg-muted/10 cursor-pointer flex items-center gap-2">
+                           <Plus className="h-3.5 w-3.5" /> 
+                           <input 
+                             placeholder="Add Task" 
+                             className="bg-transparent border-none outline-none flex-1"
+                             value={newTaskTitle}
+                             onChange={(e) => setNewTaskTitle(e.target.value)}
+                             onKeyDown={(e) => e.key === "Enter" && activeCategory && openTaskModal(activeCategory, "todo")}
+                           />
+                        </div>
+                     </div>
+                  </div>
+               </div>
+
+            </div>
+          )}
+
+          {/* 🛹 BOARD VIEW (KANBAN) */}
+          {activeTab === "board" && (
+            <div className="flex gap-4 h-full p-6 overflow-x-auto pb-4 custom-scroll animate-in fade-in duration-300">
+              
+              {/* Column: TO DO */}
+              <div className="w-[300px] shrink-0 flex flex-col gap-3">
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="text-[10px] uppercase font-bold tracking-wider rounded-md border-muted-foreground border-dashed bg-transparent text-muted-foreground px-2">
+                    To Do
+                  </Badge>
+                  <span className="text-xs text-muted-foreground">2</span>
+                  <div className="flex-1" />
+                  <MoreHorizontal className="h-4 w-4 text-muted-foreground cursor-pointer" />
+                  <Plus className="h-4 w-4 text-muted-foreground cursor-pointer" />
+                </div>
+                <div className="flex-1 rounded-xl p-2 space-y-2 bg-muted/10 border border-transparent">
+                  {filteredTasks.filter(t => t.status === "todo").map(task => (
+                    <div key={task.id} className="bg-card p-4 rounded-lg border border-border/40 shadow-sm cursor-pointer hover:border-border transition-colors group">
+                      <div className="flex justify-between items-start mb-2">
+                        <p className="text-sm font-medium leading-normal">{task.title}</p>
+                        <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={() => handleDeleteTask(task.id)}>
+                          <Trash2 className="h-3 w-3 text-destructive" />
+                        </Button>
+                      </div>
+                      <div className="flex items-center gap-2 text-muted-foreground mb-4">
+                         <LayoutList className="h-3.5 w-3.5" />
+                      </div>
+                      <div className="flex items-center justify-start text-xs text-muted-foreground gap-3">
+                        {task.assignee && (
+                          <Avatar className="h-6 w-6 border-none">
+                            <AvatarFallback className="text-[10px] bg-[#6B4DFFFF] text-white font-bold">{task.assignee[0]}</AvatarFallback>
+                          </Avatar>
+                        )}
+                        <div className="flex items-center gap-1 border border-border/40 px-1.5 py-0.5 rounded text-[10px]"><CalendarDays className="h-3 w-3" /> {task.due_date || "No date"}</div>
+                      </div>
+                    </div>
+                  ))}
+                  <div className="flex items-center gap-2 p-2 text-xs font-medium text-muted-foreground hover:text-foreground cursor-pointer mt-1">
+                     <Plus className="h-3.5 w-3.5" /> 
+                     <input 
+                        placeholder="Add Task" 
+                        className="bg-transparent border-none outline-none text-xs flex-1"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            const input = e.currentTarget;
+                            if (input.value && activeCategory) {
+                              setNewTaskTitle(input.value);
+                              openTaskModal(activeCategory, "todo");
+                              input.value = "";
+                            }
+                          }
+                        }}
+                     />
+                  </div>
+                </div>
+              </div>
+
+              {/* Column: IN PROGRESS */}
+              <div className="w-[300px] shrink-0 flex flex-col gap-3">
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="text-[10px] uppercase font-bold tracking-wider rounded-md border-primary bg-primary text-primary-foreground px-2">
+                    In Progress
+                  </Badge>
+                  <span className="text-xs text-muted-foreground">2</span>
+                  <div className="flex-1" />
+                  <MoreHorizontal className="h-4 w-4 text-muted-foreground cursor-pointer" />
+                  <Plus className="h-4 w-4 text-muted-foreground cursor-pointer" />
+                </div>
+                <div className="flex-1 rounded-xl p-2 space-y-2 bg-muted/10 border border-transparent">
+                  {filteredTasks.filter(t => t.status === "in-progress").map(task => (
+                    <div key={task.id} className="bg-card p-4 rounded-lg border border-border/40 shadow-sm cursor-pointer hover:border-border transition-colors group">
+                      <div className="flex justify-between items-start mb-2">
+                        <p className="text-sm font-medium leading-normal">{task.title}</p>
+                        <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={() => handleDeleteTask(task.id)}>
+                          <Trash2 className="h-3 w-3 text-destructive" />
+                        </Button>
+                      </div>
+                      <div className="flex items-center gap-2 text-muted-foreground mb-4">
+                         <LayoutList className="h-3.5 w-3.5" />
+                      </div>
+                      <div className="flex items-center justify-start text-xs text-muted-foreground gap-3">
+                        {task.assignee && (
+                          <Avatar className="h-6 w-6 border-none">
+                            <AvatarFallback className="text-[10px] bg-[#6B4DFFFF] text-white font-bold">{task.assignee[0]}</AvatarFallback>
+                          </Avatar>
+                        )}
+                        <div className="flex items-center gap-1 border border-border/40 px-1.5 py-0.5 rounded text-[10px]"><CalendarDays className="h-3 w-3" /> {task.due_date || "No date"}</div>
+                      </div>
+                    </div>
+                  ))}
+                  <div className="flex items-center gap-2 p-2 text-xs font-medium text-muted-foreground hover:text-foreground cursor-pointer mt-1">
+                     <Plus className="h-3.5 w-3.5" /> 
+                     <input 
+                        placeholder="Add Task" 
+                        className="bg-transparent border-none outline-none text-xs flex-1"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            const input = e.currentTarget;
+                            if (input.value && activeCategory) {
+                              setNewTaskTitle(input.value);
+                              openTaskModal(activeCategory, "in-progress");
+                              input.value = "";
+                            }
+                          }
+                        }}
+                     />
+                  </div>
+                </div>
+              </div>
+
+              {/* Column: DONE */}
+              <div className="w-[300px] shrink-0 flex flex-col gap-3">
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="text-[10px] uppercase font-bold tracking-wider rounded-md border-success bg-success text-success-foreground px-2">
+                    Complete
+                  </Badge>
+                  <span className="text-xs text-muted-foreground">1</span>
+                  <div className="flex-1" />
+                  <MoreHorizontal className="h-4 w-4 text-muted-foreground cursor-pointer" />
+                  <Plus className="h-4 w-4 text-muted-foreground cursor-pointer" />
+                </div>
+                <div className="flex-1 rounded-xl p-2 space-y-2 bg-muted/10 border border-transparent">
+                  {filteredTasks.filter(t => t.status === "done").map(task => (
+                    <div key={task.id} className="bg-card p-4 rounded-lg border border-border/40 shadow-sm cursor-pointer hover:border-border transition-colors group opacity-80">
+                      <div className="flex justify-between items-start mb-2">
+                        <p className="text-sm font-medium leading-normal">{task.title}</p>
+                        <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={() => handleDeleteTask(task.id)}>
+                          <Trash2 className="h-3 w-3 text-destructive" />
+                        </Button>
+                      </div>
+                      <div className="flex items-center gap-2 text-muted-foreground mb-4">
+                         <LayoutList className="h-3.5 w-3.5" />
+                      </div>
+                      <div className="flex items-center justify-start text-xs text-muted-foreground gap-3">
+                        {task.assignee && (
+                          <Avatar className="h-6 w-6 border-none grayscale">
+                            <AvatarFallback className="text-[10px] bg-[#6B4DFFFF] text-white font-bold">{task.assignee[0]}</AvatarFallback>
+                          </Avatar>
+                        )}
+                        <div className="flex items-center gap-1 border border-border/40 px-1.5 py-0.5 rounded text-[10px]"><CalendarDays className="h-3 w-3" /> {task.due_date || "No date"}</div>
+                      </div>
+                    </div>
+                  ))}
+                  <div className="flex items-center gap-2 p-2 text-xs font-medium text-muted-foreground hover:text-foreground cursor-pointer mt-1">
+                     <Plus className="h-3.5 w-3.5" /> 
+                     <input 
+                        placeholder="Add Task" 
+                        className="bg-transparent border-none outline-none text-xs flex-1"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            const input = e.currentTarget;
+                            if (input.value && activeCategory) {
+                              setNewTaskTitle(input.value);
+                              openTaskModal(activeCategory, "done");
+                              input.value = "";
+                            }
+                          }
+                        }}
+                     />
+                  </div>
+                </div>
+              </div>
+
+               {/* ADD GROUP */}
+               <div className="w-[300px] shrink-0 flex flex-col gap-3">
+                  <div className="flex items-center gap-2 text-muted-foreground hover:text-foreground cursor-pointer font-medium text-xs mt-1">
+                     <Plus className="h-3.5 w-3.5" /> Add group
+                  </div>
+               </div>
+
+            </div>
+          )}
+
+        </div>
+      </div>
+
+      {/* ─── CREATE SPACE MODAL ─── */}
+      <Dialog open={isSpaceModalOpen} onOpenChange={setIsSpaceModalOpen}>
+        <DialogContent className="sm:max-w-[425px] bg-[#1a1a1a] border-border/40 text-white">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold">Create New Space</DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              Spaces help you organize tasks by project, subject, or team.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-6 py-4">
+            <div className="flex gap-4">
+               <div className="space-y-2">
+                 <label className="text-sm font-semibold">Emoji</label>
+                 <Input 
+                   className="bg-background/50 border-border/40 h-11 w-16 text-center text-xl"
+                   value={newSpaceEmoji}
+                   onChange={(e) => setNewSpaceEmoji(e.target.value)}
+                   placeholder="📂"
+                 />
+               </div>
+               <div className="space-y-2 flex-1">
+                 <label className="text-sm font-semibold">Space Name</label>
+                 <Input 
+                   placeholder="e.g. History Prep, Project X" 
+                   className="bg-background/50 border-border/40 h-11"
+                   value={newSpaceName}
+                   onChange={(e) => setNewSpaceName(e.target.value)}
+                 />
+               </div>
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="ghost" onClick={() => setIsSpaceModalOpen(false)} className="hover:bg-muted/10">
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleAddSpace} 
+              disabled={isSubmitting || !newSpaceName.trim()}
+              className="bg-primary hover:bg-primary/90 px-8"
+            >
+              {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Create Space
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── CREATE TASK MODAL ─── */}
+      <Dialog open={isTaskModalOpen} onOpenChange={setIsTaskModalOpen}>
+        <DialogContent className="sm:max-w-[500px] bg-[#1a1a1a] border-border/40 text-white">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold">Create New Task</DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              Add details to your task to keep track of progress.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-6 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-semibold">Task Title</label>
+              <Input 
+                placeholder="What needs to be done?" 
+                className="bg-background/50 border-border/40 h-11"
+                value={newTaskTitle}
+                onChange={(e) => setNewTaskTitle(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-semibold">Description (Optional)</label>
+              <Textarea 
+                placeholder="Add more context..." 
+                className="bg-background/50 border-border/40 min-h-[80px] resize-none"
+                value={newTaskDescription}
+                onChange={(e) => setNewTaskDescription(e.target.value)}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-semibold">Priority</label>
+                <select 
+                  className="w-full h-11 bg-background/50 border border-border/40 rounded-md px-3 text-sm outline-none focus:ring-1 focus:ring-primary"
+                  value={newTaskPriority}
+                  onChange={(e) => setNewTaskPriority(e.target.value)}
+                >
+                  <option value="Low" className="bg-[#1a1a1a]">Low</option>
+                  <option value="Medium" className="bg-[#1a1a1a]">Medium</option>
+                  <option value="High" className="bg-[#1a1a1a]">High</option>
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-semibold">Due Date</label>
+                <Input 
+                  type="date"
+                  className="bg-background/50 border-border/40 h-11"
+                  value={newTaskDate}
+                  onChange={(e) => setNewTaskDate(e.target.value)}
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="ghost" onClick={() => setIsTaskModalOpen(false)} className="hover:bg-muted/10">
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleAddTask} 
+              disabled={isSubmitting || !newTaskTitle.trim()}
+              className="bg-primary hover:bg-primary/90 px-8"
+            >
+              {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Create Task
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── TASK TEMPLATES MODAL ─── */}
+      <Dialog open={isTemplateModalOpen} onOpenChange={setIsTemplateModalOpen}>
+        <DialogContent className="sm:max-w-[450px] bg-[#1a1a1a] border-border/40 text-white">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold">Task Templates</DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              Select a pre-defined task to quickly add it to your current space.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3 py-4">
+            {[
+              { title: "Weekly Sync", priority: "Medium", description: "Review progress and plan for the next week.", icon: <Clock className="h-5 w-5 text-blue-400" /> },
+              { title: "Homework Submission", priority: "High", description: "Ensure all files are formatted correctly and uploaded.", icon: <FileText className="h-5 w-5 text-rose-400" /> },
+              { title: "Project Milestone", priority: "High", description: "Key deliverable due for the current project phase.", icon: <CheckCircle2 className="h-5 w-5 text-green-400" /> },
+              { title: "Study Session", priority: "Low", description: "Focus time for deep work on current topics.", icon: <Sparkles className="h-5 w-5 text-yellow-400" /> },
+              { title: "Review Feedback", priority: "Medium", description: "Go over instructor comments and make corrections.", icon: <Info className="h-5 w-5 text-purple-400" /> },
+            ].map((tmpl, i) => (
+              <button
+                key={i}
+                onClick={() => handleApplyTemplate(tmpl)}
+                className="flex items-start gap-4 p-4 bg-muted/5 border border-border/20 rounded-2xl hover:bg-muted/10 hover:border-primary/30 transition-all text-left group"
+              >
+                <div className="h-10 w-10 rounded-xl bg-muted/10 flex items-center justify-center shrink-0 group-hover:bg-primary/5 transition-colors">
+                  {tmpl.icon}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="font-bold text-sm tracking-tight">{tmpl.title}</p>
+                    <Badge variant="outline" className={`text-[9px] uppercase font-bold ${tmpl.priority === "High" ? "text-rose-400 border-rose-400/30" : "text-muted-foreground border-border/40"}`}>
+                      {tmpl.priority}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground line-clamp-1">{tmpl.description}</p>
+                </div>
+                <Plus className="h-4 w-4 text-muted-foreground/30 group-hover:text-primary transition-colors ml-2" />
+              </button>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setIsTemplateModalOpen(false)} className="w-full">
+              Cancel
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

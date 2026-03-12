@@ -16,8 +16,11 @@ import { AvatarDisplay, AVATAR_COLORS } from "@/pages/Profile";
 
 const navItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard, emoji: "🏠" },
+  { title: "Teams Hub", url: "/teams", icon: Users, emoji: "👥" },
+  { title: "Workspace", url: "/knowledge-graph", icon: GraduationCap, emoji: "📋" },
   { title: "The Vault", url: "/vault", icon: Library, emoji: "📚" },
   { title: "AI Oracle", url: "/ai-oracle", icon: Bot, emoji: "🤖" },
+  { title: "Whiteboard", url: "/whiteboard", icon: Star, emoji: "🎨" },
   { title: "Meetups", url: "/meetups", icon: Users, emoji: "🤝" },
   { title: "Forums", url: "/forums", icon: MessageSquare, emoji: "💬" },
   { title: "Messages", url: "/messages", icon: MessageSquare, emoji: "💬" },

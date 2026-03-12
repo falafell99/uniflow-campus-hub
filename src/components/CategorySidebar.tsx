@@ -15,16 +15,20 @@ const categories: { label: string; items: NavItem[] }[] = [
     items: [
       { title: "Dashboard", url: "/", emoji: "🏠" },
       { title: "Messages", url: "/messages", emoji: "💌" },
+      { title: "Teams Hub", url: "/teams", emoji: "👥" },
     ],
   },
   {
     label: "STUDY",
     items: [
-      { title: "The Vault", url: "/vault", emoji: "📚" },
-      { title: "Knowledge Graph", url: "/knowledge-graph", emoji: "🧠" },
+      { title: "Workspace", url: "/knowledge-graph", emoji: "📋" },
       { title: "AI Oracle", url: "/ai-oracle", emoji: "🤖" },
-      { title: "Workspace", url: "/workspace", emoji: "📝" },
-      { title: "Study Tools", url: "/flashcards", emoji: "🛠" }, // We'll eventually make this a sub-hub for Pomodoro/Flashcards
+      { title: "The Vault", url: "/vault", emoji: "📚" },
+      { title: "Professor Ratings", url: "/professors", emoji: "⭐" },
+      { title: "Past Exams", url: "/past-exams", emoji: "📝" },
+      { title: "Flashcards", url: "/flashcards", emoji: "🗂️" },
+      { title: "Pomodoro", url: "/pomodoro", emoji: "⏱️" },
+      { title: "Whiteboard", url: "/whiteboard", emoji: "🎨" },
     ],
   },
   {
@@ -32,8 +36,9 @@ const categories: { label: string; items: NavItem[] }[] = [
     items: [
       { title: "Lobby", url: "/forums", emoji: "💬" },
       { title: "Study Circles", url: "/meetups", emoji: "🤝" },
-      { title: "Voice Lounges", url: "/voice-lounges", emoji: "🎙" },
-      { title: "Marketplace & Internships", url: "/marketplace", emoji: "🏪" },
+      { title: "Voice Lounges", url: "/voice-lounges", emoji: "🎙️" },
+      { title: "Internships", url: "/internships", emoji: "💼" },
+      { title: "Studio", url: "/studio", emoji: "🎨" },
     ],
   },
 ];

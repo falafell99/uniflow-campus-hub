@@ -27,7 +27,7 @@ const tools: Tool[] = [
   { id: "audio", title: "Audio Summary", description: "Convert notes into podcast-style audio summaries", icon: <AudioLines className="h-6 w-6" />, color: "text-primary" },
   { id: "presentation", title: "Presentation Generator", description: "Auto-generate slide decks from your notes", icon: <Presentation className="h-6 w-6" />, badge: "BETA", color: "text-warning" },
   { id: "video", title: "Video Summary", description: "Create visual explainers from course material", icon: <PlayCircle className="h-6 w-6" />, color: "text-success" },
-  { id: "mentalmap", title: "Mental Map", description: "Interactive mind maps for any topic", icon: <Network className="h-6 w-6" />, color: "text-info" },
+  { id: "mentalmap", title: "Unified Workspace", description: "Organize your study into spaces and tasks", icon: <Network className="h-6 w-6" />, color: "text-info" },
   { id: "reports", title: "Reports & Tests", description: "Generate quizzes and study reports", icon: <FileCheck className="h-6 w-6" />, color: "text-destructive" },
   { id: "infographics", title: "Infographics", description: "Turn data into beautiful visual summaries", icon: <BarChart3 className="h-6 w-6" />, badge: "BETA", color: "text-warning" },
 ];
@@ -467,7 +467,7 @@ export default function Studio() {
 
   const handleToolClick = (toolId: ToolId) => {
     if (toolId === "mentalmap") {
-      navigate(`/mental-map${fileContext ? `?file=${encodeURIComponent(fileContext)}` : ""}`);
+      navigate(`/knowledge-graph${fileContext ? `?file=${encodeURIComponent(fileContext)}` : ""}`);
       return;
     }
     setActiveTool(toolId);
