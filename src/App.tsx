@@ -17,9 +17,7 @@ import Forums from "@/pages/Forums";
 import Professors from "@/pages/Professors";
 import Toolbox from "@/pages/Toolbox";
 import Profile from "@/pages/Profile";
-import PastExams from "@/pages/PastExams";
 import VoiceLounges from "@/pages/VoiceLounges";
-import Internships from "@/pages/Internships";
 import Flashcards from "@/pages/Flashcards";
 import KnowledgeGraph from "@/pages/KnowledgeGraph";
 import Teams from "@/pages/Teams";
@@ -27,7 +25,6 @@ import Pomodoro from "@/pages/Pomodoro";
 import Workspace from "@/pages/Workspace";
 import Messages from "@/pages/Messages";
 import Studio from "@/pages/Studio";
-import Whiteboard from "@/pages/Whiteboard";
 import Calendar from "@/pages/Calendar";
 import NotFound from "@/pages/NotFound";
 import { Loader2 } from "lucide-react";
@@ -67,10 +64,8 @@ function ProtectedApp() {
             <Route path="/professors" element={<Professors />} />
             <Route path="/toolbox" element={<Toolbox />} />
             <Route path="/profile" element={<Profile />} />
-            <Route path="/past-exams" element={<PastExams />} />
             <Route path="/voice-lounges" element={<VoiceLounges />} />
             <Route path="/teams" element={<Teams />} />
-            <Route path="/internships" element={<Internships />} />
             <Route path="/flashcards" element={<Flashcards />} />
             <Route path="/knowledge-graph" element={<KnowledgeGraph />} />
             <Route path="/pomodoro" element={<Pomodoro />} />
@@ -78,7 +73,6 @@ function ProtectedApp() {
             <Route path="/calendar" element={<Calendar />} />
             <Route path="/messages" element={<Messages />} />
             <Route path="/studio" element={<Studio />} />
-            <Route path="/whiteboard" element={<Whiteboard />} />
             <Route path="/login" element={<Navigate to="/" replace />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

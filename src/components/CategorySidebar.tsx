@@ -25,7 +25,6 @@ const categories: { label: string; items: NavItem[] }[] = [
       { title: "AI Oracle", url: "/ai-oracle", emoji: "🤖" },
       { title: "The Vault", url: "/vault", emoji: "📚" },
       { title: "Professor Ratings", url: "/professors", emoji: "⭐" },
-      { title: "Past Exams", url: "/past-exams", emoji: "📝" },
       { title: "Flashcards", url: "/flashcards", emoji: "🗂️" },
       { title: "Pomodoro", url: "/pomodoro", emoji: "⏱️" },
       { title: "Campus Calendar", url: "/calendar", emoji: "📅" },
@@ -37,7 +36,6 @@ const categories: { label: string; items: NavItem[] }[] = [
       { title: "Lobby", url: "/forums", emoji: "💬" },
       { title: "Study Circles", url: "/meetups", emoji: "🤝" },
       { title: "Voice Lounges", url: "/voice-lounges", emoji: "🎙️" },
-      { title: "Internships", url: "/internships", emoji: "💼" },
       { title: "Studio", url: "/studio", emoji: "🎨" },
     ],
   },
@@ -50,7 +48,7 @@ function getInitials(name: string) {
 export function CategorySidebar() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { voiceRoom } = useApp();
+  const { voiceRoom, activeCommunity } = useApp();
   const { user } = useAuth();
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({
     MAIN: true, STUDY: true, CAMPUS: true,
@@ -108,7 +106,11 @@ export function CategorySidebar() {
     <div className="w-[220px] shrink-0 flex flex-col bg-card/80 backdrop-blur-xl border-r border-border/40 overflow-hidden">
       {/* Server name */}
       <div className="h-12 flex items-center px-4 border-b border-border/40 shrink-0">
-        <h2 className="font-bold text-sm tracking-tight truncate">ELTE · Informatics</h2>
+        <h2 className="font-bold text-sm tracking-tight truncate">
+          {activeCommunity === "informatics" && "ELTE · Informatics"}
+          {activeCommunity === "mathematics" && "ELTE · Mathematics"}
+          {activeCommunity === "personal" && "My Workspace"}
+        </h2>
       </div>
 
       {/* Status */}

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import {
   Send, Sparkles, User, Copy, Check,
-  Loader2, BookOpen, Zap, RotateCcw
+  Loader2, BookOpen, Zap, RotateCcw, Paperclip, X, FileText
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -12,6 +12,9 @@ import { GlassCard } from "@/components/GlassCard";
 import { UserAvatar } from "@/components/UserAvatar";
 import LatexRenderer from "@/components/LatexRenderer";
 import { useAuth } from "@/contexts/AuthContext";
+import { VaultFilePicker } from "@/components/VaultFilePicker";
+import { supabase } from "@/lib/supabase";
+import { useLocation, useNavigate } from "react-router-dom";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Message = {
@@ -47,6 +50,33 @@ const QUICK_PROMPTS = [
 const API_KEY = import.meta.env.VITE_GROQ_API_KEY as string | undefined;
 const GROQ_MODEL = "llama-3.3-70b-versatile";
 
+// ─── Extract text from a PDF via PDF.js (Client-side) ────────────────────────
+async function extractTextFromPDF(storagePath: string): Promise<string> {
+  // Get signed URL for the file
+  const { data } = await supabase.storage.from("vault").createSignedUrl(storagePath, 60);
+  if (!data?.signedUrl) throw new Error("Could not get file URL");
+
+  // Fetch the file as ArrayBuffer
+  const response = await fetch(data.signedUrl);
+  const arrayBuffer = await response.arrayBuffer();
+
+  const pdfjsLib = (window as any).pdfjsLib;
+  if (!pdfjsLib) throw new Error("PDF library not loaded");
+
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  let fullText = "";
+
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    const strings = content.items.map((item: any) => item.str);
+    fullText += strings.join(" ") + "\n";
+  }
+
+  if (!fullText.trim()) throw new Error("No text found in PDF");
+  return fullText;
+}
+
 export default function AITutor() {
   const { user } = useAuth();
   const [messages, setMessages] = useState<Message[]>([
@@ -54,7 +84,7 @@ export default function AITutor() {
       id: 1,
       role: "assistant",
       content: API_KEY
-        ? "Hello! I'm your **AI Oracle** — powered by Llama 3.3 ✨\n\nI'm here to help you understand CS concepts, solve problems, and prepare for ELTE exams. Ask me anything!\n\nTry one of the quick prompts below or type your own question."
+        ? "Hello! I'm your **AI Oracle** — powered by Llama 3.3 ✨\n\nI'm here to help you understand CS concepts, solve problems, and prepare for ELTE exams. Ask me anything!\n\nTip: Click the 📎 button below to attach a lecture from **The Vault** — I'll answer questions specifically about that document."
         : "⚠️ **AI not configured.** Add your Groq API key to `.env.local`:\n\n```\nVITE_GROQ_API_KEY=your_key_here\n```\n\nGet a **free** key (no card needed) at [console.groq.com](https://console.groq.com)",
     },
   ]);
@@ -63,18 +93,68 @@ export default function AITutor() {
   const [loading, setLoading] = useState(false);
   const [streamContent, setStreamContent] = useState("");
   const [copiedId, setCopiedId] = useState<number | null>(null);
+
+  // Vault context state
+  const [vaultPickerOpen, setVaultPickerOpen] = useState(false);
+  const [contextFile, setContextFile] = useState<{ name: string; storagePath: string } | null>(null);
+  const [contextText, setContextText] = useState<string | null>(null);
+  const [extractingContext, setExtractingContext] = useState(false);
+
   const chatRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const location = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
   }, [messages, loading, streamContent]);
 
+  // Auto-attach file if navigated from Vault's "Ask AI" button
+  useEffect(() => {
+    const stateFile = (location.state as any)?.attachFile;
+    if (stateFile?.name && stateFile?.storagePath) {
+      handleAttachFile(stateFile);
+      navigate("/ai-oracle", { replace: true, state: {} });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleAttachFile = async (file: { name: string; storagePath: string }) => {
+    setContextFile(file);
+    setContextText(null);
+    setExtractingContext(true);
+
+    try {
+      const text = await extractTextFromPDF(file.storagePath);
+      setContextText(text);
+      setMessages(prev => [...prev, {
+        id: Date.now(),
+        role: "assistant",
+        content: `📎 I've read **${file.name}** and I'm ready to answer questions about it!\n\nAsk me anything: explain a concept, find a proof, summarize a section, or quiz yourself on its content.`,
+      }]);
+    } catch (err: any) {
+      toast({ title: "Could not read file", description: err.message, variant: "destructive" });
+      setContextFile(null);
+    } finally {
+      setExtractingContext(false);
+    }
+  };
+
+  const clearContext = () => {
+    setContextFile(null);
+    setContextText(null);
+    setMessages(prev => [...prev, {
+      id: Date.now(),
+      role: "assistant",
+      content: "Context cleared. I'm back to general mode — ask me anything!",
+    }]);
+  };
+
   const sendMessage = async (text?: string) => {
     const query = (text || input).trim();
     if (!query || loading) return;
     if (!API_KEY) {
-      toast({ title: "API key missing", description: "Add VITE_GROQ_API_KEY to .env.local — get free key at console.groq.com", variant: "destructive" });
+      toast({ title: "API key missing", description: "Add VITE_GROQ_API_KEY to .env.local", variant: "destructive" });
       return;
     }
 
@@ -86,14 +166,17 @@ export default function AITutor() {
     setStreamContent("");
 
     try {
-      const sysPrompt = studyMode
-        ? SYSTEM_PROMPT + "\n\nSTUDY MODE: Ask Socratic follow-up questions to guide the student's thinking instead of giving direct answers immediately."
-        : SYSTEM_PROMPT;
+      // Build system prompt — inject document context if available
+      let sysPrompt = SYSTEM_PROMPT;
+      if (contextText) {
+        sysPrompt += `\n\n---\n## ATTACHED DOCUMENT: "${contextFile?.name}"\n\nUse the following document as your PRIMARY source. Quote from it directly when relevant. If the question cannot be answered from the document, say so.\n\n${contextText.slice(0, 24000)}\n---`;
+      }
+      if (studyMode) {
+        sysPrompt += "\n\nSTUDY MODE: Ask Socratic follow-up questions to guide the student's thinking instead of giving direct answers immediately.";
+      }
 
-      // Build chat history in OpenAI format
       const chatMessages = [
         { role: "system", content: sysPrompt },
-        // Include last 10 messages for context (skip initial greeting)
         ...messages.slice(1).slice(-10).map((m) => ({
           role: m.role === "user" ? "user" : "assistant",
           content: m.content,
@@ -137,7 +220,7 @@ export default function AITutor() {
             const delta = parsed.choices?.[0]?.delta?.content || "";
             fullText += delta;
             setStreamContent(fullText);
-          } catch { /* skip malformed chunks */ }
+          } catch { /* skip */ }
         }
       }
 
@@ -170,11 +253,11 @@ export default function AITutor() {
     setMessages([{
       id: Date.now(),
       role: "assistant",
-      content: "Chat cleared! Ask me anything about your ELTE courses.",
+      content: contextFile
+        ? `Chat cleared! I still have **${contextFile.name}** attached. Ask me anything about it.`
+        : "Chat cleared! Ask me anything about your ELTE courses.",
     }]);
   };
-
-  const userName = user?.user_metadata?.display_name || user?.email?.split("@")[0] || "You";
 
   return (
     <div className="h-[calc(100vh-5rem)] flex flex-col animate-fade-in">
@@ -183,7 +266,7 @@ export default function AITutor() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
             🤖 AI Oracle
-            {API_KEY && <Badge variant="outline" className="text-[10px] gap-1 h-5 bg-success/10 text-success border-success/20"><Zap className="h-2.5 w-2.5" /> Gemini Live</Badge>}
+            {API_KEY && <Badge variant="outline" className="text-[10px] gap-1 h-5 bg-success/10 text-success border-success/20"><Zap className="h-2.5 w-2.5" /> Live</Badge>}
           </h1>
           <p className="text-muted-foreground mt-1">Your personal ELTE research assistant</p>
         </div>
@@ -194,10 +277,29 @@ export default function AITutor() {
             <Switch checked={studyMode} onCheckedChange={setStudyMode} />
           </div>
           <Button variant="ghost" size="sm" className="gap-1.5 text-xs text-muted-foreground" onClick={clearChat}>
-            <RotateCcw className="h-3.5 w-3.5" /> Clear
+            <RotateCcw className="h-3.5 w-3.5" />Clear
           </Button>
         </div>
       </div>
+
+      {/* Active context banner */}
+      {contextFile && (
+        <div className={`flex items-center gap-2 px-3 py-2 rounded-xl mb-3 shrink-0 border ${extractingContext ? "bg-muted/30 border-border/40" : "bg-primary/5 border-primary/20"}`}>
+          {extractingContext ? (
+            <Loader2 className="h-4 w-4 text-primary animate-spin shrink-0" />
+          ) : (
+            <FileText className="h-4 w-4 text-primary shrink-0" />
+          )}
+          <span className="text-xs font-semibold flex-1 truncate">
+            {extractingContext ? "Reading document..." : `Context: ${contextFile.name}`}
+          </span>
+          {!extractingContext && (
+            <button onClick={clearContext} className="text-muted-foreground hover:text-destructive transition-colors">
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Chat area */}
       <div ref={chatRef} className="flex-1 glass-card p-5 overflow-y-auto space-y-5 mb-4 custom-scroll min-h-0">
@@ -228,7 +330,7 @@ export default function AITutor() {
           </div>
         ))}
 
-        {/* Live streaming message */}
+        {/* Live streaming */}
         {loading && streamContent && (
           <div className="flex gap-3 animate-fade-in">
             <UserAvatar Icon={Sparkles} className="mt-1 shrink-0" />
@@ -239,7 +341,6 @@ export default function AITutor() {
           </div>
         )}
 
-        {/* Loading (before first chunk) */}
         {loading && !streamContent && (
           <div className="flex gap-3 animate-fade-in">
             <UserAvatar Icon={Sparkles} className="mt-1 shrink-0" />
@@ -251,8 +352,8 @@ export default function AITutor() {
         )}
       </div>
 
-      {/* Quick prompts (only show when chat is just the greeting) */}
-      {messages.length === 1 && API_KEY && (
+      {/* Quick prompts */}
+      {messages.length === 1 && API_KEY && !contextFile && (
         <div className="flex flex-wrap gap-2 mb-3 shrink-0">
           {QUICK_PROMPTS.map((p) => (
             <button
@@ -268,9 +369,27 @@ export default function AITutor() {
 
       {/* Input */}
       <GlassCard padding="p-3" className="flex gap-2 items-end shrink-0">
+        {/* Attach from Vault button */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className={`shrink-0 h-9 w-9 ${contextFile ? "text-primary" : "text-muted-foreground"}`}
+          onClick={() => setVaultPickerOpen(true)}
+          disabled={extractingContext}
+          title="Attach context from Vault"
+        >
+          <Paperclip className="h-4 w-4" />
+        </Button>
+
         <Textarea
           ref={inputRef}
-          placeholder={studyMode ? "Ask a study question (Socratic mode — AI will guide you)..." : "Ask anything about your ELTE courses..."}
+          placeholder={
+            contextFile
+              ? `Ask about "${contextFile.name}"...`
+              : studyMode
+                ? "Ask a study question (Socratic mode)..."
+                : "Ask anything about your ELTE courses..."
+          }
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => {
@@ -278,15 +397,21 @@ export default function AITutor() {
           }}
           className="border-0 bg-transparent focus-visible:ring-0 resize-none min-h-[40px] max-h-[120px]"
           rows={1}
-          disabled={loading}
+          disabled={loading || extractingContext}
         />
-        <Button onClick={() => sendMessage()} size="icon" className="shrink-0 h-9 w-9" disabled={loading || !input.trim()}>
+        <Button onClick={() => sendMessage()} size="icon" className="shrink-0 h-9 w-9" disabled={loading || !input.trim() || extractingContext}>
           <Send className="h-4 w-4" />
         </Button>
       </GlassCard>
       <p className="text-center text-[10px] text-muted-foreground mt-2">
-        Press Enter to send · Shift+Enter for new line · Powered by Google Gemini
+        📎 Attach lecture PDFs from The Vault · Press Enter to send · Powered by Llama 3.3 + PDF.js
       </p>
+
+      <VaultFilePicker
+        open={vaultPickerOpen}
+        onOpenChange={setVaultPickerOpen}
+        onSelect={handleAttachFile}
+      />
     </div>
   );
 }

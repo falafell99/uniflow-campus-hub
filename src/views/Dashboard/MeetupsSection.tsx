@@ -63,10 +63,11 @@ export function MeetupsSection({ meetups, loading }: MeetupsSectionProps) {
           joined.map((m) => (
             <div
               key={m.id}
-              className="glass-subtle p-3.5 flex items-center justify-between transition-all duration-300"
+              onClick={() => navigate("/meetups")}
+              className="glass-subtle p-3.5 flex items-center justify-between transition-all duration-300 hover:bg-muted/30 hover:shadow-md cursor-pointer border border-transparent hover:border-primary/20 group"
             >
               <div className="min-w-0 flex-1">
-                <h3 className="font-medium text-sm truncate">{m.topic}</h3>
+                <h3 className="font-medium text-sm truncate group-hover:text-primary transition-colors">{m.topic}</h3>
                 <div className="flex items-center gap-3 mt-1.5 text-xs text-muted-foreground">
                   <span className="flex items-center gap-1">
                     <Clock className="h-3 w-3" />{m.time}
@@ -78,7 +79,7 @@ export function MeetupsSection({ meetups, loading }: MeetupsSectionProps) {
               </div>
               <div className="flex items-center gap-2 ml-3 shrink-0">
                 <span className="text-xs text-muted-foreground">{m.attendees}/{m.max}</span>
-                <Button size="sm" className="h-7 text-xs">Joined ✓</Button>
+                <Button size="sm" className="h-7 text-xs pointer-events-none">Joined ✓</Button>
               </div>
             </div>
           ))

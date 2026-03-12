@@ -9,6 +9,7 @@ import { FileTree, FileCard, type FileItem } from "./FileTree";
 import { PreviewModal } from "./PreviewModal";
 import { UploadDialog, SEMESTER_COURSES, ELECTIVE_COURSES, SECTIONS } from "./UploadDialog";
 import { supabase } from "@/lib/supabase";
+import { LiveNoteEditor } from "./LiveNoteEditor";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type VaultFile = {
@@ -172,6 +173,7 @@ export default function Vault() {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
   const [typeFilter, setTypeFilter] = useState("All");
+  const [noteOpen, setNoteOpen] = useState(false);
 
   const loadFiles = async () => {
     setLoading(true);
@@ -217,9 +219,14 @@ export default function Vault() {
           <h1 className="text-2xl font-bold tracking-tight">📚 The Vault</h1>
           <p className="text-muted-foreground mt-1 text-sm">ELTE CS BSc · Browse, preview & share academic resources</p>
         </div>
-        <Button className="gap-2" onClick={() => setUploadOpen(true)}>
-          <Upload className="h-4 w-4" /> Upload File
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" className="gap-2" onClick={() => setNoteOpen(true)}>
+            📝 New Live Note
+          </Button>
+          <Button className="gap-2" onClick={() => setUploadOpen(true)}>
+            <Upload className="h-4 w-4" /> Upload File
+          </Button>
+        </div>
       </div>
 
       {/* Search + Filters + View toggle */}
@@ -307,6 +314,7 @@ export default function Vault() {
 
       <PreviewModal file={previewFile} onClose={() => setPreviewFile(null)} />
       <UploadDialog open={uploadOpen} onClose={() => setUploadOpen(false)} onUploaded={loadFiles} />
+      <LiveNoteEditor open={noteOpen} onOpenChange={setNoteOpen} />
     </div>
   );
 }

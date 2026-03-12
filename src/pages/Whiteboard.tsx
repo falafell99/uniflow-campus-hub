@@ -14,6 +14,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "@/hooks/use-toast";
 
 type ElementType = "sticky" | "shape" | "text" | "path";
 
@@ -34,8 +37,14 @@ const COLORS = [
   "#FFEB3B", "#FFCDD2", "#C8E6C9", "#BBDEFB", "#E1BEE7", "#F5F5F5", "#212121"
 ];
 
-export default function Whiteboard() {
+interface WhiteboardProps {
+  roomId?: string;
+  embedded?: boolean;
+}
+
+export default function Whiteboard({ roomId, embedded = false }: WhiteboardProps) {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [elements, setElements] = useState<CanvasElement[]>([]);
   const [history, setHistory] = useState<CanvasElement[][]>([]);
   const [redoStack, setRedoStack] = useState<CanvasElement[][]>([]);
@@ -57,7 +66,47 @@ export default function Whiteboard() {
     setHistory(prev => [...prev, elements]);
     setRedoStack([]);
     setElements(newElements);
+    saveToSupabase(newElements);
   };
+
+  const saveToSupabase = async (newElements: CanvasElement[]) => {
+    if (!roomId) return;
+    try {
+      await supabase.from("whiteboards").upsert({
+        id: roomId,
+        elements: newElements,
+        updated_at: new Date().toISOString()
+      });
+    } catch (e) {
+      console.warn("Failed to save whiteboard:", e);
+    }
+  };
+
+  useEffect(() => {
+    if (!roomId) return;
+
+    // Load initial data
+    const loadData = async () => {
+      const { data, error } = await supabase.from("whiteboards").select("elements").eq("id", roomId).single();
+      if (data && data.elements) {
+        setElements(data.elements as CanvasElement[]);
+      }
+    };
+    loadData();
+
+    // Subscribe to changes
+    const channel = supabase.channel(`whiteboard:${roomId}`)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'whiteboards', filter: `id=eq.${roomId}` }, payload => {
+        if (payload.new && payload.new.elements) {
+          setElements(payload.new.elements as CanvasElement[]);
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [roomId]);
 
   const undo = () => {
     if (history.length === 0) return;
@@ -185,12 +234,14 @@ export default function Whiteboard() {
   const handleMouseUp = () => {
     if (isDrawing || isDragging) {
       // Capture state for history when finishing a drag or draw
-      setHistory(prev => [...prev, elements.map(el => 
+      const nextElements = elements.map(el => 
         el.id === selectedId && isDragging 
-          ? { ...el } // Ensure we capture the final state if needed, though state is already updated
+          ? { ...el } 
           : el
-      )]);
+      );
+      setHistory(prev => [...prev, nextElements]);
       setRedoStack([]);
+      saveToSupabase(nextElements);
     }
     setIsDragging(false);
     setIsPanning(false);
@@ -225,13 +276,15 @@ export default function Whiteboard() {
   };
 
   return (
-    <div className="animate-fade-in h-[calc(100vh-5rem)] flex flex-col relative overflow-hidden bg-[#121212]">
+    <div className={`animate-fade-in flex flex-col relative overflow-hidden bg-[#121212] ${embedded ? "h-full rounded-2xl border border-border/40" : "h-[calc(100vh-5rem)]"}`}>
       {/* Header */}
       <div className="absolute top-4 left-4 right-4 z-50 flex items-center justify-between pointer-events-none">
         <div className="flex items-center gap-3 pointer-events-auto">
-          <Button variant="ghost" size="sm" onClick={() => navigate("/studio")} className="bg-background/80 backdrop-blur-md">
-            <ChevronLeft className="h-4 w-4 mr-1" /> Studio
-          </Button>
+          {!embedded && (
+            <Button variant="ghost" size="sm" onClick={() => navigate("/studio")} className="bg-background/80 backdrop-blur-md">
+              <ChevronLeft className="h-4 w-4 mr-1" /> Studio
+            </Button>
+          )}
           <div className="px-3 py-1.5 bg-background/80 backdrop-blur-md rounded-lg border border-border/40 shadow-sm">
             <h1 className="text-sm font-bold tracking-tight flex items-center gap-2">
               🎨 Whiteboard

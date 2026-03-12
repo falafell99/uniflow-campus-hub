@@ -18,6 +18,8 @@ import { useApp } from "@/contexts/AppContext";
 import { toast } from "@/hooks/use-toast";
 import { AvatarDisplay, AVATAR_COLORS } from "@/pages/Profile";
 import { PublicProfileModal } from "@/components/PublicProfileModal";
+import Whiteboard from "@/pages/Whiteboard";
+import { Palette } from "lucide-react";
 
 // Fallback ensures App ID always has a value even if Vite env hasn't picked up .env.local
 const AGORA_APP_ID: string = import.meta.env.VITE_AGORA_APP_ID ?? "14ba5447c00842149f1b6ae0316a1ce1";
@@ -153,6 +155,7 @@ export default function VoiceLounges() {
   const [connecting, setConnecting] = useState(false);
   const [muted, setMuted] = useState(false);
   const [deafened, setDeafened] = useState(false);
+  const [showWhiteboard, setShowWhiteboard] = useState(false);
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
 
   // Participants: map from uid → Participant — initialized from module-level cache
@@ -355,6 +358,7 @@ export default function VoiceLounges() {
     setMyUid(null);
     setMuted(false);
     setDeafened(false);
+    setShowWhiteboard(false);
     setVolumeMap({});
     setVoiceRoom(null);
     toast({ title: "Left voice room" });
@@ -446,6 +450,9 @@ export default function VoiceLounges() {
             <Button variant={deafened ? "destructive" : "outline"} size="icon" className="h-8 w-8" onClick={toggleDeafen}>
               {deafened ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
             </Button>
+            <Button variant={showWhiteboard ? "default" : "outline"} size="sm" className="gap-1.5 ml-2" onClick={() => setShowWhiteboard(!showWhiteboard)}>
+              <Palette className="h-3.5 w-3.5" /> {showWhiteboard ? "Hide Board" : "Board"}
+            </Button>
             <Button variant="destructive" size="sm" className="gap-1.5 ml-2" onClick={leaveRoom}>
               <PhoneOff className="h-3.5 w-3.5" /> Leave
             </Button>
@@ -453,8 +460,13 @@ export default function VoiceLounges() {
         </div>
       )}
 
-      {/* Room grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {/* Main Content Area */}
+      {showWhiteboard && joinedRoom ? (
+        <div className="flex-1 h-[70vh] min-h-[600px]">
+          <Whiteboard roomId={`lounge-${joinedRoom.id}`} embedded />
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {allRooms.map((room) => {
           const isJoined = joinedRoom?.id === room.id;
           const roomParticipants = getRoomParticipants(room.id);
@@ -565,6 +577,7 @@ export default function VoiceLounges() {
           );
         })}
       </div>
+      )}
 
       {/* Modal overlays */}
       <PublicProfileModal userId={selectedProfileId} onClose={() => setSelectedProfileId(null)} />

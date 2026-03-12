@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { FileText, Download, X, ExternalLink, Loader2, Image, FileCode } from "lucide-react";
+import { FileText, Download, X, ExternalLink, Loader2, Image, FileCode, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ResourceBadge } from "@/components/ResourceBadge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { type FileItem } from "./FileTree";
+import { useNavigate } from "react-router-dom";
 
 interface PreviewModalProps {
   file: FileItem | null;
@@ -89,6 +90,7 @@ function PreviewContent({ file }: { file: FileItem }) {
 }
 
 export function PreviewModal({ file, onClose }: PreviewModalProps) {
+  const navigate = useNavigate();
   if (!file) return null;
 
   return (
@@ -125,6 +127,16 @@ export function PreviewModal({ file, onClose }: PreviewModalProps) {
           ) : (
             <Button className="flex-1 gap-2" disabled>
               <Download className="h-4 w-4" /> No file stored
+            </Button>
+          )}
+          {file.storage_path && (
+            <Button
+              variant="outline"
+              className="gap-1.5 shrink-0"
+              onClick={() => { onClose(); navigate("/ai-oracle", { state: { attachFile: { name: file.name, storagePath: file.storage_path } } }); }}
+            >
+              <Sparkles className="h-4 w-4 text-primary" />
+              Ask AI
             </Button>
           )}
           {file.storage_url && (

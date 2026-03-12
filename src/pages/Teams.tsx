@@ -2,10 +2,11 @@ import { useState, useEffect, useCallback } from "react";
 import { 
   Users, User, BarChart3, Plus, Search, ArrowRight,
   ShieldCheck, UserPlus, MessageSquare, ChevronLeft,
-  MoreVertical, Settings, Loader2, Trash2, Crown,
+  MoreVertical, Settings, Loader2, Trash2, Crown, Palette,
   Eye, Edit3, X, Check, Activity, Clock, TrendingUp,
   BookmarkPlus, Pencil, Info
 } from "lucide-react";
+import Whiteboard from "@/pages/Whiteboard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -44,7 +45,7 @@ interface TeamMember {
 }
 
 type SidebarTab = "all-teams" | "all-people" | "analytics";
-type TeamTab = "overview" | "analytics" | "members" | "priorities";
+type TeamTab = "overview" | "whiteboard" | "analytics" | "members" | "priorities";
 
 const ROLE_COLORS: Record<string, string> = {
   owner: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20",
@@ -411,6 +412,7 @@ export default function Teams() {
               <div className="flex gap-1 -mb-px">
                 {([
                   { id: "overview", label: "Overview", icon: <Info className="h-3.5 w-3.5" /> },
+                  { id: "whiteboard", label: "Whiteboard", icon: <Palette className="h-3.5 w-3.5" /> },
                   { id: "analytics", label: "Analytics", icon: <BarChart3 className="h-3.5 w-3.5" /> },
                   { id: "members", label: "Members", icon: <Users className="h-3.5 w-3.5" />, count: teamMembers.length },
                   { id: "priorities", label: "Priorities", icon: <Activity className="h-3.5 w-3.5" /> },
@@ -435,7 +437,14 @@ export default function Teams() {
             </div>
 
             {/* Tab Content */}
-            <div className="flex-1 overflow-y-auto custom-scroll">
+            <div className="flex-1 flex flex-col overflow-y-auto custom-scroll min-h-0">
+
+              {/* WHITEBOARD TAB */}
+              {teamTab === "whiteboard" && (
+                <div className="flex-1 p-4 lg:p-6" style={{ minHeight: '600px' }}>
+                  <Whiteboard roomId={`team-${selectedTeam.id}`} embedded />
+                </div>
+              )}
 
               {/* OVERVIEW TAB */}
               {teamTab === "overview" && (

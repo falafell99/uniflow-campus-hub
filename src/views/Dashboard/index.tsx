@@ -112,8 +112,8 @@ function StatsSection({ stats, loading }: { stats: StatDef[]; loading: boolean }
 
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 export default function Dashboard() {
-  const { meetups } = useMeetups();
-  const { favorites, toggleFavorite } = useApp();
+  const { meetups, loading: meetupsLoading } = useMeetups();
+  const { favorites, toggleFavorite, activeCommunity } = useApp();
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [statsLoading, setStatsLoading] = useState(true);
@@ -194,9 +194,33 @@ export default function Dashboard() {
     if (user) loadStats();
   }, [user, displayName]);
 
-  const favoriteResources = trendingResources.filter((r) => favorites.includes(r.id));
+  // Filtering logic based on community
+  const mathSubjects = ["Linear Algebra", "Calculus I", "Calculus II", "Discrete Math", "Probability Theory"];
+  const infoSubjects = ["Algorithms", "Data Structures", "Operating Systems", "Programming"];
+
+  const filteredMeetups = meetups.filter((m) => {
+    if (activeCommunity === "personal") return true;
+    if (activeCommunity === "mathematics") return mathSubjects.includes(m.subject);
+    if (activeCommunity === "informatics") return infoSubjects.includes(m.subject);
+    return true;
+  });
+
+  const filteredTrending = trendingResources.filter((r) => {
+    if (activeCommunity === "personal") return true;
+    // We try to match title or tag
+    if (activeCommunity === "mathematics") {
+      return mathSubjects.some(s => r.title.includes(s) || r.tag.includes(s));
+    }
+    if (activeCommunity === "informatics") {
+      return infoSubjects.some(s => r.title.includes(s) || r.tag.includes(s));
+    }
+    return true;
+  });
+
+  const favoriteResources = filteredTrending.filter((r) => favorites.includes(r.id));
 
   const activityStats: StatDef[] = [
+    // ... same stats ...
     {
       label: "Files in The Vault",
       value: String(vaultCount),
@@ -234,16 +258,18 @@ export default function Dashboard() {
         <h1 className="text-2xl font-bold tracking-tight text-foreground">
           Welcome back, {firstName} 👋
         </h1>
-        <p className="text-muted-foreground mt-1">Here's what's happening at ELTE Informatics today.</p>
+        <p className="text-muted-foreground mt-1 text-sm">
+          Currently in <span className="text-primary font-medium">{activeCommunity === "informatics" ? "Informatics Faculty" : activeCommunity === "mathematics" ? "Mathematics Faculty" : "Your Personal Workspace"}</span>
+        </p>
       </div>
 
       <FavoritesSection resources={favoriteResources} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
-          <MeetupsSection meetups={meetups} loading={loading} />
+          <MeetupsSection meetups={filteredMeetups} loading={meetupsLoading} />
           <TrendingSection
-            resources={trendingResources}
+            resources={filteredTrending}
             favorites={favorites}
             onToggleFavorite={toggleFavorite}
             onAuthorClick={(id) => setSelectedProfileId(id)}

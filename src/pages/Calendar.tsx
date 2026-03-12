@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { 
   ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon,
   Video, BookOpen, Clock, User, Sparkles, X, Loader2, Trash2, Upload
@@ -11,6 +11,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { SyllabusImporter } from "@/components/SyllabusImporter";
+import { Settings2 } from "lucide-react";
 
 type EventType = "exam" | "deadline" | "meetup" | "personal";
 
@@ -22,6 +24,7 @@ interface CampusEvent {
   start_time: string;
   end_time: string | null;
   user_id: string;
+  calendar_name?: string | null;
 }
 
 const EVENT_COLORS: Record<EventType, string> = {
@@ -48,6 +51,7 @@ export default function Calendar() {
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDayModalOpen, setIsDayModalOpen] = useState(false);
+  const [isSyllabusModalOpen, setIsSyllabusModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   
   // New Event Form State
@@ -58,6 +62,21 @@ export default function Calendar() {
   const [endTime, setEndTime] = useState("10:00");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const [showCalendarsPanel, setShowCalendarsPanel] = useState(false);
+  // Map of calendarName -> hex color
+  const [calendarColors, setCalendarColors] = useState<Record<string, string>>({});
+  const weekGridRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (calendarView === "week" && weekGridRef.current) {
+      // Small timeout ensures the DOM layout is calculated before scrolling
+      setTimeout(() => {
+        if (weekGridRef.current) {
+          weekGridRef.current.scrollTop = 8 * 60;
+        }
+      }, 50);
+    }
+  }, [calendarView]);
 
   useEffect(() => {
     fetchEvents();
@@ -85,6 +104,17 @@ export default function Calendar() {
         
       if (error) throw error;
       setEvents(data || []);
+      // Auto-detect unique calendar sources from events
+      const sourceColors: Record<string, string> = {};
+      const palette = ["#6366f1","#10b981","#f59e0b","#3b82f6","#ec4899","#8b5cf6","#14b8a6","#f97316"];
+      let colorIdx = 0;
+      (data || []).forEach((e: CampusEvent) => {
+        if (e.calendar_name && !sourceColors[e.calendar_name]) {
+          sourceColors[e.calendar_name] = palette[colorIdx % palette.length];
+          colorIdx++;
+        }
+      });
+      setCalendarColors(prev => ({ ...sourceColors, ...prev }));
     } catch (error: any) {
       console.error("Error fetching events:", error);
     } finally {
@@ -177,6 +207,7 @@ export default function Calendar() {
       const comp = new ICAL.Component(jcalData);
       const vevents = comp.getAllSubcomponents("vevent");
 
+      const calendarName = file.name.replace(/\.ics$/i, "");
       const newEvents = vevents.map(vevent => {
         const event = new ICAL.Event(vevent);
         return {
@@ -185,7 +216,8 @@ export default function Calendar() {
           event_type: "personal" as EventType,
           start_time: event.startDate.toJSDate().toISOString(),
           end_time: event.endDate ? event.endDate.toJSDate().toISOString() : null,
-          user_id: user.id
+          user_id: user.id,
+          calendar_name: calendarName,
         };
       });
 
@@ -213,16 +245,16 @@ export default function Calendar() {
 
   const renderHeader = () => {
     return (
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col xl:flex-row justify-between xl:items-center mb-4 gap-4 shrink-0">
         <div>
-          <h1 className="text-3xl font-black text-foreground tracking-tight flex items-center gap-3">
-            <CalendarIcon className="h-8 w-8 text-primary" />
+          <h1 className="text-2xl lg:text-3xl font-black text-foreground tracking-tight flex items-center gap-3">
+            <CalendarIcon className="h-6 w-6 lg:h-8 lg:w-8 text-primary" />
             Campus Calendar
           </h1>
-          <p className="text-muted-foreground mt-1">Track your exams, deadlines, and meetups</p>
+          <p className="text-sm lg:text-base text-muted-foreground mt-1">Track your exams, deadlines, and meetups</p>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="flex bg-muted/30 p-1 rounded-lg border border-border/40 mr-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex bg-muted/30 p-1 rounded-lg border border-border/40">
             <button onClick={() => setCalendarView("month")} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${calendarView === "month" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}>Month</button>
             <button onClick={() => setCalendarView("week")} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${calendarView === "week" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}>Week</button>
           </div>
@@ -234,23 +266,35 @@ export default function Calendar() {
           </div>
           <Button variant="outline" size="sm" onClick={jumpToToday}>Today</Button>
           
-          <div className="relative">
-            <input 
-              type="file" 
-              accept=".ics" 
-              onChange={handleImportIcs} 
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-              disabled={isImporting}
-            />
-            <Button variant="secondary" className="font-bold relative pointer-events-none" disabled={isImporting}>
-              {isImporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />} 
-              Import .ICS
+            <Button onClick={() => setShowCalendarsPanel(!showCalendarsPanel)} size="sm" variant={showCalendarsPanel ? "default" : "outline"} className="shrink-0">
+              <Settings2 className="h-4 w-4 mr-1.5" />
+              Calendars
             </Button>
-          </div>
-
-          <Button onClick={openNewEventModal} className="font-bold">
-            <Plus className="h-4 w-4 mr-2" /> Add Event
-          </Button>
+            
+            <div className="relative flex items-center">
+              <input 
+                type="file" 
+                accept=".ics" 
+                onChange={handleImportIcs} 
+                className="absolute inset-0 opacity-0 cursor-pointer z-10 w-full"
+                title="Import .ICS file"
+                disabled={isImporting}
+              />
+              <Button variant="outline" size="sm" className="w-full shrink-0" disabled={isImporting}>
+                {isImporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
+                Import .ICS
+              </Button>
+            </div>
+            
+            <Button onClick={() => setIsSyllabusModalOpen(true)} size="sm" variant="default" className="shrink-0 bg-indigo-600 hover:bg-indigo-700 text-white border-0">
+              <Sparkles className="h-4 w-4 mr-1.5" />
+              AI Syllabus Sync
+            </Button>
+            
+            <Button onClick={openNewEventModal} size="sm" variant="outline" className="shrink-0">
+              <Plus className="h-4 w-4 mr-1" />
+              Add Event
+            </Button>
         </div>
       </div>
     );
@@ -344,7 +388,7 @@ export default function Calendar() {
       );
       days = [];
     }
-    return <div className="rounded-xl overflow-hidden border border-border/40 shadow-sm">{rows}</div>;
+    return <div className="rounded-xl overflow-hidden border border-border/40 shadow-sm flex-1 custom-scroll min-h-0 overflow-y-auto">{rows}</div>;
   };
 
   const renderWeekView = () => {
@@ -353,7 +397,7 @@ export default function Calendar() {
     const hours = Array.from({ length: 24 }, (_, i) => i);
 
     return (
-      <div className="flex flex-col h-[65vh] min-h-[500px] border border-border/40 rounded-3xl bg-card overflow-hidden shadow-sm relative z-10 w-full">
+      <div className="flex flex-col flex-1 border border-border/40 rounded-3xl bg-card overflow-hidden shadow-sm relative z-10 w-full min-h-0">
         {/* Header */}
         <div className="flex border-b border-border/40 bg-muted/20">
           <div className="w-16 shrink-0 border-r border-border/40" />
@@ -372,7 +416,7 @@ export default function Calendar() {
         </div>
         
         {/* Grid Body */}
-        <div className="flex-1 overflow-y-auto relative custom-scroll block" id="week-grid">
+        <div ref={weekGridRef} className="flex-1 overflow-y-auto relative custom-scroll block" id="week-grid">
           <div className="flex min-h-max relative" style={{ height: `${24 * 60}px` }}>
             {/* Time Labels */}
             <div className="w-16 shrink-0 border-r border-border/40 relative bg-background/50 z-10">
@@ -394,13 +438,52 @@ export default function Calendar() {
 
               {/* Day Columns */}
               {days.map((day, dayIndex) => {
-                const dayEvents = events.filter(e => isSameDay(parseISO(e.start_time), day));
-                
+                const dayEvents = events
+                  .filter(e => isSameDay(parseISO(e.start_time), day))
+                  .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
+
+                // Overlap detection: assign column slots
+                type EvtLayout = { event: CampusEvent; col: number; totalCols: number; top: number; height: number };
+                const layout: EvtLayout[] = [];
+                // columns[i] = end-time of last event in column i
+                const colEnds: number[] = [];
+
+                dayEvents.forEach(event => {
+                  const evtStartDate = parseISO(event.start_time);
+                  const evtEndDate = event.end_time ? parseISO(event.end_time) : new Date(evtStartDate.getTime() + 60 * 60 * 1000);
+                  const startPx = (evtStartDate.getHours() + evtStartDate.getMinutes() / 60) * 60;
+                  const endPx = (evtEndDate.getHours() + evtEndDate.getMinutes() / 60) * 60;
+                  const height = Math.max(30, endPx - startPx);
+                  // Use visual end (startPx + height) so zero-duration events still occupy space
+                  const visualEnd = startPx + height;
+
+                  // Find a free column: strictly less-than so events starting at exact same px don't share a slot
+                  let col = colEnds.findIndex(end => end <= startPx);
+                  if (col === -1) { col = colEnds.length; colEnds.push(visualEnd); } else { colEnds[col] = visualEnd; }
+
+                  layout.push({ event, col, totalCols: 0, top: startPx, height });
+                });
+
+                // Assign totalCols by grouping overlapping events
+                layout.forEach((item, i) => {
+                  // Find the max column index of all events that overlap with this one
+                  let maxCol = item.col;
+                  layout.forEach((other, j) => {
+                    if (i !== j) {
+                      const overlaps = item.top < other.top + other.height && item.top + item.height > other.top;
+                      if (overlaps) maxCol = Math.max(maxCol, other.col);
+                    }
+                  });
+                  item.totalCols = maxCol + 1;
+                });
+
+                const PADDING = 3;
+
                 return (
                   <div key={`col-${dayIndex}`} className="flex-1 relative border-r border-border/20 last:border-r-0 group/col">
-                    {/* Clickable background slots container */}
-                    <div 
-                      className="absolute inset-0 cursor-pointer hover:bg-muted/5 transition-colors" 
+                    {/* Clickable background */}
+                    <div
+                      className="absolute inset-0 cursor-pointer hover:bg-muted/5 transition-colors"
                       onClick={(e) => {
                         const rect = e.currentTarget.getBoundingClientRect();
                         const y = e.clientY - rect.top;
@@ -409,32 +492,37 @@ export default function Calendar() {
                       }}
                     />
 
-                    {/* Events */}
-                    {dayEvents.map(event => {
-                       const evtStartDate = parseISO(event.start_time);
-                       const evtStartHour = evtStartDate.getHours() + (evtStartDate.getMinutes() / 60);
-                       
-                       const evtEndDate = event.end_time ? parseISO(event.end_time) : new Date(evtStartDate.getTime() + 60 * 60 * 1000);
-                       const evtEndHour = evtEndDate.getHours() + (evtEndDate.getMinutes() / 60);
-                       const durationHours = Math.max(0.5, evtEndHour - evtStartHour);
+                    {layout.map(({ event, col, totalCols, top, height }) => {
+                      const w = 100 / totalCols;
+                      const left = col * w;
+                      const calColor = event.calendar_name ? calendarColors[event.calendar_name] : null;
+                      const style: React.CSSProperties = {
+                        top: `${top}px`,
+                        height: `${height}px`,
+                        left: `calc(${left}% + ${PADDING}px)`,
+                        width: `calc(${w}% - ${PADDING * 2}px)`,
+                        ...(calColor ? {
+                          backgroundColor: calColor + "28",
+                          borderColor: calColor + "66",
+                          color: calColor,
+                        } : {}),
+                      };
 
-                       return (
-                         <div 
-                           key={event.id}
-                           className={`absolute left-1 right-1 rounded-md border p-1.5 text-xs overflow-hidden group/event hover:shadow-md cursor-pointer transition-all hover:scale-[1.02] hover:z-20 ${EVENT_COLORS[event.event_type]}`}
-                           style={{
-                             top: `${evtStartHour * 60}px`,
-                             height: `${durationHours * 60}px`
-                           }}
-                           onClick={(e) => { e.stopPropagation(); openDayDetailModal(day); }}
-                         >
-                            <div className="font-bold truncate text-[10px] leading-tight flex items-center gap-1">
-                              {EVENT_ICONS[event.event_type]}
-                              <span className="truncate">{event.title}</span>
-                            </div>
-                            <div className="text-[9px] font-semibold opacity-80 mt-0.5">{format(evtStartDate, "h:mm a")}</div>
-                         </div>
-                       );
+                      return (
+                        <div
+                          key={event.id}
+                          className={`absolute rounded-md border p-1 text-xs overflow-hidden cursor-pointer hover:shadow-md hover:z-20 transition-all ${!calColor ? EVENT_COLORS[event.event_type] : ""}`}
+                          style={style}
+                          onClick={(e) => { e.stopPropagation(); openDayDetailModal(day); }}
+                        >
+                          <div className="font-bold truncate leading-tight flex items-center gap-0.5" style={{ fontSize: "10px" }}>
+                            {!calColor && EVENT_ICONS[event.event_type]}
+                            {calColor && <span className="inline-block w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: calColor }} />}
+                            <span className="truncate">{event.title}</span>
+                          </div>
+                          <div className="opacity-80 mt-0.5" style={{ fontSize: "9px" }}>{format(parseISO(event.start_time), "h:mm a")}</div>
+                        </div>
+                      );
                     })}
                   </div>
                 );
@@ -448,23 +536,47 @@ export default function Calendar() {
 
   if (loading) {
     return (
-      <div className="flex-1 min-h-screen flex items-center justify-center">
+      <div className="flex-1 h-full flex items-center justify-center min-h-[500px]">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
       </div>
     );
   }
 
   return (
-    <div className="flex-1 p-8 max-w-7xl mx-auto w-full animate-in fade-in duration-500">
+    <div className="flex flex-col w-full h-[calc(100vh-100px)] animate-in fade-in duration-500 overflow-hidden">
       {renderHeader()}
       
-      <div className="bg-card p-6 rounded-3xl border border-border/50 shadow-2xl relative overflow-hidden">
+      <div className="flex-1 bg-card p-3 lg:p-6 rounded-3xl border border-border/50 shadow-2xl relative overflow-hidden flex flex-col min-h-0">
         {/* Decorative background glows */}
         <div className="absolute top-0 right-1/4 w-96 h-96 bg-primary/5 rounded-full blur-[100px] pointer-events-none" />
         <div className="absolute bottom-0 left-1/4 w-[500px] h-[500px] bg-blue-500/5 rounded-full blur-[120px] pointer-events-none" />
         
+        {/* Calendars panel */}
+        {showCalendarsPanel && (
+          <div className="mb-4 p-4 rounded-2xl border border-border/40 bg-muted/20 shrink-0 z-10">
+            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">Imported Calendars</p>
+            {Object.keys(calendarColors).length === 0 ? (
+              <p className="text-xs text-muted-foreground">No imported calendars yet. Import an .ICS file to get started.</p>
+            ) : (
+              <div className="flex flex-wrap gap-3">
+                {Object.entries(calendarColors).map(([name, color]) => (
+                  <label key={name} className="flex items-center gap-2 cursor-pointer py-1.5 px-3 rounded-lg border border-border/40 bg-background/50 hover:bg-muted/30 transition-colors">
+                    <input
+                      type="color"
+                      value={color}
+                      onChange={e => setCalendarColors(prev => ({ ...prev, [name]: e.target.value }))}
+                      className="h-5 w-5 rounded cursor-pointer border-0 p-0 bg-transparent"
+                    />
+                    <span className="text-xs font-semibold">{name}</span>
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Legend */}
-        <div className="flex items-center gap-4 mb-6 text-xs font-semibold px-2">
+        <div className="flex items-center flex-wrap gap-2 lg:gap-4 mb-4 text-xs font-semibold px-2 shrink-0 z-10">
           {Object.entries(EVENT_COLORS).map(([type, colorClass]) => (
             <div key={type} className="flex items-center gap-2">
               <div className={`h-3 w-3 rounded-full border ${colorClass.split(' ')[0]} ${colorClass.split(' ')[2]}`} />
@@ -628,6 +740,12 @@ export default function Calendar() {
           </div>
         </DialogContent>
       </Dialog>
+      
+      <SyllabusImporter 
+        open={isSyllabusModalOpen} 
+        onOpenChange={setIsSyllabusModalOpen}
+        onSuccess={fetchEvents}
+      />
     </div>
   );
 }

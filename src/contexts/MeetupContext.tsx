@@ -46,7 +46,7 @@ export function MeetupProvider({ children }: { children: ReactNode }) {
     } catch (e) {
       console.error(e);
     }
-    return [1, 2];
+    return [];
   });
 
   // Keep localStorage in sync with our joinedIds array
