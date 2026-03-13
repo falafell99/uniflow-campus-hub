@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
+import { supabase } from "@/lib/supabase";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import {
   AudioLines, Presentation, PlayCircle, Network, FileCheck, BarChart3,
   Pencil, Sparkles, ArrowRight, FileText, ChevronLeft, Loader2, Check,
   Play, Pause, Volume2, Download, Copy, RotateCcw,
-  ChevronRight, BarChart2, BookOpen, ListChecks, Image as ImageIcon
+  ChevronRight, BarChart2, BookOpen, ListChecks, Image as ImageIcon,
+  Users, Zap
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -467,6 +469,37 @@ export default function Studio() {
     fileContext ? [{ id: "ctx", name: fileContext, size: 1024000, type: "application/pdf" }] : []
   );
 
+  const [myTeams, setMyTeams] = useState<{ id: string, name: string }[]>([]);
+  const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
+  const [isLoadingTeams, setIsLoadingTeams] = useState(false);
+
+  useEffect(() => {
+    if (activeTool === "studio") {
+      fetchTeams();
+    }
+  }, [activeTool]);
+
+  const fetchTeams = async () => {
+    setIsLoadingTeams(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data } = await supabase
+      .from("team_members")
+      .select("team_id, teams (id, name)")
+      .eq("user_id", user.id)
+      .eq("status", "accepted");
+
+    if (data) {
+      const teams = data.map((d: any) => d.teams).filter(Boolean);
+      setMyTeams(teams);
+      if (teams.length === 1) {
+        setSelectedTeamId(teams[0].id);
+      }
+    }
+    setIsLoadingTeams(false);
+  };
+
   const handleToolClick = (toolId: ToolId) => {
     if (toolId === "mentalmap") {
       navigate(`/knowledge-graph${fileContext ? `?file=${encodeURIComponent(fileContext)}` : ""}`);
@@ -482,7 +515,59 @@ export default function Studio() {
       case "video": return <VideoTool files={files} />;
       case "reports": return <ReportsTool files={files} />;
       case "infographics": return <InfographicsTool files={files} />;
-      case "studio": return <div className="h-[600px] w-full"><Whiteboard roomId="studio-global" embedded /></div>;
+      case "studio": {
+        if (!selectedTeamId) {
+          return (
+            <div className="space-y-4 py-8 text-center">
+              <Pencil className="h-10 w-10 text-primary mx-auto opacity-50 mb-4" />
+              <h3 className="text-lg font-bold">Select a Team Whiteboard</h3>
+              <p className="text-sm text-muted-foreground max-w-xs mx-auto">
+                Choose which team's whiteboard you want to join for real-time collaboration.
+              </p>
+              <div className="grid grid-cols-1 gap-2 max-w-xs mx-auto mt-6">
+                {isLoadingTeams ? (
+                  <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
+                ) : myTeams.length > 0 ? (
+                  myTeams.map(team => (
+                    <Button 
+                      key={team.id} 
+                      variant="outline" 
+                      className="justify-start gap-2 h-12"
+                      onClick={() => setSelectedTeamId(team.id)}
+                    >
+                      <Users className="h-4 w-4" />
+                      <span className="truncate">{team.name}</span>
+                    </Button>
+                  ))
+                ) : (
+                  <div className="text-xs text-muted-foreground bg-muted/30 p-4 rounded-lg border border-dashed text-center">
+                    You are not a member of any teams yet. Go to <button onClick={() => navigate("/teams")} className="text-primary font-medium underline">Teams Hub</button> to create or join one.
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        }
+        return (
+          <div className="h-[650px] w-full flex flex-col gap-3">
+             <div className="flex items-center justify-between px-1">
+               <div className="flex items-center gap-2">
+                 <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20">
+                   Team: {myTeams.find(t => t.id === selectedTeamId)?.name}
+                 </Badge>
+                 <Button variant="ghost" size="sm" className="h-6 text-[10px]" onClick={() => setSelectedTeamId(null)}>
+                   Switch team
+                 </Button>
+               </div>
+               <div className="flex items-center gap-2 text-[10px] text-muted-foreground italic">
+                 <Zap className="h-3 w-3 text-success" />
+                 Live sync enabled
+               </div>
+             </div>
+             <Whiteboard teamId={selectedTeamId} embedded />
+          </div>
+        );
+      }
       default: return null;
     }
   };

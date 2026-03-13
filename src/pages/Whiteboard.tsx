@@ -3,7 +3,8 @@ import {
   ZoomIn, ZoomOut, Maximize2, ChevronLeft, 
   Square, StickyNote, Type, MousePointer2, 
   Trash2, Download, Eraser, Palette, 
-  Undo, Redo, Plus, Minus, Pencil
+  Undo, Redo, Plus, Minus, Pencil,
+  ArrowUpRight, Circle, User, Settings
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -18,7 +19,7 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 
-type ElementType = "sticky" | "shape" | "text" | "path";
+type ElementType = "sticky" | "shape" | "text" | "path" | "arrow" | "circle";
 
 interface CanvasElement {
   id: string;
@@ -38,11 +39,21 @@ const COLORS = [
 ];
 
 interface WhiteboardProps {
-  roomId?: string;
+  roomId?: string; // Backwards compatibility
+  teamId?: string; // Preferred
   embedded?: boolean;
 }
 
-export default function Whiteboard({ roomId, embedded = false }: WhiteboardProps) {
+interface PresenceUser {
+  id: string;
+  name: string;
+  color: string;
+  x: number;
+  y: number;
+  lastUpdate: number;
+}
+
+export default function Whiteboard({ roomId, teamId, embedded = false }: WhiteboardProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [elements, setElements] = useState<CanvasElement[]>([]);
@@ -61,6 +72,9 @@ export default function Whiteboard({ roomId, embedded = false }: WhiteboardProps
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
   const svgRef = useRef<SVGSVGElement>(null);
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const [remoteCursors, setRemoteCursors] = useState<Record<string, PresenceUser>>({});
+  const [activeTeamId, setActiveTeamId] = useState<string | null>(teamId || roomId || null);
 
   const pushToHistory = (newElements: CanvasElement[]) => {
     setHistory(prev => [...prev, elements]);
@@ -83,30 +97,98 @@ export default function Whiteboard({ roomId, embedded = false }: WhiteboardProps
   };
 
   useEffect(() => {
-    if (!roomId) return;
+    if (!activeTeamId) return;
 
+    const channelId = `whiteboard:${activeTeamId}`;
+    
     // Load initial data
     const loadData = async () => {
-      const { data, error } = await supabase.from("whiteboards").select("elements").eq("id", roomId).single();
+      const { data } = await supabase
+        .from("whiteboards")
+        .select("elements")
+        .eq("team_id", activeTeamId)
+        .maybeSingle();
+
       if (data && data.elements) {
         setElements(data.elements as CanvasElement[]);
       }
     };
     loadData();
 
-    // Subscribe to changes
-    const channel = supabase.channel(`whiteboard:${roomId}`)
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'whiteboards', filter: `id=eq.${roomId}` }, payload => {
+    // Setup Channel
+    const channel = supabase.channel(channelId, {
+      config: {
+        presence: { key: user?.id || 'anon' }
+      }
+    });
+
+    channel
+      // Sync board data
+      .on('postgres_changes', { 
+        event: 'UPDATE', 
+        schema: 'public', 
+        table: 'whiteboards', 
+        filter: `team_id=eq.${activeTeamId}` 
+      }, payload => {
         if (payload.new && payload.new.elements) {
-          setElements(payload.new.elements as CanvasElement[]);
+          // Only update if we are not actively drawing to avoid jitters
+          if (!isDrawing && !isDragging) {
+            setElements(payload.new.elements as CanvasElement[]);
+          }
         }
       })
-      .subscribe();
+      // Real-time broadcast for smooth drawing
+      .on('broadcast', { event: 'draw' }, ({ payload }) => {
+        setElements(prev => {
+          const exists = prev.find(el => el.id === payload.id);
+          if (exists) {
+            return prev.map(el => el.id === payload.id ? { ...el, content: payload.content } : el);
+          }
+          return [...prev, payload];
+        });
+      })
+      // Presence for cursors
+      .on('presence', { event: 'sync' }, () => {
+        const state = channel.presenceState();
+        const cursors: Record<string, PresenceUser> = {};
+        Object.keys(state).forEach(key => {
+          if (key === user?.id) return;
+          const presence = state[key][0] as any;
+          if (presence.x !== undefined) {
+            cursors[key] = presence;
+          }
+        });
+        setRemoteCursors(cursors);
+      })
+      .on('presence', { event: 'join' }, ({ key, newPresences }) => {
+        console.log("Joined:", key, newPresences);
+      })
+      .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
+        setRemoteCursors(prev => {
+          const next = { ...prev };
+          delete next[key];
+          return next;
+        });
+      })
+      .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED' && user) {
+          await channel.track({
+            id: user.id,
+            name: user.user_metadata?.display_name || 'User',
+            color: COLORS[Math.floor(Math.random() * COLORS.length)],
+            x: 0,
+            y: 0,
+            lastUpdate: Date.now()
+          });
+        }
+      });
+
+    channelRef.current = channel;
 
     return () => {
-      supabase.removeChannel(channel);
+      channel.unsubscribe();
     };
-  }, [roomId]);
+  }, [activeTeamId, user]);
 
   const undo = () => {
     if (history.length === 0) return;
@@ -145,7 +227,7 @@ export default function Whiteboard({ roomId, embedded = false }: WhiteboardProps
       y,
       width: type === "sticky" ? 150 : 100,
       height: type === "sticky" ? 150 : 100,
-      content: type === "text" ? "Type here..." : "",
+      content: type === "text" ? "Type here..." : type === "arrow" ? "arrow" : "",
       color: type === "sticky" ? "#FFEB3B" : "#BBDEFB",
       rotation: 0
     };
@@ -186,6 +268,13 @@ export default function Whiteboard({ roomId, embedded = false }: WhiteboardProps
       setElements([...elements, newPath]);
       setSelectedId(id);
       setIsDrawing(true);
+
+      // Broadcast the start of a path
+      channelRef.current?.send({
+        type: 'broadcast',
+        event: 'draw',
+        payload: newPath
+      });
       return;
     }
 
@@ -211,12 +300,33 @@ export default function Whiteboard({ roomId, embedded = false }: WhiteboardProps
   const handleMouseMove = useCallback((e: MouseEvent) => {
     if (isDrawing && selectedId) {
       const coords = getRelativeCoords(e);
-      setElements(prev => prev.map(el => 
-        el.id === selectedId 
-          ? { ...el, content: el.content + ` L ${coords.x} ${coords.y}` }
-          : el
-      ));
+      const updatedElements = prev => prev.map(el => {
+        if (el.id === selectedId) {
+          const newContent = el.content + ` L ${coords.x} ${coords.y}`;
+          // Broadcast during drawing for real-time feel
+          channelRef.current?.send({
+            type: 'broadcast',
+            event: 'draw',
+            payload: { ...el, content: newContent }
+          });
+          return { ...el, content: newContent };
+        }
+        return el;
+      });
+      setElements(updatedElements);
       return;
+    }
+
+    // Track cursor presence
+    if (channelRef.current && user) {
+      channelRef.current.track({
+        id: user.id,
+        name: user.user_metadata?.display_name || 'User',
+        color: currentColor, // Or a fixed color per user
+        x: e.clientX,
+        y: e.clientY,
+        lastUpdate: Date.now()
+      });
     }
 
     if (isDragging && selectedId) {
@@ -229,7 +339,7 @@ export default function Whiteboard({ roomId, embedded = false }: WhiteboardProps
     } else if (isPanning) {
       setPan({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y });
     }
-  }, [isDragging, isPanning, isDrawing, selectedId, dragOffset, dragStart, pan, zoom]);
+  }, [isDragging, isPanning, isDrawing, selectedId, dragOffset, dragStart, pan, zoom, user, currentColor]);
 
   const handleMouseUp = () => {
     if (isDrawing || isDragging) {
@@ -319,13 +429,19 @@ export default function Whiteboard({ roomId, embedded = false }: WhiteboardProps
             <Eraser className="h-4 w-4" />
           </Button>
           <div className="w-[1px] h-4 bg-border/40 mx-1" />
-          <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => addElement("sticky")}>
+          <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => addElement("sticky")} title="Sticky Note">
             <StickyNote className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => addElement("shape")}>
+          <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => addElement("shape")} title="Rectangle">
             <Square className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => addElement("text")}>
+          <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => addElement("circle")} title="Circle">
+            <Circle className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => addElement("arrow")} title="Arrow">
+            <ArrowUpRight className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => addElement("text")} title="Text Box">
             <Type className="h-4 w-4" />
           </Button>
           <div className="w-[1px] h-4 bg-border/40 mx-1" />
@@ -438,6 +554,44 @@ export default function Whiteboard({ roomId, embedded = false }: WhiteboardProps
                   />
                 )}
 
+                {el.type === "circle" && (
+                  <ellipse
+                    cx={el.x + el.width/2} cy={el.y + el.height/2}
+                    rx={el.width/2} ry={el.height/2}
+                    fill={el.color}
+                    fillOpacity={0.2}
+                    stroke={el.color}
+                    strokeWidth={isSelected ? 3 : 2}
+                    data-element-id={el.id}
+                    className="transition-all"
+                  />
+                )}
+
+                {el.type === "arrow" && (
+                  <g data-element-id={el.id}>
+                    <defs>
+                      <marker
+                        id={`arrowhead-${el.id}`}
+                        markerWidth="10"
+                        markerHeight="7"
+                        refX="9"
+                        refY="3.5"
+                        orient="auto"
+                      >
+                        <polygon points="0 0, 10 3.5, 0 7" fill={el.color} />
+                      </marker>
+                    </defs>
+                    <line
+                      x1={el.x} y1={el.y}
+                      x2={el.x + el.width} y2={el.y + el.height}
+                      stroke={el.color}
+                      strokeWidth={isSelected ? 4 : 2}
+                      markerEnd={`url(#arrowhead-${el.id})`}
+                      className="transition-all"
+                    />
+                  </g>
+                )}
+
                 {el.type === "text" && (
                   <foreignObject
                     x={el.x} y={el.y}
@@ -471,6 +625,34 @@ export default function Whiteboard({ roomId, embedded = false }: WhiteboardProps
                     className="transition-all"
                   />
                 )}
+              </g>
+            );
+          })}
+
+          {/* Remote Cursors */}
+          {Object.entries(remoteCursors).map(([id, cursor]) => {
+            // Adjust cursor position to be relative to the canvas
+            if (!svgRef.current) return null;
+            const rect = svgRef.current.getBoundingClientRect();
+            const relX = (cursor.x - rect.left - pan.x) / zoom;
+            const relY = (cursor.y - rect.top - pan.y) / zoom;
+
+            return (
+              <g key={id} transform={`translate(${relX}, ${relY})`}>
+                <MousePointer2 
+                  className="h-5 w-5 fill-current" 
+                  style={{ color: cursor.color }} 
+                  stroke="white"
+                  strokeWidth={1.5}
+                />
+                <foreignObject x={12} y={12} width={100} height={20}>
+                  <div 
+                    className="px-1.5 py-0.5 rounded text-[9px] font-bold text-white whitespace-nowrap shadow-sm"
+                    style={{ backgroundColor: cursor.color }}
+                  >
+                    {cursor.name}
+                  </div>
+                </foreignObject>
               </g>
             );
           })}
