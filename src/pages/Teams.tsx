@@ -225,7 +225,7 @@ export default function Teams() {
   const fetchAllPeople = useCallback(async () => {
     const { data } = await supabase
       .from("team_members")
-      .select("role, user_id, profiles:user_id (display_name, avatar_color, status)");
+      .select("role, user_id, profiles!user_id (display_name, avatar_color, status)");
     const unique = new Map();
     (data || []).forEach((m: any) => {
       if (!unique.has(m.user_id)) unique.set(m.user_id, m);
@@ -242,7 +242,7 @@ export default function Teams() {
     setIsLoadingMembers(true);
     const { data, error } = await supabase
       .from("team_members")
-      .select("role, user_id, status, profiles:user_id (display_name, avatar_color, status)")
+      .select("role, user_id, status, profiles!user_id (display_name, avatar_color, status)")
       .eq("team_id", teamId);
 
     if (error) {
