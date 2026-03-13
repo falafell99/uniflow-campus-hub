@@ -35,7 +35,7 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
-  const { user } = useAuth();
+  const { user, onlineUsers } = useAuth();
 
   const [profile, setProfile] = useState<ProfileSnap | null>(null);
   const [pendingInvites, setPendingInvites] = useState(0);
@@ -151,7 +151,9 @@ export function AppSidebar() {
             {!collapsed && (
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-semibold truncate">{profile.display_name}</p>
-                <p className="text-[10px] text-muted-foreground truncate">{profile.status}</p>
+                <p className="text-[10px] text-muted-foreground truncate">
+                  {onlineUsers.size > 0 ? "🟢 Online" : profile.status}
+                </p>
               </div>
             )}
           </NavLink>

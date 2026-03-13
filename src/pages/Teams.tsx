@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
 import {
   Dialog, DialogContent, DialogDescription,
@@ -97,7 +98,6 @@ export default function Teams() {
 
   // General
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [searchResults, setSearchResults] = useState<{ id: string; display_name: string; avatar_color?: string }[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [selectedUserProfileId, setSelectedUserProfileId] = useState<string | null>(null);
@@ -106,12 +106,8 @@ export default function Teams() {
   const [invitations, setInvitations] = useState<(TeamMember & { teams: Team })[]>([]);
   const [isLoadingInvites, setIsLoadingInvites] = useState(false);
 
-  // Load user
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) setCurrentUserId(user.id);
-    });
-  }, []);
+  const { user, onlineUsers } = useAuth();
+  const currentUserId = user?.id;
 
   // Search for users to invite
   useEffect(() => {
@@ -870,9 +866,14 @@ export default function Teams() {
                           )}
                         </div>
                         <div className="col-span-3">
-                          <span className={`text-[11px] font-medium ${m.profiles?.status?.includes("Online") ? "text-green-400" : "text-muted-foreground"}`}>
-                            {m.profiles?.status || "Offline"}
-                          </span>
+                          {(() => {
+                            const isOnline = onlineUsers.has(m.user_id);
+                            return (
+                              <span className={`text-[11px] font-medium ${isOnline ? "text-green-400" : "text-muted-foreground"}`}>
+                                {isOnline ? "🟢 Online" : "⚪️ Offline"}
+                              </span>
+                            );
+                          })()}
                         </div>
                         <div className="col-span-1 flex justify-end">
                           {isOwner && m.user_id !== currentUserId && (
