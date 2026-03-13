@@ -24,6 +24,15 @@ export default function Pomodoro() {
   const totalTime = isBreak ? presets[presetIdx].break_ : presets[presetIdx].focus;
   const progress = ((totalTime - timeLeft) / totalTime) * 100;
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("start") === "true") {
+      setIsRunning(true);
+      if (!isBreak) setCurrentStatus("🔴 Focusing");
+      window.history.replaceState({}, '', '/pomodoro');
+    }
+  }, [setCurrentStatus, isBreak]);
+
   const playChime = useCallback(() => {
     try {
       const ctx = new AudioContext();

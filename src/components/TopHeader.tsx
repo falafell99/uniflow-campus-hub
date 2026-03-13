@@ -113,19 +113,26 @@ export function TopHeader() {
         </SheetContent>
       </Sheet>
 
-      <div className="relative flex-1 max-w-xl">
-        <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+      <div className="relative flex-1 max-w-xl group">
+        <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" />
         <Input
-          placeholder="Search or press ⌘K to jump..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-9 h-8 text-sm bg-muted/50 border-0 focus-visible:ring-1 focus-visible:ring-primary/30"
+          placeholder="Search materials, people, or teams..."
+          className="pl-9 pr-12 h-8 text-sm bg-muted/50 border border-transparent focus-visible:ring-1 focus-visible:ring-primary/30 group-hover:bg-muted/80 transition-all cursor-pointer"
+          onFocus={(e) => {
+            e.target.blur();
+            window.dispatchEvent(new CustomEvent("open-command-palette"));
+          }}
+          onKeyDown={(e) => {
+            if (e.key !== "Tab" && !e.metaKey && !e.ctrlKey && !e.altKey) {
+              window.dispatchEvent(new CustomEvent("open-command-palette", { detail: { query: e.key.length === 1 ? e.key : "" } }));
+            }
+          }}
         />
-        {search && (
-          <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2">
-            <X className="h-3 w-3 text-muted-foreground" />
-          </button>
-        )}
+        <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 pointer-events-none">
+          <kbd className="hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100 sm:flex">
+            <span className="text-xs">⌘</span>K
+          </kbd>
+        </div>
       </div>
 
       {/* Tutoring badge */}
