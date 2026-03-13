@@ -38,36 +38,55 @@ export function AppSidebar() {
   const { user } = useAuth();
 
   const [profile, setProfile] = useState<ProfileSnap | null>(null);
+  const [pendingInvites, setPendingInvites] = useState(0);
 
   useEffect(() => {
     if (!user) return;
-    const load = async () => {
+    
+    const loadProfile = async () => {
       const { data } = await supabase
         .from("profiles")
         .select("display_name, status, avatar_color, avatar_emoji")
         .eq("id", user.id)
         .single();
       if (data) setProfile(data as ProfileSnap);
-      else {
-        setProfile({
-          display_name: user.user_metadata?.display_name || user.email?.split("@")[0] || "Student",
-          status: "🟢 Online",
-          avatar_color: AVATAR_COLORS[0].from,
-          avatar_emoji: "",
-        });
-      }
     };
-    load();
 
-    // Re-fetch when the profile page saves (via a simple polling or channel)
-    const channel = supabase
+    const loadInvites = async () => {
+      const { count } = await supabase
+        .from("team_members")
+        .select("*", { count: 'exact', head: true })
+        .eq("user_id", user.id)
+        .eq("status", "pending");
+      setPendingInvites(count || 0);
+    };
+
+    loadProfile();
+    loadInvites();
+
+    const profileChannel = supabase
       .channel("sidebar-profile-sync")
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "profiles", filter: `id=eq.${user.id}` }, (payload) => {
         setProfile((prev) => ({ ...prev!, ...payload.new as ProfileSnap }));
       })
       .subscribe();
 
-    return () => { channel.unsubscribe(); };
+    const invitesChannel = supabase
+      .channel("sidebar-invites-sync")
+      .on("postgres_changes", { 
+        event: "*", 
+        schema: "public", 
+        table: "team_members", 
+        filter: `user_id=eq.${user.id}` 
+      }, () => {
+        loadInvites();
+      })
+      .subscribe();
+
+    return () => { 
+      profileChannel.unsubscribe(); 
+      invitesChannel.unsubscribe();
+    };
   }, [user]);
 
   return (
@@ -92,17 +111,24 @@ export function AppSidebar() {
             <SidebarMenu>
               {navItems.map((item) => {
                 const isActive = location.pathname === item.url;
+                const hasBadge = item.title === "Teams Hub" && pendingInvites > 0;
+                
                 return (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild isActive={isActive} tooltip={item.title}>
                       <NavLink
                         to={item.url}
                         end={item.url === "/"}
-                        className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-all hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                        className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-all hover:bg-sidebar-accent hover:text-sidebar-accent-foreground relative"
                         activeClassName="!bg-sidebar-accent !text-sidebar-accent-foreground"
                       >
                         <span className="text-base leading-none">{item.emoji}</span>
-                        {!collapsed && <span>{item.title}</span>}
+                        {!collapsed && <span className="flex-1">{item.title}</span>}
+                        {hasBadge && (
+                          <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground">
+                            {pendingInvites}
+                          </span>
+                        )}
                       </NavLink>
                     </SidebarMenuButton>
                   </SidebarMenuItem>

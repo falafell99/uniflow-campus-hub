@@ -247,14 +247,22 @@ export default function Teams() {
 
     if (error) {
       console.error("Error fetching team members:", error);
+      toast.error(`Could not load members: ${error.message}`);
     }
     
     if (!error && data) {
-      setTeamMembers(data.map((m: any) => ({
+      const formattedMembers = data.map((m: any) => ({
         ...m,
         team_id: teamId,
         profiles: Array.isArray(m.profiles) ? m.profiles[0] : m.profiles
-      })));
+      }));
+      setTeamMembers(formattedMembers);
+      
+      // Update the selected team's member count for the header
+      if (selectedTeam && selectedTeam.id === teamId) {
+        const activeCount = formattedMembers.filter(m => m.status === 'accepted').length;
+        setSelectedTeam(prev => prev ? { ...prev, member_count: activeCount } : null);
+      }
     }
     setIsLoadingMembers(false);
   }, []);
@@ -332,6 +340,14 @@ export default function Teams() {
     const userIdToInvite = targetId;
     if (!userIdToInvite || !selectedTeam) return;
     
+    // Safety: Check if user is already an accepted member
+    const isAlreadyMember = teamMembers.find(m => m.user_id === userIdToInvite && m.status === 'accepted');
+    if (isAlreadyMember) {
+      toast.error("This user is already a member of the team.");
+      setIsInviteModalOpen(false);
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const { error } = await supabase.from("team_members").upsert([
@@ -476,17 +492,20 @@ export default function Teams() {
             </div>
             <div className="overflow-y-auto px-2 py-1 space-y-1.5 max-h-[30vh] custom-scroll">
               {invitations.map(inv => (
-                <div key={inv.team_id} className="p-2.5 rounded-xl border border-orange-500/20 bg-orange-500/5 space-y-2">
-                  <div className="flex items-center gap-2">
-                    <div className="h-6 w-6 rounded bg-orange-500/20 flex items-center justify-center text-orange-400 text-[10px] font-bold shrink-0">
+                <div key={inv.team_id} className="p-3 rounded-xl border border-orange-500/30 bg-orange-500/10 space-y-3 shadow-lg shadow-orange-500/5">
+                  <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-lg bg-orange-500/20 flex items-center justify-center text-orange-400 text-sm font-bold shrink-0 border border-orange-500/20">
                       {inv.teams.name.charAt(0).toUpperCase()}
                     </div>
-                    <span className="truncate text-xs font-semibold text-orange-100">{inv.teams.name}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="truncate text-xs font-bold text-orange-200">{inv.teams.name}</p>
+                      <p className="text-[10px] text-orange-400/80 font-medium">Invited you to join</p>
+                    </div>
                   </div>
-                  <div className="flex gap-1.5">
+                  <div className="flex gap-2">
                     <Button 
                       size="sm" 
-                      className="h-6 px-0 flex-1 text-[10px] bg-orange-500 hover:bg-orange-600 rounded-lg"
+                      className="h-7 px-0 flex-1 text-[11px] font-bold bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-all"
                       onClick={() => handleInvitationResponse(inv.team_id, true)}
                     >
                       Accept
@@ -494,7 +513,7 @@ export default function Teams() {
                     <Button 
                       variant="ghost" 
                       size="sm" 
-                      className="h-6 px-0 flex-1 text-[10px] text-muted-foreground hover:text-foreground hover:bg-muted/20 border border-border/20 rounded-lg"
+                      className="h-7 px-0 flex-1 text-[11px] font-semibold text-orange-400 hover:text-orange-300 hover:bg-orange-500/10 border border-orange-500/20 rounded-lg"
                       onClick={() => handleInvitationResponse(inv.team_id, false)}
                     >
                       Ignore
