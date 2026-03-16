@@ -1,3 +1,8 @@
+/**
+ * SQL CHANGES REQUIRED FOR THIS UPDATE:
+ * -- ALTER TABLE notes ADD COLUMN IF NOT EXISTS team_id uuid REFERENCES teams(id) ON DELETE SET NULL;
+ * -- CREATE INDEX IF NOT EXISTS notes_team_id_idx ON notes(team_id);
+ */
 import { useState, useEffect, useCallback } from "react";
 import { 
   Users, User, BarChart3, Plus, Search, ArrowRight,
@@ -101,6 +106,8 @@ export default function Teams() {
   const [searchResults, setSearchResults] = useState<{ id: string; display_name: string; avatar_color?: string }[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [selectedUserProfileId, setSelectedUserProfileId] = useState<string | null>(null);
+  const [teamTasks, setTeamTasks] = useState<any[]>([]);
+  const [isLoadingTasks, setIsLoadingTasks] = useState(false);
 
   // Invitations state
   const [invitations, setInvitations] = useState<(TeamMember & { teams: Team })[]>([]);
@@ -261,17 +268,46 @@ export default function Teams() {
       }
     }
     setIsLoadingMembers(false);
+  }, [selectedTeam]);
+
+  // Fetch priorities/tasks for selected team
+  const fetchTeamTasks = useCallback(async (teamId: string) => {
+    setIsLoadingTasks(true);
+    try {
+      const { data, error } = await supabase
+        .from("notes")
+        .select("id, title, tags, updated_at, user_id, profiles!user_id(display_name)")
+        .eq("team_id", teamId)
+        .order("updated_at", { ascending: false });
+
+      if (error) throw error;
+      setTeamTasks(data || []);
+    } catch (e: any) {
+      console.error("Error fetching team tasks:", e);
+    } finally {
+      setIsLoadingTasks(false);
+    }
   }, []);
 
   useEffect(() => {
     if (selectedTeam) {
       fetchTeamMembers(selectedTeam.id);
+      fetchTeamTasks(selectedTeam.id);
+      
       const ch = supabase.channel(`members-${selectedTeam.id}`)
         .on("postgres_changes", { event: "*", schema: "public", table: "team_members", filter: `team_id=eq.${selectedTeam.id}` }, () => fetchTeamMembers(selectedTeam.id))
         .subscribe();
-      return () => { ch.unsubscribe(); };
+      
+      const taskCh = supabase.channel(`tasks-${selectedTeam.id}`)
+        .on("postgres_changes", { event: "*", schema: "public", table: "notes", filter: `team_id=eq.${selectedTeam.id}` }, () => fetchTeamTasks(selectedTeam.id))
+        .subscribe();
+        
+      return () => { 
+        ch.unsubscribe(); 
+        taskCh.unsubscribe();
+      };
     }
-  }, [selectedTeam, fetchTeamMembers]);
+  }, [selectedTeam, fetchTeamMembers, fetchTeamTasks]);
 
   // Create team
   const handleCreateTeam = async () => {
@@ -586,6 +622,14 @@ export default function Teams() {
           <div className="flex-1 overflow-hidden flex flex-col">
             {/* Team Header */}
             <div className="px-8 pt-6 pb-0 border-b border-border/20 shrink-0">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="md:hidden -ml-2 mb-4 text-muted-foreground hover:bg-transparent px-0"
+                onClick={() => setSelectedTeam(null)}
+              >
+                <ChevronLeft className="h-4 w-4 mr-1" /> Back to Teams
+              </Button>
               <div className="flex items-center gap-5 mb-4">
                 <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-[#7b68ee]/20 to-[#6a5acd]/10 flex items-center justify-center text-[#7b68ee] font-black text-2xl border border-[#7b68ee]/20">
                   {selectedTeam.name.charAt(0).toUpperCase()}
@@ -600,18 +644,18 @@ export default function Teams() {
               </div>
 
               {/* Sub-tabs */}
-              <div className="flex gap-1 -mb-px">
+              <div className="flex gap-1 -mb-px overflow-x-auto no-scrollbar scroll-smooth px-4 md:px-0">
                 {([
                   { id: "overview", label: "Overview", icon: <Info className="h-3.5 w-3.5" /> },
                   { id: "whiteboard", label: "Whiteboard", icon: <Palette className="h-3.5 w-3.5" /> },
                   { id: "analytics", label: "Analytics", icon: <BarChart3 className="h-3.5 w-3.5" /> },
                   { id: "members", label: "Members", icon: <Users className="h-3.5 w-3.5" />, count: teamMembers.length },
-                  { id: "priorities", label: "Priorities", icon: <Activity className="h-3.5 w-3.5" /> },
+                  { id: "priorities", label: "Priorities", icon: <Activity className="h-3.5 w-3.5" />, count: teamTasks.length },
                 ] as const).map(tab => (
                   <button
                     key={tab.id}
                     onClick={() => setTeamTab(tab.id)}
-                    className={`flex items-center gap-1.5 px-4 py-2.5 text-[13px] font-medium border-b-2 transition-all ${
+                    className={`flex items-center gap-1.5 px-4 py-2.5 text-[13px] font-medium border-b-2 transition-all whitespace-nowrap ${
                       teamTab === tab.id
                         ? "border-primary text-primary"
                         : "border-transparent text-muted-foreground hover:text-foreground"
@@ -893,24 +937,70 @@ export default function Teams() {
                 <div className="p-8 space-y-6 max-w-4xl">
                   <div className="flex items-center justify-between">
                     <h2 className="text-lg font-bold">Priorities</h2>
-                    <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5" onClick={() => navigate("/knowledge-graph")}>
-                      Go to Workspace <ArrowRight className="h-3.5 w-3.5" />
+                    <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5" onClick={() => navigate("/workspace")}>
+                      Open Workspace <ArrowRight className="h-3.5 w-3.5" />
                     </Button>
                   </div>
-                  <div className="border border-border/40 rounded-2xl p-12 flex flex-col items-center gap-4 text-center">
-                    <div className="h-16 w-16 rounded-2xl bg-primary/5 flex items-center justify-center">
-                      <Activity className="h-8 w-8 text-primary/40" strokeWidth={1} />
+                  
+                  {isLoadingTasks ? (
+                    <div className="flex justify-center p-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+                  ) : teamTasks.length === 0 ? (
+                    <div className="border border-border/40 rounded-2xl p-12 flex flex-col items-center gap-4 text-center">
+                      <div className="h-16 w-16 rounded-2xl bg-primary/5 flex items-center justify-center">
+                        <Activity className="h-8 w-8 text-primary/40" strokeWidth={1} />
+                      </div>
+                      <div>
+                        <p className="font-bold text-lg">No priorities yet</p>
+                        <p className="text-sm text-muted-foreground mt-1 max-w-xs">
+                          Go to the Workspace to assign notes to this team. They'll appear here as priorities.
+                        </p>
+                      </div>
+                      <Button className="bg-[#7b68ee] hover:bg-[#6a5acd]" onClick={() => {
+                        toast.info("Assign a note to this team in the Workspace to see it here.", { duration: 5000 });
+                        navigate("/workspace");
+                      }}>
+                        Assign a note to this team
+                      </Button>
                     </div>
-                    <div>
-                      <p className="font-bold text-lg">No priorities yet</p>
-                      <p className="text-sm text-muted-foreground mt-1 max-w-xs">
-                        Go to the Workspace to create tasks and assign them to team members. They'll appear here as priorities.
-                      </p>
+                  ) : (
+                    <div className="grid gap-3">
+                      {teamTasks.map((task) => (
+                        <div 
+                          key={task.id} 
+                          className="flex items-center gap-4 p-4 rounded-xl border border-border/40 bg-card/10 hover:bg-card/30 transition-all group cursor-pointer"
+                          onClick={() => navigate(`/workspace?noteId=${task.id}`)}
+                        >
+                          <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-bold shrink-0">
+                            {task.title.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-semibold text-sm truncate">{task.title}</h3>
+                            <div className="flex items-center gap-2 mt-1">
+                              {(task.tags || []).slice(0, 3).map((tag: string) => (
+                                <Badge key={tag} variant="outline" className="text-[9px] px-1.5 h-4 bg-muted/30">
+                                  {tag}
+                                </Badge>
+                              ))}
+                              <span className="text-[10px] text-muted-foreground italic">
+                                Updated {new Date(task.updated_at).toLocaleDateString()}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="text-right hidden sm:block">
+                              <p className="text-[11px] font-medium">{task.profiles?.display_name || "Unknown"}</p>
+                              <p className="text-[9px] text-muted-foreground">Assignee</p>
+                            </div>
+                            <Avatar className="h-8 w-8 border border-border/40">
+                              <AvatarFallback className="text-[10px] bg-primary/20 text-primary font-bold">
+                                {task.profiles?.display_name?.charAt(0) || "?"}
+                              </AvatarFallback>
+                            </Avatar>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                    <Button className="bg-[#7b68ee] hover:bg-[#6a5acd]" onClick={() => navigate("/knowledge-graph")}>
-                      Open Workspace
-                    </Button>
-                  </div>
+                  )}
                 </div>
               )}
 
@@ -1121,6 +1211,122 @@ export default function Teams() {
                   <p className="text-sm">Not enough data to show detailed analytics yet.</p>
                   <p className="text-xs text-muted-foreground mt-1">Create teams and add members to get started.</p>
                 </div>
+              </div>
+            )}
+
+            {/* MOBILE TEAMS LIST (visible on mobile when no team is selected) */}
+            {!selectedTeam && (
+              <div className="md:hidden p-4 space-y-6">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-bold tracking-tight">Teams</h2>
+                  <Button size="sm" className="h-8 w-8 p-0 bg-[#7b68ee] hover:bg-[#6a5acd]" onClick={() => setIsCreateModalOpen(true)}>
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+
+                {/* Mobile Tabs */}
+                <div className="flex gap-1 overflow-x-auto no-scrollbar scroll-smooth">
+                  {([
+                    { id: "all-teams", label: "All Teams", icon: <Users className="h-3.5 w-3.5" /> },
+                    { id: "all-people", label: "All People", icon: <User className="h-3.5 w-3.5" /> },
+                    { id: "analytics", label: "Analytics", icon: <BarChart3 className="h-3.5 w-3.5" /> },
+                  ] as const).map(tab => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setSidebarTab(tab.id)}
+                      className={`flex items-center gap-1.5 px-4 py-2 text-xs font-medium border-b-2 transition-all whitespace-nowrap ${
+                        sidebarTab === tab.id
+                          ? "border-primary text-primary"
+                          : "border-transparent text-muted-foreground"
+                      }`}
+                    >
+                      {tab.icon}
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+
+                {sidebarTab === "all-teams" && (
+                  <div className="grid gap-3 pt-2">
+                    {teams.length === 0 ? (
+                      <div className="text-center py-10 opacity-40">
+                        <Users className="h-10 w-10 mx-auto mb-2" />
+                        <p className="text-xs">No teams yet</p>
+                      </div>
+                    ) : (
+                      teams.map(team => (
+                        <div 
+                          key={team.id} 
+                          className="flex items-center gap-3 p-4 rounded-2xl border border-border/40 bg-card/20 shadow-sm transition-all active:scale-[0.98]"
+                          onClick={() => { setSelectedTeam(team); setTeamTab("overview"); }}
+                        >
+                          <div className="h-10 w-10 rounded-xl bg-[#7b68ee]/10 flex items-center justify-center text-[#7b68ee] font-black text-lg">
+                            {team.name.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-bold text-sm truncate">{team.name}</h3>
+                            <p className="text-[10px] text-muted-foreground mt-0.5">Click to view details</p>
+                          </div>
+                          <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+
+                {sidebarTab === "all-people" && (
+                  <div className="pt-2">
+                    {allPeople.length === 0 ? (
+                      <div className="text-center py-10 opacity-40">
+                        <User className="h-10 w-10 mx-auto mb-2" />
+                        <p className="text-xs">No people found</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {allPeople.map((m, i) => (
+                          <div 
+                            key={i} 
+                            className="flex items-center gap-3 p-3 rounded-2xl border border-border/40 bg-card/20"
+                            onClick={() => setSelectedUserProfileId(m.user_id)}
+                          >
+                            <Avatar className="h-10 w-10 border border-primary/20">
+                              <AvatarFallback className="bg-primary/10 text-primary font-bold">
+                                {m.profiles?.display_name?.charAt(0)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-bold text-sm truncate">{m.profiles?.display_name}</p>
+                              <Badge variant="outline" className={`text-[9px] font-bold uppercase ${ROLE_COLORS[m.role]}`}>
+                                {m.role}
+                              </Badge>
+                            </div>
+                            <span className={`h-2 w-2 rounded-full ${m.profiles?.status?.includes("Online") ? "bg-green-400" : "bg-muted-foreground/30"}`} />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {sidebarTab === "analytics" && (
+                  <div className="pt-2 space-y-4">
+                    <div className="grid grid-cols-2 gap-3">
+                      {[
+                        { label: "Teams", value: teams.length, color: "bg-[#7b68ee]/10 text-[#7b68ee]" },
+                        { label: "Members", value: allPeople.length, color: "bg-blue-500/10 text-blue-400" },
+                      ].map((s, i) => (
+                        <div key={i} className={`p-4 rounded-2xl border border-border/20 ${s.color}`}>
+                          <p className="text-2xl font-black">{s.value}</p>
+                          <p className="text-[10px] font-medium opacity-70 uppercase tracking-wider">{s.label}</p>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="p-6 border border-dashed border-border/40 rounded-2xl text-center opacity-40">
+                      <BarChart3 className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                      <p className="text-[10px]">Detailed analytics coming soon for mobile.</p>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

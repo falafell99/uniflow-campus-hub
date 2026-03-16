@@ -26,6 +26,7 @@ type Note = {
   tags: string[];
   blocks: Block[];
   updated_at: string;
+  team_id?: string | null;
 };
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -599,6 +600,7 @@ export default function Workspace() {
   const [showTagPicker, setShowTagPicker] = useState(false);
   const [editingBlockId, setEditingBlockId] = useState<string | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [userTeams, setUserTeams] = useState<any[]>([]);
   const titleRef = useRef<HTMLInputElement>(null);
   const location = useLocation();
   const navigate = useNavigate();
@@ -626,30 +628,19 @@ export default function Workspace() {
       if (data && data.length > 0) {
         setNotes(data as Note[]);
         setSelectedId((data[0] as Note).id);
-      } else {
-        // Create starter note
-        const starter = {
-          user_id: user.id,
-          title: "Linear Algebra — Study Notes",
-          tags: ["Linear Algebra"],
-          blocks: [
-            { id: "1", type: "h1" as BlockType, content: "Linear Algebra — Study Notes" },
-            { id: "2", type: "paragraph" as BlockType, content: "Welcome! Press / to insert blocks, [[ to link notes." },
-            { id: "3", type: "h2" as BlockType, content: "Key Concepts" },
-            { id: "4", type: "checklist" as BlockType, content: "Eigenvalues satisfy det(A - λI) = 0", checked: false },
-            { id: "5", type: "code" as BlockType, content: "import numpy as np\neigenvalues, _ = np.linalg.eig(A)" },
-          ],
-          updated_at: new Date().toISOString(),
-        };
-        const { data: inserted } = await supabase.from("notes").insert(starter).select().single();
-        if (inserted) {
-          setNotes([inserted as Note]);
-          setSelectedId((inserted as Note).id);
-        }
       }
       setLoading(false);
     };
+
+    const fetchTeams = async () => {
+      const { data } = await supabase.from('team_members').select('team_id, teams(id, name)').eq('user_id', user.id).eq('status', 'accepted');
+      if (data) {
+        setUserTeams(data.map((m: any) => Array.isArray(m.teams) ? m.teams[0] : m.teams).filter(Boolean));
+      }
+    };
+
     load();
+    fetchTeams();
   }, [user]);
 
   // ── Handle Prefill from Calendar ──────────────────────────────────────────
@@ -682,7 +673,13 @@ export default function Workspace() {
     setSaveStatus("saving");
     await supabase
       .from("notes")
-      .update({ title: note.title, tags: note.tags, blocks: note.blocks, updated_at: new Date().toISOString() })
+      .update({ 
+        title: note.title, 
+        tags: note.tags, 
+        blocks: note.blocks, 
+        team_id: note.team_id || null,
+        updated_at: new Date().toISOString() 
+      })
       .eq("id", note.id);
     setSaveStatus("saved");
     setTimeout(() => setSaveStatus("idle"), 2000);
@@ -909,6 +906,20 @@ export default function Workspace() {
                     >
                       <Tag className="h-2.5 w-2.5" /> Add tag
                     </button>
+                    
+                    {/* Team assignment */}
+                    {userTeams.length > 0 && (
+                      <select
+                        value={selectedNote.team_id || ""}
+                        onChange={(e) => updateSelected({ team_id: e.target.value || null })}
+                        className="bg-transparent border border-dashed border-border/50 rounded-full px-2 py-0.5 text-[10px] text-muted-foreground hover:text-foreground outline-none cursor-pointer"
+                      >
+                        <option value="" className="bg-[#1a1a1a]">No team</option>
+                        {userTeams.map(team => (
+                          <option key={team.id} value={team.id} className="bg-[#1a1a1a]">{team.name}</option>
+                        ))}
+                      </select>
+                    )}
                     <AnimatePresence>
                       {showTagPicker && (
                         <motion.div
@@ -1005,12 +1016,33 @@ export default function Workspace() {
             </div>
           </>
         ) : (
-          <div className="flex items-center justify-center h-full text-center">
-            <div>
-              <p className="text-4xl mb-3">📝</p>
-              <p className="font-medium text-muted-foreground">Select a note or create one</p>
-              <Button className="mt-4 gap-2" size="sm" onClick={createNote}><Plus className="h-4 w-4" /> New Note</Button>
-            </div>
+          <div className="flex items-center justify-center h-full text-center p-8">
+            {notes.length === 0 && !loading ? (
+              <div className="max-w-md w-full glass-card p-10 rounded-3xl border border-primary/20 shadow-2xl shadow-primary/5 animate-in fade-in zoom-in duration-500">
+                <div className="h-20 w-20 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-6 scale-110">
+                  <Edit2 className="h-10 w-10 text-primary" />
+                </div>
+                <h2 className="text-2xl font-bold mb-3 tracking-tight">Your digital brain is empty</h2>
+                <p className="text-muted-foreground mb-8 text-sm leading-relaxed">
+                  UniFlow Workspace is where your ideas take shape. Create your first note 
+                  to start organizing your studies, lecture notes, and research.
+                </p>
+                <div className="space-y-3">
+                  <Button onClick={createNote} size="lg" className="w-full bg-primary hover:bg-primary/90 text-white font-bold h-12 rounded-xl transition-all shadow-lg shadow-primary/20">
+                    <Plus className="h-5 w-5 mr-2" /> Create First Note
+                  </Button>
+                  <Button variant="ghost" className="w-full text-xs text-muted-foreground" onClick={() => navigate("/dashboard")}>
+                    Go to Dashboard
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <p className="text-4xl mb-3">📝</p>
+                <p className="font-medium text-muted-foreground">Select a note or create one</p>
+                <Button className="mt-4 gap-2" size="sm" onClick={createNote}><Plus className="h-4 w-4" /> New Note</Button>
+              </div>
+            )}
           </div>
         )}
       </div>

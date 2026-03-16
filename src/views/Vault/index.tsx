@@ -199,10 +199,20 @@ export default function Vault() {
         if (signed) {
           signed.forEach((s) => {
             if (s.signedUrl) {
-              urlMap[s.path] = s.signedUrl;
-              // Also map the original path if it starts with/without slash
-              const altPath = s.path.startsWith("/") ? s.path.substring(1) : "/" + s.path;
-              urlMap[altPath] = s.signedUrl;
+              const p = s.path;
+              urlMap[p] = s.signedUrl;
+              
+              // Map decoded path as well (many clients store/read literal strings)
+              try {
+                const decoded = decodeURIComponent(p);
+                if (decoded !== p) urlMap[decoded] = s.signedUrl;
+              } catch (e) { /* ignore */ }
+
+              // Handle leading slash variants
+              const withSlash = p.startsWith("/") ? p : "/" + p;
+              const withoutSlash = p.startsWith("/") ? p.substring(1) : p;
+              urlMap[withSlash] = s.signedUrl;
+              urlMap[withoutSlash] = s.signedUrl;
             }
           });
         }
@@ -341,6 +351,24 @@ export default function Vault() {
             ))}
           </div>
         </GlassCard>
+      ) : allFiles.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 px-4 text-center glass-card border-primary/20 bg-primary/5 rounded-3xl shadow-2xl animate-in fade-in zoom-in duration-500">
+          <div className="h-24 w-24 bg-primary/10 rounded-3xl flex items-center justify-center mb-6 scale-110">
+            <Upload className="h-12 w-12 text-primary" strokeWidth={1.5} />
+          </div>
+          <h2 className="text-2xl font-bold tracking-tight mb-2">The Vault is empty</h2>
+          <p className="text-muted-foreground max-w-sm mb-8 text-sm leading-relaxed">
+            Be the first to upload a resource or lecture note for your fellow students! 
+            Helping others is what UniFlow is all about.
+          </p>
+          <Button 
+            size="lg" 
+            onClick={() => setUploadOpen(true)}
+            className="bg-primary hover:bg-primary/90 text-white font-bold h-12 px-8 rounded-xl shadow-lg shadow-primary/20"
+          >
+            <Upload className="h-5 w-5 mr-2" /> Upload First Resource
+          </Button>
+        </div>
       ) : viewMode === "list" ? (
         <GlassCard padding="p-4">
           <div className="flex items-center justify-between mb-3 pb-2 border-b border-border/30">
@@ -361,7 +389,7 @@ export default function Vault() {
         /* Grid view — show only files */
         <div className="space-y-4">
           {filteredFiles.length === 0 ? (
-            <p className="text-xs text-muted-foreground text-center py-8 italic">No files uploaded yet. Be the first!</p>
+            <p className="text-xs text-muted-foreground text-center py-8 italic">No files match your filters.</p>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
               {filteredFiles.map((f) => (

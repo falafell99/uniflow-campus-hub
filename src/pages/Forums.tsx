@@ -40,7 +40,7 @@ type Thread = {
 
 // ─── Fallback demo threads ────────────────────────────────────────────────────
 const demoThreads: Thread[] = [
-  { id: 1, category: "general", title: "Tips for surviving first semester at ELTE Informatics?", author: "Bence M.", author_id: "", content: "Hey everyone! I'm starting my BSc CS journey next month. Any advice from seniors?", tags: ["Freshman", "Tips"], upvotes: 34, pinned: true, created_at: new Date(Date.now() - 7200000).toISOString(), replies: [], reply_count: 0 },
+  { id: 1, category: "general", title: "Tips for surviving first semester in Computer Science?", author: "Bence M.", author_id: "", content: "Hey everyone! I'm starting my BSc CS journey next month. Any advice from seniors?", tags: ["Freshman", "Tips"], upvotes: 34, pinned: true, created_at: new Date(Date.now() - 7200000).toISOString(), replies: [], reply_count: 0 },
   { id: 2, category: "technical", title: "Help with BFS vs DFS — when to use which?", author: "Eszter N.", author_id: "", content: "I'm confused about when to use BFS vs DFS for graph traversal problems. Can someone explain with examples?", tags: ["Algorithms", "Help"], upvotes: 21, pinned: false, created_at: new Date(Date.now() - 18000000).toISOString(), replies: [], reply_count: 0 },
   { id: 3, category: "career", title: "Summer internship opportunities in Budapest for CS students", author: "Dániel T.", author_id: "", content: "Compiling a list of companies hiring CS interns in Budapest. Feel free to add!", tags: ["Internship", "Career"], upvotes: 56, pinned: false, created_at: new Date(Date.now() - 172800000).toISOString(), replies: [], reply_count: 0 },
 ];
@@ -392,7 +392,7 @@ export default function Forums() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">💬 Community Forums</h1>
-          <p className="text-muted-foreground mt-1">Discuss, ask, and share with fellow ELTE students</p>
+          <p className="text-muted-foreground mt-1">Discuss, ask, and share with fellow students</p>
         </div>
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="text-xs gap-1">

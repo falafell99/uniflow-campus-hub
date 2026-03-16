@@ -154,9 +154,9 @@ export default function Calendar() {
       if (eventType === "deadline") {
         toast.success("Deadline created!", {
           action: {
-            label: "Add to Workspace →",
-            onClick: () => navigate("/workspace", {
-              state: { prefillTitle: title, prefillDate: selectedDate?.toISOString() }
+            label: "Create task →",
+            onClick: () => navigate("/tasks", {
+              state: { prefillTitle: title, prefillDue: selectedDate?.toISOString() }
             })
           },
           duration: 6000

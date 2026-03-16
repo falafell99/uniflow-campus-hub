@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   RotateCcw, ThumbsUp, ThumbsDown, ChevronLeft, ChevronRight,
-  Layers, BookOpen, Plus, Trash2, Loader2, Edit2, X, Check
+  Layers, BookOpen, Plus, Trash2, Loader2, Edit2, X, Check, Sparkles, Zap, FileText
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +13,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
+import { VaultFilePicker } from "@/components/VaultFilePicker";
+import { extractTextFromPDF } from "@/lib/pdfUtils";
+import { useLocation } from "react-router-dom";
+
+const API_KEY = import.meta.env.VITE_GROQ_API_KEY as string | undefined;
+const GROQ_MODEL = "llama-3.3-70b-versatile";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 type Card = { id: number; front: string; back: string; deck_id: number };
@@ -191,11 +197,18 @@ export default function Flashcards() {
   const [selectedDeck, setSelectedDeck] = useState<Deck | null>(null);
   const [deckCards, setDeckCards] = useState<Card[]>([]);
   const [loadingCards, setLoadingCards] = useState(false);
-  const [newDeckOpen, setNewDeckOpen] = useState(false);
-  const [addCardOpen, setAddCardOpen] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newSubject, setNewSubject] = useState("");
   const [creating, setCreating] = useState(false);
+  const [newDeckOpen, setNewDeckOpen] = useState(false);
+  const [addCardOpen, setAddCardOpen] = useState(false);
+  const [aiGenOpen, setAiGenOpen] = useState(false);
+  const [vaultPickerOpen, setVaultPickerOpen] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<{ name: string; storagePath: string } | null>(null);
+  const [generating, setGenerating] = useState(false);
+  const location = useLocation();
+  const vaultFile = (location.state as any)?.vaultFile;
+  const autoGenTriggered = useRef(false);
 
   const loadDecks = async () => {
     setLoading(true);
@@ -222,7 +235,75 @@ export default function Flashcards() {
     setLoading(false);
   };
 
-  useEffect(() => { loadDecks(); }, []);
+  useEffect(() => {
+    if (user) loadDecks();
+  }, [user]);
+
+  // Auto-generate from Vault navigation
+  useEffect(() => {
+    if (!vaultFile || !API_KEY || !user || autoGenTriggered.current) return;
+    autoGenTriggered.current = true;
+    const autoGenerate = async () => {
+      setGenerating(true);
+      try {
+        const storagePath = vaultFile.storage_path || vaultFile.storagePath;
+        const text = await extractTextFromPDF(storagePath);
+        if (!text) throw new Error("No text extracted from PDF");
+
+        const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${API_KEY}`,
+          },
+          body: JSON.stringify({
+            model: GROQ_MODEL,
+            messages: [
+              { role: "system", content: "You are a flashcard generator. Given text from a lecture or document, create exactly 10 flashcards. Respond ONLY with a valid JSON array, no other text, no markdown code blocks. Format: [{\"front\": \"question or term\", \"back\": \"answer or definition\"}]" },
+              { role: "user", content: "Create 10 flashcards from this text:\n\n" + text.slice(0, 6000) }
+            ],
+            temperature: 0.2,
+          }),
+        });
+
+        const resData = await response.json();
+        const aiContent = resData.choices?.[0]?.message?.content;
+        let cards: { front: string; back: string }[] = [];
+        try {
+          const parsed = JSON.parse(aiContent);
+          cards = Array.isArray(parsed) ? parsed : parsed.cards || parsed.flashcards || [];
+        } catch {
+          const match = aiContent?.match(/\[.*\]/s);
+          if (match) cards = JSON.parse(match[0]);
+        }
+
+        if (cards.length === 0) throw new Error("AI returned no flashcards");
+
+        const color = COLORS[decks.length % COLORS.length];
+        const { data: deck } = await supabase.from("flashcard_decks").insert({
+          title: vaultFile.name.replace(/\.pdf$/i, ""),
+          subject: "AI Generated",
+          color,
+          card_count: cards.length,
+          owner_id: user.id,
+        }).select().single();
+
+        if (deck) {
+          await supabase.from("flashcard_cards").insert(
+            cards.map((c: any) => ({ front: c.front, back: c.back, deck_id: deck.id }))
+          );
+          setDecks(prev => [...prev, deck as Deck]);
+          toast({ title: `${cards.length} flashcards created from ${vaultFile.name} ✨` });
+        }
+      } catch (err: any) {
+        toast({ title: "Auto-generation failed", description: err.message, variant: "destructive" });
+      } finally {
+        setGenerating(false);
+        window.history.replaceState({}, "");
+      }
+    };
+    autoGenerate();
+  }, [vaultFile, user, API_KEY]);
 
   const openDeck = async (deck: Deck) => {
     setSelectedDeck(deck);
@@ -262,18 +343,99 @@ export default function Flashcards() {
     }
   };
 
+  const handleAiGenerate = async () => {
+    if (!selectedFile || !API_KEY) return;
+    setGenerating(true);
+    try {
+      // 1. Extract text
+      const text = await extractTextFromPDF(selectedFile.storagePath);
+      if (!text) throw new Error("Could not extract text from PDF");
+
+      // 2. Call AI
+      const prompt = `Generate 8-10 high-quality flashcards based on the following text. 
+Return ONLY a JSON array of objects with "front" and "back" keys. 
+Example: [{"front": "Question", "back": "Answer"}]
+
+TEXT:
+${text}`;
+
+      const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: GROQ_MODEL,
+          messages: [{ role: "user", content: prompt }],
+          temperature: 0.2,
+          response_format: { type: "json_object" }
+        }),
+      });
+
+      const resData = await response.json();
+      const aiContent = resData.choices[0].message.content;
+      let cards = [];
+      try {
+        const parsed = JSON.parse(aiContent);
+        cards = Array.isArray(parsed) ? parsed : parsed.cards || [];
+      } catch {
+        // Fallback if AI didn't return pure array
+        const match = aiContent.match(/\[.*\]/s);
+        if (match) cards = JSON.parse(match[0]);
+      }
+
+      if (cards.length === 0) throw new Error("AI failed to generate cards");
+
+      // 3. Create deck
+      const color = COLORS[decks.length % COLORS.length];
+      const { data: deck } = await supabase.from("flashcard_decks").insert({
+        title: selectedFile.name.replace(".pdf", ""),
+        subject: "AI Generated",
+        color,
+        card_count: cards.length,
+        owner_id: user?.id,
+      }).select().single();
+
+      if (deck) {
+        await supabase.from("flashcard_cards").insert(
+          cards.map((c: any) => ({ ...c, deck_id: deck.id }))
+        );
+        setDecks(prev => [...prev, deck as Deck]);
+        toast({ title: "AI Deck created! ✨" });
+        setAiGenOpen(false);
+        setSelectedFile(null);
+      }
+    } catch (err: any) {
+      toast({ title: "Generation failed", description: err.message, variant: "destructive" });
+    } finally {
+      setGenerating(false);
+    }
+  };
+
   // ── Deck list view ──
   if (!selectedDeck) {
     return (
       <div className="animate-fade-in space-y-6">
+        {generating && vaultFile && (
+          <div className="flex items-center gap-3 p-4 bg-primary/10 border border-primary/20 rounded-2xl text-sm">
+            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+            <span>Generating flashcards from <strong>{vaultFile.name}</strong>...</span>
+          </div>
+        )}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">🧠 Flashcards</h1>
             <p className="text-muted-foreground mt-1">Master concepts with spaced repetition — cloud synced</p>
           </div>
-          <Button className="gap-2" onClick={() => setNewDeckOpen(true)}>
-            <Plus className="h-4 w-4" /> New Deck
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" className="gap-2 border-primary/20 text-primary hover:bg-primary/5" onClick={() => setAiGenOpen(true)}>
+              <Sparkles className="h-4 w-4" /> AI Generate
+            </Button>
+            <Button className="gap-2" onClick={() => setNewDeckOpen(true)}>
+              <Plus className="h-4 w-4" /> New Deck
+            </Button>
+          </div>
         </div>
 
         {loading ? (
@@ -368,6 +530,69 @@ export default function Flashcards() {
         open={addCardOpen}
         onClose={() => setAddCardOpen(false)}
         onAdded={handleCardAdded}
+      />
+
+      {/* AI Generation Dialog */}
+      <Dialog open={aiGenOpen} onOpenChange={setAiGenOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              Generate Deck from PDF
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-6 pt-2">
+            <div className="text-center p-6 border-2 border-dashed border-border/40 rounded-2xl bg-muted/30">
+              {selectedFile ? (
+                <div className="flex flex-col items-center">
+                  <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center mb-3">
+                    <FileText className="h-6 w-6 text-primary" />
+                  </div>
+                  <p className="text-sm font-semibold truncate max-w-full">{selectedFile.name}</p>
+                  <Button variant="ghost" size="sm" className="mt-2 text-xs text-muted-foreground" onClick={() => setSelectedFile(null)}>Change file</Button>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center">
+                  <div className="h-12 w-12 rounded-xl bg-muted flex items-center justify-center mb-3">
+                    <Plus className="h-6 w-6 text-muted-foreground" />
+                  </div>
+                  <p className="text-sm text-muted-foreground mb-4">Select a lecture or note from The Vault</p>
+                  <Button onClick={() => setVaultPickerOpen(true)} variant="secondary" size="sm">Select from Vault</Button>
+                </div>
+              )}
+            </div>
+
+            <Button 
+              className="w-full h-11 bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20 gap-2" 
+              disabled={!selectedFile || generating}
+              onClick={handleAiGenerate}
+            >
+              {generating ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Analyzing PDF...
+                </>
+              ) : (
+                <>
+                  <Zap className="h-4 w-4" />
+                  Generate 10 Flashcards
+                </>
+              )}
+            </Button>
+            <p className="text-[10px] text-center text-muted-foreground">
+              AI will extract the key concepts and create a study deck automatically.
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <VaultFilePicker 
+        open={vaultPickerOpen} 
+        onOpenChange={setVaultPickerOpen} 
+        onSelect={(file) => {
+          setSelectedFile(file);
+          setVaultPickerOpen(false);
+        }}
       />
     </div>
   );

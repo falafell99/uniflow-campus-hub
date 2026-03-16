@@ -22,10 +22,12 @@ type Profile = {
   status: string;
   credits: number;
   bio?: string;
-  year?: string;
-  program?: string;
   avatar_color?: string;
   avatar_emoji?: string;
+  university?: string;
+  faculty?: string;
+  year_of_study?: string;
+  major?: string;
 };
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -99,8 +101,10 @@ export default function Profile() {
 
   const [displayName, setDisplayName] = useState("");
   const [bio, setBio] = useState("");
-  const [year, setYear] = useState("");
-  const [program, setProgram] = useState("");
+  const [university, setUniversity] = useState("");
+  const [faculty, setFaculty] = useState("");
+  const [yearOfStudy, setYearOfStudy] = useState("");
+  const [major, setMajor] = useState("");
   const [status, setStatus] = useState("");
   const [avatarColor, setAvatarColor] = useState(AVATAR_COLORS[0].from);
   const [avatarEmoji, setAvatarEmoji] = useState("");
@@ -118,8 +122,10 @@ export default function Profile() {
         status: "🟢 Online",
         credits: 1250,
         bio: "",
-        year: "Year 1",
-        program: "BSc Computer Science",
+        university: "UniFlow University",
+        faculty: "Faculty of Science",
+        year_of_study: "Year 1",
+        major: "Computer Science",
         avatar_color: AVATAR_COLORS[0].from,
         avatar_emoji: "",
       };
@@ -127,8 +133,10 @@ export default function Profile() {
       setProfile(p);
       setDisplayName(p.display_name);
       setBio(p.bio || "");
-      setYear(p.year || "Year 1");
-      setProgram(p.program || "BSc Computer Science");
+      setUniversity(p.university || "UniFlow University");
+      setFaculty(p.faculty || "Faculty of Science");
+      setYearOfStudy(p.year_of_study || "Year 1");
+      setMajor(p.major || "Computer Science");
       setStatus(p.status || "🟢 Online");
       setAvatarColor(p.avatar_color || AVATAR_COLORS[0].from);
       setAvatarEmoji(p.avatar_emoji || "");
@@ -140,7 +148,17 @@ export default function Profile() {
   const saveProfile = async () => {
     if (!user) return;
     setSaving(true);
-    const updates = { display_name: displayName, bio, year, program, status, avatar_color: avatarColor, avatar_emoji: avatarEmoji };
+    const updates = { 
+      display_name: displayName, 
+      bio, 
+      university,
+      faculty,
+      year_of_study: yearOfStudy,
+      major,
+      status, 
+      avatar_color: avatarColor, 
+      avatar_emoji: avatarEmoji 
+    };
     const { error } = await supabase.from("profiles").upsert({ id: user.id, ...updates });
     setSaving(false);
     if (error) {
@@ -214,9 +232,11 @@ export default function Profile() {
             {editing ? (
               <div className="space-y-2">
                 <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="Display name" className="text-lg font-bold h-9" />
-                <div className="flex gap-2">
-                  <Input value={program} onChange={(e) => setProgram(e.target.value)} placeholder="e.g. BSc Computer Science" className="text-sm" />
-                  <Input value={year} onChange={(e) => setYear(e.target.value)} placeholder="e.g. Year 2" className="text-sm w-28" />
+                <div className="grid grid-cols-2 gap-2">
+                  <Input value={university} onChange={(e) => setUniversity(e.target.value)} placeholder="University" className="text-sm" title="University" />
+                  <Input value={faculty} onChange={(e) => setFaculty(e.target.value)} placeholder="Faculty" className="text-sm" title="Faculty" />
+                  <Input value={major} onChange={(e) => setMajor(e.target.value)} placeholder="Major" className="text-sm" title="Major" />
+                  <Input value={yearOfStudy} onChange={(e) => setYearOfStudy(e.target.value)} placeholder="Year of Study" className="text-sm" title="Year of Study" />
                 </div>
                 <Textarea value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Short bio..." rows={2} className="text-sm" />
               </div>
@@ -226,15 +246,20 @@ export default function Profile() {
                   <h2 className="text-xl font-bold">{profile?.display_name}</h2>
                   <span className="text-xs text-muted-foreground">{status}</span>
                 </div>
-                <p className="text-sm text-muted-foreground">{profile?.program || "BSc Computer Science"} · {profile?.year || "Year 1"} · ELTE</p>
-                <p className="text-xs text-muted-foreground">{user?.email}</p>
-                {profile?.bio && <p className="text-sm">{profile.bio}</p>}
+                <p className="text-sm text-muted-foreground">
+                  {profile?.major || "Computer Science"} · {profile?.year_of_study || "Year 1"}
+                </p>
+                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider text-primary">
+                  {profile?.university || "UniFlow University"} · {profile?.faculty || "Science"}
+                </p>
+                <p className="text-[10px] text-muted-foreground">{user?.email}</p>
+                {profile?.bio && <p className="text-sm mt-2">{profile.bio}</p>}
               </>
             )}
             <div className="flex items-center gap-4 pt-1 text-xs text-muted-foreground">
               <span className="flex items-center gap-1.5"><Coins className="h-3.5 w-3.5 text-warning" /> {credits} credits</span>
               <span className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5" /> {joinedMeetups} meetups</span>
-              <span className="flex items-center gap-1.5"><Shield className="h-3.5 w-3.5 text-primary" /> {user?.email?.split("@")[1] || "ELTE"}</span>
+              <span className="flex items-center gap-1.5"><Shield className="h-3.5 w-3.5 text-primary" /> Student</span>
             </div>
           </div>
         </div>

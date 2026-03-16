@@ -167,7 +167,7 @@ export default function ProfessorRadar() {
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">⭐ Professor Radar</h1>
-          <p className="text-muted-foreground mt-1">Real ratings from ELTE students</p>
+          <p className="text-muted-foreground mt-1">Real ratings from students</p>
         </div>
         <Badge variant="outline" className="text-xs gap-1">
           <span className="h-1.5 w-1.5 rounded-full bg-success inline-block" />

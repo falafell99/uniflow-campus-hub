@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Clock, FileText, Mic, MessageSquare, Briefcase, TrendingUp } from "lucide-react";
+import { Clock, FileText, Mic, MessageSquare, Briefcase, TrendingUp, ArrowRight } from "lucide-react";
 import { useMeetups } from "@/contexts/MeetupContext";
 import { useApp } from "@/contexts/AppContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -12,6 +12,7 @@ import { LoungeActivity } from "./LoungeActivity";
 import { SubjectsSection } from "./SubjectsSection";
 import { GlassCard } from "@/components/GlassCard";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useNavigate } from "react-router-dom";
 import { PublicProfileModal } from "@/components/PublicProfileModal";
 
 type VaultResource = {
@@ -113,6 +114,7 @@ export default function Dashboard() {
   const { meetups, loading: meetupsLoading } = useMeetups();
   const { favorites, toggleFavorite, activeCommunity } = useApp();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [statsLoading, setStatsLoading] = useState(true);
   const [subjects, setSubjects] = useState<any[]>([]);
@@ -277,8 +279,31 @@ export default function Dashboard() {
     },
   ];
 
+  const showOnboarding = liveResources.length === 0 && vaultCount === 0 && !loading;
+
   return (
     <div className="space-y-6 animate-fade-in">
+      {showOnboarding && (
+        <div className="glass-card p-6 border-primary/20 bg-primary/5 rounded-3xl mb-8 flex flex-col md:flex-row items-center gap-6 shadow-2xl shadow-primary/5 animate-in fade-in slide-in-from-top-4 duration-700">
+          <div className="h-20 w-20 bg-primary/10 rounded-2xl flex items-center justify-center shrink-0 scale-110">
+            <TrendingUp className="h-10 w-10 text-primary" />
+          </div>
+          <div className="flex-1 text-center md:text-left">
+            <h2 className="text-xl font-bold tracking-tight">Welcome to UniFlow! 🎓</h2>
+            <p className="text-muted-foreground mt-1 text-sm leading-relaxed max-w-xl">
+              Your campus hub is currently empty. Start by exploring the <span className="text-primary font-semibold">The Vault</span> to upload lecture notes or join a <span className="text-primary font-semibold">Voice Lounge</span> to study with others in real-time.
+            </p>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+            <button 
+              onClick={() => navigate("/vault")}
+              className="bg-primary hover:bg-primary/90 text-white font-bold h-11 px-6 rounded-xl transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2 whitespace-nowrap"
+            >
+              Explore The Vault <ArrowRight className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-foreground">
           Welcome back, {firstName} 👋

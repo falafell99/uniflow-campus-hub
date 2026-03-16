@@ -27,6 +27,8 @@ import Messages from "@/pages/Messages";
 import Studio from "@/pages/Studio";
 import Internships from "@/pages/Internships";
 import Calendar from "@/pages/Calendar";
+import Notes from "@/pages/Notes";
+import KanbanBoard from "@/pages/KanbanBoard";
 import NotFound from "@/pages/NotFound";
 import { Loader2 } from "lucide-react";
 
@@ -71,6 +73,8 @@ function ProtectedApp() {
             <Route path="/knowledge-graph" element={<KnowledgeGraph />} />
             <Route path="/pomodoro" element={<Pomodoro />} />
             <Route path="/workspace" element={<Workspace />} />
+            <Route path="/notes" element={<Notes />} />
+            <Route path="/tasks" element={<KanbanBoard />} />
             <Route path="/calendar" element={<Calendar />} />
             <Route path="/messages" element={<Messages />} />
             <Route path="/studio" element={<Studio />} />

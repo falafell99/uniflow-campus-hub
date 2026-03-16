@@ -126,7 +126,16 @@ export function UploadDialog({ open, onClose, onUploaded }: UploadDialogProps) {
     setUploading(true);
 
     const displayName = user.user_metadata?.display_name || user.email?.split("@")[0] || "Anonymous";
-    const path = `${user.id}/${Date.now()}_${file.name}`;
+    
+    // Sanitize filename to avoid "Invalid key" errors from Supabase Storage
+    // Remove non-ASCII characters and special symbols, replace spaces with underscores
+    const cleanFileName = file.name
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "") // remove accents
+      .replace(/[^a-zA-Z0-9.-]/g, "_") // replace non-alphanumeric with _
+      .replace(/_{2,}/g, "_"); // collapse multiple underscores
+    
+    const path = `${user.id}/${Date.now()}_${cleanFileName}`;
 
     const { error: storageErr } = await supabase.storage.from("vault").upload(path, file);
     if (storageErr) {

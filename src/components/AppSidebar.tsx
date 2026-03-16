@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, Library, Bot, Users, MessageSquare,
-  Star, Wrench, UserCircle, GraduationCap, Briefcase
+  Star, Wrench, UserCircle, GraduationCap, Briefcase, NotebookPen, ClipboardList
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -18,6 +18,8 @@ const navItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard, emoji: "🏠" },
   { title: "Teams Hub", url: "/teams", icon: Users, emoji: "👥" },
   { title: "Workspace", url: "/knowledge-graph", icon: GraduationCap, emoji: "📋" },
+  { title: "Notes", url: "/notes", icon: NotebookPen, emoji: "📝" },
+  { title: "Tasks", url: "/tasks", icon: ClipboardList, emoji: "📋" },
   { title: "The Vault", url: "/vault", icon: Library, emoji: "📚" },
   { title: "AI Oracle", url: "/ai-oracle", icon: Bot, emoji: "🤖" },
   { title: "Whiteboard", url: "/whiteboard", icon: Star, emoji: "🎨" },

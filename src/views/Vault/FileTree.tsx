@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   ChevronRight, ChevronDown, Folder, FileText,
   Eye, Download, Image, FileCode, FileSpreadsheet, Presentation,
-  Sparkles
+  Sparkles, Layers
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -108,6 +108,7 @@ export function FileTree({ items, depth = 0, onPreview }: FileTreeProps) {
                   <Eye className="h-3 w-3" />
                 </Button>
                 {item.storage_path && (
+                  <>
                       <Button
                         variant="ghost"
                         size="sm"
@@ -118,6 +119,17 @@ export function FileTree({ items, depth = 0, onPreview }: FileTreeProps) {
                       >
                         <Sparkles className="h-3 w-3" /> Ask Oracle
                       </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 text-[10px] gap-1.5 text-amber-400 hover:text-amber-400 hover:bg-amber-400/10"
+                        onClick={() => navigate("/flashcards", { 
+                          state: { vaultFile: { name: item.name, storage_path: item.storage_path } } 
+                        })}
+                      >
+                        <Layers className="h-3 w-3" /> Make Flashcards
+                      </Button>
+                  </>
                 )}
                 {item.storage_url ? (
                   <a href={item.storage_url} download={item.name} target="_blank" rel="noopener noreferrer">
@@ -170,15 +182,26 @@ export function FileCard({ item, onPreview }: { item: FileItem; onPreview: (f: F
 
       <div className="flex items-center gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
         {item.storage_path && (
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="h-6 w-6 text-primary" 
-            title="Ask Oracle"
-            onClick={() => navigate("/ai-oracle", { state: { vaultFile: item } })}
-          >
-            <Sparkles className="h-3 w-3" />
-          </Button>
+          <>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-6 w-6 text-primary" 
+              title="Ask Oracle"
+              onClick={() => navigate("/ai-oracle", { state: { vaultFile: item } })}
+            >
+              <Sparkles className="h-3 w-3" />
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-6 w-6 text-amber-400" 
+              title="Make Flashcards"
+              onClick={() => navigate("/flashcards", { state: { vaultFile: { name: item.name, storage_path: item.storage_path } } })}
+            >
+              <Layers className="h-3 w-3" />
+            </Button>
+          </>
         )}
         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onPreview(item)}>
           <Eye className="h-3 w-3" />

@@ -25,27 +25,26 @@ type Message = {
   error?: boolean;
 };
 
-// ─── System prompt tuned for ELTE CS ─────────────────────────────────────────
-const SYSTEM_PROMPT = `You are the AI Oracle — a helpful, expert academic assistant for students at ELTE Faculty of Informatics, Budapest. 
+const BASE_SYSTEM_PROMPT = `You are the AI Oracle — a helpful, expert academic assistant. 
 
 Your role:
-- Help students understand CS concepts (algorithms, linear algebra, discrete math, probability, databases, operating systems, etc.)
+- Help students understand concepts (science, math, engineering, humanities, etc.)
 - Explain things clearly with examples and when relevant, use LaTeX math notation like $x^2$ for inline and $$\\sum_{i=1}^n i$$ for block math
 - Be encouraging and pedagogical, not just giving answers but helping students learn
-- Reference ELTE course materials when relevant (Prof. Nagy, Prof. Kovács, Prof. Szabó, Prof. Tóth, Prof. Varga)
+- Reference relevant course materials and maintain academic rigor
 - Keep responses concise but thorough — use markdown formatting (bold, bullet points) for clarity
-- If asked about exam tips, provide strategic study advice for ELTE exams
+- Provide strategic study advice for university-level exams
 
-Always be friendly, academically rigorous, and helpful. You're a brilliant study partner.`;
+Always be friendly, professionally academic, and helpful. You're a brilliant study partner.`;
 
 // ─── Quick prompt chips ───────────────────────────────────────────────────────
 const QUICK_PROMPTS = [
-  "Explain eigenvalues and eigenvectors",
-  "What is the Master Theorem for recursion?",
-  "Explain P vs NP problem simply",
-  "How does dynamic programming work?",
-  "Explain Bayes' theorem with an example",
-  "What are the ACID properties in databases?",
+  "Explain this concept with a simple example",
+  "What are the key points I should remember?",
+  "Give me practice problems on this topic",
+  "Explain the difference between X and Y",
+  "How does this apply in real life?",
+  "Create a summary I can use for revision",
 ];
 
 const API_KEY = import.meta.env.VITE_GROQ_API_KEY as string | undefined;
@@ -100,6 +99,7 @@ export default function AITutor() {
   // Chat History state
   const [historyOpen, setHistoryOpen] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [profile, setProfile] = useState<any>(null);
 
   const chatRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -133,12 +133,21 @@ export default function AITutor() {
           id: 1,
           role: "assistant",
           content: API_KEY
-            ? "Hello! I'm your **AI Oracle** — powered by Llama 3.3 ✨\n\nI'm here to help you understand CS concepts, solve problems, and prepare for ELTE exams. Ask me anything!\n\nTip: Click the 📎 button below to attach a lecture from **The Vault** — I'll answer questions specifically about that document."
+            ? "Hello! I'm your **AI Oracle** — powered by Llama 3.3 ✨\n\nI'm here to help you understand your course concepts, solve problems, and prepare for your exams. Ask me anything!\n\nTip: Click the 📎 button below to attach a file from **The Vault** — I'll answer questions specifically about that document."
             : "⚠️ **AI not configured.** Add your Groq API key to `.env.local`:\n\n```\nVITE_GROQ_API_KEY=your_key_here\n```\n\nGet a **free** key (no card needed) at [console.groq.com](https://console.groq.com)",
         },
       ]);
     }
   }, [API_KEY, messages.length]);
+
+  useEffect(() => {
+    if (!user) return;
+    const fetchProfile = async () => {
+      const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+      if (data) setProfile(data);
+    };
+    fetchProfile();
+  }, [user]);
 
   const handleAttachFile = async (file: { name: string; storagePath: string }) => {
     setContextFile(file);
@@ -239,24 +248,31 @@ export default function AITutor() {
     // Persist user message
     if (currentSessionId) saveMessage(currentSessionId, "user", query);
 
-    const effectiveSystemPrompt = pdfContext
-      ? SYSTEM_PROMPT + "\n\nContext from student file:\n" + pdfContext.slice(0, 8000)
-      : SYSTEM_PROMPT;
+    // Build system prompt — personalize with profile data
+    let sysPrompt = BASE_SYSTEM_PROMPT;
+    
+    if (profile) {
+      sysPrompt += `\n\nCOMMUNITY CONTEXT: You are assisting a student who identified their academic details as:
+- University: ${profile.university || "Not specified"}
+- Faculty: ${profile.faculty || "Not specified"}
+- Major: ${profile.major || "Not specified"}
+- Year of Study: ${profile.year_of_study || "Not specified"}
+- Description: ${profile.bio || "None provided"}`;
+    }
+
+    if (contextText) {
+      sysPrompt += `\n\n---\n## ATTACHED DOCUMENT: "${contextFile?.name}"\n\nUse the following document as your PRIMARY source. Quote from it directly when relevant. If the question cannot be answered from the document, say so.\n\n${contextText.slice(0, 24000)}\n---`;
+    }
+    
+    if (studyMode) {
+      sysPrompt += "\n\nSTUDY MODE: Ask Socratic follow-up questions to guide the student's thinking instead of giving direct answers immediately.";
+    }
 
     try {
-      // Build system prompt — inject document context if available
-      let sysPrompt = SYSTEM_PROMPT;
-      if (contextText) {
-        sysPrompt += `\n\n---\n## ATTACHED DOCUMENT: "${contextFile?.name}"\n\nUse the following document as your PRIMARY source. Quote from it directly when relevant. If the question cannot be answered from the document, say so.\n\n${contextText.slice(0, 24000)}\n---`;
-      }
-      if (studyMode) {
-        sysPrompt += "\n\nSTUDY MODE: Ask Socratic follow-up questions to guide the student's thinking instead of giving direct answers immediately.";
-      }
-
       const chatMessages = [
-        { role: "system", content: effectiveSystemPrompt },
+        { role: "system", content: sysPrompt },
         ...messages.map(m => ({ role: m.role, content: m.content })),
-        { role: "user", content: input }
+        { role: "user", content: query }
       ];
 
       const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -334,7 +350,7 @@ export default function AITutor() {
       role: "assistant",
       content: contextFile
         ? `Chat cleared! I still have **${contextFile.name}** attached. Ask me anything about it.`
-        : "Chat cleared! Ask me anything about your ELTE courses.",
+        : "Chat cleared! Ask me anything about your courses.",
     }]);
   };
 
@@ -354,7 +370,7 @@ export default function AITutor() {
             🤖 AI Oracle
             {API_KEY && <Badge variant="outline" className="text-[10px] gap-1 h-5 bg-success/10 text-success border-success/20"><Zap className="h-2.5 w-2.5" /> Live</Badge>}
           </h1>
-          <p className="text-muted-foreground mt-1">Your personal ELTE research assistant</p>
+          <p className="text-muted-foreground mt-1">Your personal academic research assistant</p>
         </div>
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="sm" className="gap-1.5 text-xs text-muted-foreground" onClick={() => setHistoryOpen(!historyOpen)}>
@@ -470,7 +486,7 @@ export default function AITutor() {
                   ? `Ask about "${vaultFile?.name}"...`
                   : studyMode
                     ? "Ask a study question (Socratic mode)..."
-                    : "Ask anything about your ELTE courses..."
+                    : "Ask anything about your courses..."
               }
               value={input}
               onChange={(e) => setInput(e.target.value)}
