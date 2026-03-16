@@ -177,7 +177,7 @@ export default function KanbanBoard() {
     setLoading(true);
     let query = supabase
       .from("tasks")
-      .select("*, assignee_profile:assignee_id(display_name)")
+      .select("*, assignee_profile:profiles!assignee_id(display_name)")
       .order("created_at", { ascending: false });
 
     if (mode === "personal") {

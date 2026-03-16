@@ -102,7 +102,7 @@ export function AppSidebar() {
           {!collapsed && (
             <div className="flex flex-col">
               <span className="text-base font-bold tracking-tight text-foreground">UniFlow</span>
-              <span className="text-[11px] font-medium text-muted-foreground">ELTE · Informatics</span>
+              <span className="text-[11px] font-medium text-muted-foreground">University Hub</span>
             </div>
           )}
         </div>
@@ -162,10 +162,10 @@ export function AppSidebar() {
           </NavLink>
         ) : (
           !collapsed && (
-            <div className="glass-subtle p-3 text-center">
-              <p className="text-xs font-medium text-muted-foreground">Made for ELTE Students</p>
-              <p className="text-[10px] text-muted-foreground/60">Faculty of Informatics</p>
-            </div>
+          <div className="glass-subtle p-3 text-center">
+            <p className="text-xs font-medium text-muted-foreground">Campus Hub</p>
+            <p className="text-[10px] text-muted-foreground/60">Your University Student Portal</p>
+          </div>
           )
         )}
       </SidebarFooter>

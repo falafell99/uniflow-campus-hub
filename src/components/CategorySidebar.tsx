@@ -22,6 +22,8 @@ const categories: { label: string; items: NavItem[] }[] = [
     label: "STUDY",
     items: [
       { title: "Workspace", url: "/knowledge-graph", emoji: "📋" },
+      { title: "Notes", url: "/notes", emoji: "📝" },
+      { title: "Tasks", url: "/tasks", emoji: "📋" },
       { title: "AI Oracle", url: "/ai-oracle", emoji: "🤖" },
       { title: "The Vault", url: "/vault", emoji: "📚" },
       { title: "Professor Ratings", url: "/professors", emoji: "⭐" },
@@ -107,8 +109,8 @@ export function CategorySidebar() {
       {/* Server name */}
       <div className="h-12 flex items-center px-4 border-b border-border/40 shrink-0">
         <h2 className="font-bold text-sm tracking-tight truncate">
-          {activeCommunity === "informatics" && "ELTE · Informatics"}
-          {activeCommunity === "mathematics" && "ELTE · Mathematics"}
+          {activeCommunity === "informatics" && "The Hub · Core"}
+          {activeCommunity === "mathematics" && "Science · Math"}
           {activeCommunity === "personal" && "My Workspace"}
         </h2>
       </div>
