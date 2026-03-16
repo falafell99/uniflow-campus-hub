@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { GlassCard } from "@/components/GlassCard";
 import { UserAvatar } from "@/components/UserAvatar";
 import LatexRenderer from "@/components/LatexRenderer";
@@ -80,18 +80,14 @@ async function extractTextFromPDF(storagePath: string): Promise<string> {
 
 export default function AITutor() {
   const { user } = useAuth();
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: 1,
-      role: "assistant",
-      content: API_KEY
-        ? "Hello! I'm your **AI Oracle** — powered by Llama 3.3 ✨\n\nI'm here to help you understand CS concepts, solve problems, and prepare for ELTE exams. Ask me anything!\n\nTip: Click the 📎 button below to attach a lecture from **The Vault** — I'll answer questions specifically about that document."
-        : "⚠️ **AI not configured.** Add your Groq API key to `.env.local`:\n\n```\nVITE_GROQ_API_KEY=your_key_here\n```\n\nGet a **free** key (no card needed) at [console.groq.com](https://console.groq.com)",
-    },
-  ]);
+  const location = useLocation();
+  const vaultFile = location.state?.vaultFile;
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [studyMode, setStudyMode] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [pdfContext, setPdfContext] = useState<string>("");
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [streamContent, setStreamContent] = useState("");
   const [copiedId, setCopiedId] = useState<number | null>(null);
 
@@ -107,22 +103,42 @@ export default function AITutor() {
 
   const chatRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const location = useLocation();
   const navigate = useNavigate();
 
   useEffect(() => {
     if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
   }, [messages, loading, streamContent]);
 
-  // Auto-attach file if navigated from Vault's "Ask AI" button
+  // Auto-attach file if navigated from Vault's "Ask Oracle" button
   useEffect(() => {
-    const stateFile = (location.state as any)?.attachFile;
-    if (stateFile?.name && stateFile?.storagePath) {
-      handleAttachFile(stateFile);
-      navigate("/ai-oracle", { replace: true, state: {} });
+    if (vaultFile?.storage_path || vaultFile?.storagePath) {
+      const path = vaultFile.storage_path || vaultFile.storagePath;
+      extractTextFromPDF(path)
+        .then(text => {
+          setPdfContext(text);
+          setMessages([{
+            id: Date.now(),
+            role: "assistant",
+            content: "File **" + vaultFile.name + "** loaded. Ask any question about its content."
+          }]);
+        })
+        .catch(() => toast.error("Failed to load file from Vault"));
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [vaultFile]);
+
+  useEffect(() => {
+    if (messages.length === 0) {
+      setMessages([
+        {
+          id: 1,
+          role: "assistant",
+          content: API_KEY
+            ? "Hello! I'm your **AI Oracle** — powered by Llama 3.3 ✨\n\nI'm here to help you understand CS concepts, solve problems, and prepare for ELTE exams. Ask me anything!\n\nTip: Click the 📎 button below to attach a lecture from **The Vault** — I'll answer questions specifically about that document."
+            : "⚠️ **AI not configured.** Add your Groq API key to `.env.local`:\n\n```\nVITE_GROQ_API_KEY=your_key_here\n```\n\nGet a **free** key (no card needed) at [console.groq.com](https://console.groq.com)",
+        },
+      ]);
+    }
+  }, [API_KEY, messages.length]);
 
   const handleAttachFile = async (file: { name: string; storagePath: string }) => {
     setContextFile(file);
@@ -138,7 +154,7 @@ export default function AITutor() {
         content: `📎 I've read **${file.name}** and I'm ready to answer questions about it!\n\nAsk me anything: explain a concept, find a proof, summarize a section, or quiz yourself on its content.`,
       }]);
     } catch (err: any) {
-      toast({ title: "Could not read file", description: err.message, variant: "destructive" });
+      toast.error("Could not read file: " + err.message);
       setContextFile(null);
     } finally {
       setExtractingContext(false);
@@ -193,7 +209,7 @@ export default function AITutor() {
     const query = (text || input).trim();
     if (!query || loading) return;
     if (!API_KEY) {
-      toast({ title: "API key missing", description: "Add VITE_GROQ_API_KEY to .env.local", variant: "destructive" });
+      toast.error("API key missing: Add VITE_GROQ_API_KEY to .env.local");
       return;
     }
 
@@ -223,6 +239,10 @@ export default function AITutor() {
     // Persist user message
     if (currentSessionId) saveMessage(currentSessionId, "user", query);
 
+    const effectiveSystemPrompt = pdfContext
+      ? SYSTEM_PROMPT + "\n\nContext from student file:\n" + pdfContext.slice(0, 8000)
+      : SYSTEM_PROMPT;
+
     try {
       // Build system prompt — inject document context if available
       let sysPrompt = SYSTEM_PROMPT;
@@ -234,12 +254,9 @@ export default function AITutor() {
       }
 
       const chatMessages = [
-        { role: "system", content: sysPrompt },
-        ...messages.slice(1).slice(-10).map((m) => ({
-          role: m.role === "user" ? "user" : "assistant",
-          content: m.content,
-        })),
-        { role: "user", content: query },
+        { role: "system", content: effectiveSystemPrompt },
+        ...messages.map(m => ({ role: m.role, content: m.content })),
+        { role: "user", content: input }
       ];
 
       const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -296,7 +313,7 @@ export default function AITutor() {
         content: `❌ **Error:** ${errMsg}\n\nCheck your API key or try again.`,
         error: true,
       }]);
-      toast({ title: "AI Error", description: errMsg, variant: "destructive" });
+      toast.error("AI Error: " + errMsg);
     } finally {
       setLoading(false);
       setStreamContent("");
@@ -322,7 +339,14 @@ export default function AITutor() {
   };
 
   return (
-    <div className="h-[calc(100vh-5rem)] flex flex-col animate-fade-in">
+    <div className="h-[calc(100vh-5rem)] flex flex-col animate-fade-in relative">
+      <ChatHistorySidebar 
+        open={historyOpen} 
+        onClose={() => setHistoryOpen(false)} 
+        onSelectSession={loadSession}
+        activeSessionId={sessionId}
+      />
+
       {/* Header */}
       <div className="flex items-center justify-between mb-4 shrink-0">
         <div>
@@ -348,135 +372,124 @@ export default function AITutor() {
       </div>
 
       <div className="flex-1 flex flex-col min-h-0 relative">
-        <ChatHistorySidebar 
-          open={historyOpen} 
-          onClose={() => setHistoryOpen(false)} 
-          onSelectSession={loadSession}
-          activeSessionId={sessionId}
-        />
-      {/* Active context banner */}
-      {contextFile && (
-        <div className={`flex items-center gap-2 px-3 py-2 rounded-xl mb-3 shrink-0 border ${extractingContext ? "bg-muted/30 border-border/40" : "bg-primary/5 border-primary/20"}`}>
-          {extractingContext ? (
-            <Loader2 className="h-4 w-4 text-primary animate-spin shrink-0" />
-          ) : (
-            <FileText className="h-4 w-4 text-primary shrink-0" />
-          )}
-          <span className="text-xs font-semibold flex-1 truncate">
-            {extractingContext ? "Reading document..." : `Context: ${contextFile.name}`}
-          </span>
-          {!extractingContext && (
-            <button onClick={clearContext} className="text-muted-foreground hover:text-destructive transition-colors">
-              <X className="h-4 w-4" />
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* Chat area */}
-      <div ref={chatRef} className="flex-1 glass-card p-5 overflow-y-auto space-y-5 mb-4 custom-scroll min-h-0">
-        {messages.map((msg) => (
-          <div key={msg.id} className={`flex gap-3 ${msg.role === "user" ? "justify-end" : ""} animate-fade-in`}>
-            {msg.role === "assistant" && <UserAvatar Icon={Sparkles} className="mt-1 shrink-0" />}
-            <div className={`max-w-[80%] ${
-              msg.role === "user"
-                ? "rounded-2xl rounded-br-sm px-4 py-2.5 bg-primary/5 border border-primary/20"
-                : msg.error
-                  ? "rounded-2xl rounded-bl-sm px-4 py-3 bg-destructive/5 border border-destructive/20"
-                  : "rounded-2xl rounded-bl-sm px-4 py-3 bg-muted/60 border border-border/40"
-            }`}>
-              {msg.role === "assistant"
-                ? <LatexRenderer content={msg.content} />
-                : <p className="text-sm whitespace-pre-wrap leading-relaxed">{msg.content}</p>
-              }
-              {msg.role === "assistant" && !msg.error && (
-                <div className="flex items-center gap-1 mt-2 pt-2 border-t border-border/20">
-                  <Button variant="ghost" size="sm" className="h-6 px-2 text-[11px] gap-1 text-muted-foreground hover:text-foreground" onClick={() => copyMsg(msg)}>
-                    {copiedId === msg.id ? <Check className="h-3 w-3 text-success" /> : <Copy className="h-3 w-3" />}
-                    {copiedId === msg.id ? "Copied" : "Copy"}
-                  </Button>
-                </div>
-              )}
+        <div ref={chatRef} className="flex-1 glass-card p-5 overflow-y-auto space-y-5 mb-4 custom-scroll min-h-0">
+          {messages.map((msg) => (
+            <div key={msg.id} className={`flex gap-3 ${msg.role === "user" ? "justify-end" : ""} animate-fade-in`}>
+              {msg.role === "assistant" && <UserAvatar Icon={Sparkles} className="mt-1 shrink-0" />}
+              <div className={`max-w-[80%] ${
+                msg.role === "user"
+                  ? "rounded-2xl rounded-br-sm px-4 py-2.5 bg-primary/5 border border-primary/20"
+                  : msg.error
+                    ? "rounded-2xl rounded-bl-sm px-4 py-3 bg-destructive/5 border border-destructive/20"
+                    : "rounded-2xl rounded-bl-sm px-4 py-3 bg-muted/60 border border-border/40"
+              }`}>
+                {msg.role === "assistant"
+                  ? <LatexRenderer content={msg.content} />
+                  : <p className="text-sm whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                }
+                {msg.role === "assistant" && !msg.error && (
+                  <div className="flex items-center gap-1 mt-2 pt-2 border-t border-border/20">
+                    <Button variant="ghost" size="sm" className="h-6 px-2 text-[11px] gap-1 text-muted-foreground hover:text-foreground" onClick={() => copyMsg(msg)}>
+                      {copiedId === msg.id ? <Check className="h-3 w-3 text-success" /> : <Copy className="h-3 w-3" />}
+                      {copiedId === msg.id ? "Copied" : "Copy"}
+                    </Button>
+                  </div>
+                )}
+              </div>
+              {msg.role === "user" && <UserAvatar Icon={User} colorClass="bg-muted" className="mt-1 shrink-0 [&_svg]:text-muted-foreground" />}
             </div>
-            {msg.role === "user" && <UserAvatar Icon={User} colorClass="bg-muted" className="mt-1 shrink-0 [&_svg]:text-muted-foreground" />}
-          </div>
-        ))}
-
-        {/* Live streaming */}
-        {loading && streamContent && (
-          <div className="flex gap-3 animate-fade-in">
-            <UserAvatar Icon={Sparkles} className="mt-1 shrink-0" />
-            <div className="max-w-[80%] rounded-2xl rounded-bl-sm px-4 py-3 bg-muted/60 border border-border/40">
-              <LatexRenderer content={streamContent} />
-              <span className="inline-block w-0.5 h-4 bg-primary animate-pulse ml-0.5 align-text-bottom" />
-            </div>
-          </div>
-        )}
-
-        {loading && !streamContent && (
-          <div className="flex gap-3 animate-fade-in">
-            <UserAvatar Icon={Sparkles} className="mt-1 shrink-0" />
-            <div className="glass-subtle rounded-2xl rounded-bl-sm px-4 py-3 flex items-center gap-2">
-              <Loader2 className="h-4 w-4 text-primary animate-spin" />
-              <span className="text-sm text-muted-foreground">Thinking...</span>
-            </div>
-          </div>
-        )}
-      </div>
-      {/* Quick prompts */}
-      {messages.length === 1 && API_KEY && !contextFile && (
-        <div className="flex flex-wrap gap-2 mb-3 shrink-0">
-          {QUICK_PROMPTS.map((p) => (
-            <button
-              key={p}
-              onClick={() => sendMessage(p)}
-              className="text-xs px-3 py-1.5 rounded-full border border-border/40 text-muted-foreground hover:border-primary/50 hover:text-primary hover:bg-primary/5 transition-all"
-            >
-              {p}
-            </button>
           ))}
+
+          {loading && streamContent && (
+            <div className="flex gap-3 animate-fade-in">
+              <UserAvatar Icon={Sparkles} className="mt-1 shrink-0" />
+              <div className="max-w-[80%] rounded-2xl rounded-bl-sm px-4 py-3 bg-muted/60 border border-border/40">
+                <LatexRenderer content={streamContent} />
+                <span className="inline-block w-0.5 h-4 bg-primary animate-pulse ml-0.5 align-text-bottom" />
+              </div>
+            </div>
+          )}
+
+          {loading && !streamContent && (
+            <div className="flex gap-3 animate-fade-in">
+              <UserAvatar Icon={Sparkles} className="mt-1 shrink-0" />
+              <div className="glass-subtle rounded-2xl rounded-bl-sm px-4 py-3 flex items-center gap-2">
+                <Loader2 className="h-4 w-4 text-primary animate-spin" />
+                <span className="text-sm text-muted-foreground">Thinking...</span>
+              </div>
+            </div>
+          )}
         </div>
-      )}
 
-      {/* Input */}
-      <GlassCard padding="p-3" className="flex gap-2 items-end shrink-0">
-        {/* Attach from Vault button */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className={`shrink-0 h-9 w-9 ${contextFile ? "text-primary" : "text-muted-foreground"}`}
-          onClick={() => setVaultPickerOpen(true)}
-          disabled={extractingContext}
-          title="Attach context from Vault"
-        >
-          <Paperclip className="h-4 w-4" />
-        </Button>
+        {/* Quick prompts */}
+        {messages.length <= 1 && API_KEY && !pdfContext && (
+          <div className="flex flex-wrap gap-2 mb-3 shrink-0">
+            {QUICK_PROMPTS.map((p) => (
+              <button
+                key={p}
+                onClick={() => sendMessage(p)}
+                className="text-xs px-3 py-1.5 rounded-full border border-border/40 text-muted-foreground hover:border-primary/50 hover:text-primary hover:bg-primary/5 transition-all"
+              >
+                {p}
+              </button>
+            ))}
+          </div>
+        )}
 
-        <Textarea
-          ref={inputRef}
-          placeholder={
-            contextFile
-              ? `Ask about "${contextFile.name}"...`
-              : studyMode
-                ? "Ask a study question (Socratic mode)..."
-                : "Ask anything about your ELTE courses..."
-          }
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
-          }}
-          className="border-0 bg-transparent focus-visible:ring-0 resize-none min-h-[40px] max-h-[120px]"
-          rows={1}
-          disabled={loading || extractingContext}
-        />
-        <Button onClick={() => sendMessage()} size="icon" className="shrink-0 h-9 w-9" disabled={loading || !input.trim() || extractingContext}>
-          <Send className="h-4 w-4" />
-        </Button>
-      </GlassCard>
-      <p className="text-center text-[10px] text-muted-foreground mt-2">
-        📎 Attach lecture PDFs from The Vault · Press Enter to send · Powered by Llama 3.3 + PDF.js
-      </p>
+        {/* Chat Input area */}
+        <div className="shrink-0 space-y-2">
+          {pdfContext && (
+            <div className="flex items-center gap-2 px-4 py-2 bg-primary/10 border border-primary/20 text-xs text-primary rounded-lg animate-fade-in">
+              <FileText className="h-3 w-3" />
+              <span>Context: {vaultFile?.name}</span>
+              <button 
+                onClick={() => { setPdfContext(""); setMessages([]); }} 
+                className="ml-auto opacity-60 hover:opacity-100"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
+          <GlassCard padding="p-3" className="flex gap-2 items-end">
+            <Button
+              variant="ghost"
+              size="icon"
+              className={`shrink-0 h-9 w-9 ${pdfContext ? "text-primary" : "text-muted-foreground"}`}
+              onClick={() => setVaultPickerOpen(true)}
+              disabled={loading}
+              title="Attach context from Vault"
+            >
+              <Paperclip className="h-4 w-4" />
+            </Button>
+
+            <Textarea
+              ref={inputRef}
+              placeholder={
+                pdfContext
+                  ? `Ask about "${vaultFile?.name}"...`
+                  : studyMode
+                    ? "Ask a study question (Socratic mode)..."
+                    : "Ask anything about your ELTE courses..."
+              }
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+              }}
+              className="border-0 bg-transparent focus-visible:ring-0 resize-none min-h-[40px] max-h-[120px]"
+              rows={1}
+              disabled={loading}
+            />
+            <Button onClick={() => sendMessage()} size="icon" className="shrink-0 h-9 w-9" disabled={loading || !input.trim()}>
+              <Send className="h-4 w-4" />
+            </Button>
+          </GlassCard>
+          <p className="text-center text-[10px] text-muted-foreground">
+            📎 Attach lecture PDFs from The Vault · Press Enter to send · Powered by Llama 3.3 + PDF.js
+          </p>
+        </div>
+      </div>
 
       <VaultFilePicker
         open={vaultPickerOpen}
@@ -484,6 +497,5 @@ export default function AITutor() {
         onSelect={handleAttachFile}
       />
     </div>
-  </div>
   );
 }

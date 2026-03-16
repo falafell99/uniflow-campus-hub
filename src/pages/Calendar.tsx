@@ -5,6 +5,7 @@ import {
 } from "lucide-react";
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, isSameMonth, isSameDay, addDays, parseISO } from "date-fns";
 import ICAL from "ical.js";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
@@ -43,6 +44,7 @@ const EVENT_ICONS: Record<EventType, React.ReactNode> = {
 
 export default function Calendar() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [calendarView, setCalendarView] = useState<"month" | "week">("week");
   const [events, setEvents] = useState<CampusEvent[]>([]);
@@ -148,7 +150,21 @@ export default function Calendar() {
         });
 
       if (error) throw error;
-      toast.success("Event created successfully");
+      
+      if (eventType === "deadline") {
+        toast.success("Deadline created!", {
+          action: {
+            label: "Add to Workspace →",
+            onClick: () => navigate("/workspace", {
+              state: { prefillTitle: title, prefillDate: selectedDate?.toISOString() }
+            })
+          },
+          duration: 6000
+        });
+      } else {
+        toast.success("Event created!");
+      }
+      
       setIsModalOpen(false);
       resetForm();
     } catch (error: any) {
@@ -183,6 +199,7 @@ export default function Calendar() {
   };
 
   const openNewEventModal = () => {
+    if (!selectedDate) setSelectedDate(new Date());
     setIsModalOpen(true);
   };
 
@@ -671,6 +688,21 @@ export default function Calendar() {
             <DialogTitle>Add Event for {selectedDate && format(selectedDate, "MMMM d, yyyy")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Date</label>
+              <Input 
+                type="date"
+                value={selectedDate ? format(selectedDate, "yyyy-MM-dd") : ""} 
+                onChange={e => {
+                  const val = e.target.value;
+                  if (val) {
+                    const newDate = parseISO(val);
+                    setSelectedDate(newDate);
+                  }
+                }} 
+              />
+            </div>
+
             <div className="space-y-2">
               <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Title</label>
               <Input 

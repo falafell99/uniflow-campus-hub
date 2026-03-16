@@ -1,7 +1,9 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   ChevronRight, ChevronDown, Folder, FileText,
-  Eye, Download, Image, FileCode, FileSpreadsheet, Presentation
+  Eye, Download, Image, FileCode, FileSpreadsheet, Presentation,
+  Sparkles
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -50,6 +52,7 @@ interface FileTreeProps {
 }
 
 export function FileTree({ items, depth = 0, onPreview }: FileTreeProps) {
+  const navigate = useNavigate();
   const [expanded, setExpanded] = useState<Record<string, boolean>>({
     root: true, "1": true, "2": true, "3": true,
   });
@@ -104,6 +107,18 @@ export function FileTree({ items, depth = 0, onPreview }: FileTreeProps) {
                 <Button variant="ghost" size="icon" className="h-6 w-6" title="Preview" onClick={() => onPreview(item)}>
                   <Eye className="h-3 w-3" />
                 </Button>
+                {item.storage_path && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 text-[10px] gap-1.5 text-primary hover:text-primary hover:bg-primary/10"
+                        onClick={() => navigate("/ai-oracle", { 
+                          state: { vaultFile: { name: item.name, storage_path: item.storage_path } } 
+                        })}
+                      >
+                        <Sparkles className="h-3 w-3" /> Ask Oracle
+                      </Button>
+                )}
                 {item.storage_url ? (
                   <a href={item.storage_url} download={item.name} target="_blank" rel="noopener noreferrer">
                     <Button variant="ghost" size="icon" className="h-6 w-6" title="Download">
@@ -126,6 +141,7 @@ export function FileTree({ items, depth = 0, onPreview }: FileTreeProps) {
 
 // ─── Grid View Card ───────────────────────────────────────────────────────────
 export function FileCard({ item, onPreview }: { item: FileItem; onPreview: (f: FileItem) => void }) {
+  const navigate = useNavigate();
   const ext = item.name.split(".").pop()?.toLowerCase() ?? "";
   const isImage = ["jpg", "jpeg", "png", "gif", "webp"].includes(ext);
 
@@ -153,6 +169,17 @@ export function FileCard({ item, onPreview }: { item: FileItem; onPreview: (f: F
       </div>
 
       <div className="flex items-center gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+        {item.storage_path && (
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-6 w-6 text-primary" 
+            title="Ask Oracle"
+            onClick={() => navigate("/ai-oracle", { state: { vaultFile: item } })}
+          >
+            <Sparkles className="h-3 w-3" />
+          </Button>
+        )}
         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onPreview(item)}>
           <Eye className="h-3 w-3" />
         </Button>

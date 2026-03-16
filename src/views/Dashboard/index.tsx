@@ -9,6 +9,7 @@ import { MeetupsSection } from "./MeetupsSection";
 import { TrendingSection } from "./TrendingSection";
 import { UpcomingEventsSection } from "./UpcomingEventsSection";
 import { LoungeActivity } from "./LoungeActivity";
+import { SubjectsSection } from "./SubjectsSection";
 import { GlassCard } from "@/components/GlassCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PublicProfileModal } from "@/components/PublicProfileModal";
@@ -23,11 +24,7 @@ type VaultResource = {
   tagClass: string;
 };
 
-const quickSubjects = [
-  { id: 1, name: "Linear Algebra", code: "GEIAL145", progress: 72, color: "bg-primary" },
-  { id: 2, name: "Algorithms & Data Structures", code: "GEIAL219", progress: 58, color: "bg-success" },
-  { id: 3, name: "Discrete Mathematics", code: "GEIAL112", progress: 85, color: "bg-warning" },
-];
+// Fallbacks are now handled inside the component logic
 
 const fallbackResources: VaultResource[] = [
   { id: "res-1", title: "Calculus II Final Cheat Sheet", author: "Anna K.", downloads: 234, tag: "Exam Prep", tagClass: "badge-exam" },
@@ -118,7 +115,8 @@ export default function Dashboard() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [statsLoading, setStatsLoading] = useState(true);
-  const [trendingResources, setTrendingResources] = useState<VaultResource[]>(fallbackResources);
+  const [subjects, setSubjects] = useState<any[]>([]);
+  const [liveResources, setLiveResources] = useState<VaultResource[]>([]);
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
 
   // Real stats from Supabase
@@ -131,32 +129,70 @@ export default function Dashboard() {
   const displayName = user?.user_metadata?.display_name || user?.email?.split("@")[0] || "Student";
   const firstName = getFirstName(displayName);
 
-  // Load trending vault files
+  // Load trending vault files and subjects
   useEffect(() => {
-    const load = async () => {
+    const loadContent = async () => {
       setLoading(true);
-      const { data, error } = await supabase
-        .from("vault_files")
-        .select("id, name, uploader, uploader_id, downloads, file_type")
-        .order("created_at", { ascending: false })
-        .limit(6);
+      try {
+        const [filesRes, subjectsRes] = await Promise.all([
+          supabase
+            .from("vault_files")
+            .select("id, name, file_type, uploader, downloads")
+            .order("downloads", { ascending: false })
+            .limit(4),
+          supabase
+            .from("vault_files")
+            .select("subject")
+            .not("subject", "is", null)
+        ]);
 
-      if (!error && data && data.length > 0) {
-        setTrendingResources(
-          data.map((f) => ({
-            id: String(f.id),
-            title: f.name,
-            author: f.uploader,
-            authorId: f.uploader_id,
-            downloads: f.downloads || 0,
-            tag: f.file_type || "Student Notes",
-            tagClass: tagClassForType(f.file_type),
-          }))
-        );
+        // Process Resources
+        if (filesRes.data && filesRes.data.length > 0) {
+          setLiveResources(
+            filesRes.data.map((f) => ({
+              id: String(f.id),
+              title: f.name,
+              author: f.uploader ?? "Unknown",
+              downloads: f.downloads || 0,
+              tag: f.file_type || "Notes",
+              tagClass: tagClassForType(f.file_type || ""),
+            }))
+          );
+        }
+
+        // Process Subjects (Top 3 by file count)
+        if (subjectsRes.data && subjectsRes.data.length > 0) {
+          const counts: Record<string, number> = {};
+          subjectsRes.data.forEach(item => {
+            if (item.subject) counts[item.subject] = (counts[item.subject] || 0) + 1;
+          });
+          
+          const sorted = Object.entries(counts)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 3)
+            .map(([name, count], idx) => ({
+              id: idx,
+              name,
+              code: name === "Linear Algebra" ? "GEIAL145" : name === "Algorithms" ? "GEIAL219" : "ELTE-CS",
+              progress: Math.min(100, Math.round((count / 10) * 100)), // Mock progress formula
+              color: ["bg-primary", "bg-success", "bg-warning"][idx] || "bg-primary"
+            }));
+          setSubjects(sorted);
+        } else {
+          setSubjects([
+            { id: 1, name: "Linear Algebra", code: "GEIAL145", progress: 72, color: "bg-primary" },
+            { id: 2, name: "Algorithms", code: "GEIAL219", progress: 58, color: "bg-success" },
+            { id: 3, name: "Discrete Math", code: "GEIAL112", progress: 85, color: "bg-warning" },
+          ]);
+        }
+      } catch (err) {
+        console.error("Dashboard content load fail:", err);
+        setLiveResources([]);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
-    load();
+    loadContent();
   }, []);
 
   // Load real stats
@@ -206,19 +242,7 @@ export default function Dashboard() {
     return true;
   });
 
-  const filteredTrending = trendingResources.filter((r) => {
-    if (activeCommunity === "personal") return true;
-    // We try to match title or tag
-    if (activeCommunity === "mathematics") {
-      return mathSubjects.some(s => r.title.includes(s) || r.tag.includes(s));
-    }
-    if (activeCommunity === "informatics") {
-      return infoSubjects.some(s => r.title.includes(s) || r.tag.includes(s));
-    }
-    return true;
-  });
-
-  const favoriteResources = filteredTrending.filter((r) => favorites.includes(r.id));
+  const favoriteResources = (liveResources.length > 0 ? liveResources : fallbackResources).filter((r) => favorites.includes(r.id));
 
   const activityStats: StatDef[] = [
     // ... same stats ...
@@ -270,7 +294,7 @@ export default function Dashboard() {
         <div className="lg:col-span-2 space-y-6">
           <MeetupsSection meetups={filteredMeetups} loading={meetupsLoading} />
           <TrendingSection
-            resources={filteredTrending}
+            resources={liveResources.length > 0 ? liveResources : fallbackResources}
             favorites={favorites}
             onToggleFavorite={toggleFavorite}
             onAuthorClick={(id) => setSelectedProfileId(id)}
@@ -279,6 +303,7 @@ export default function Dashboard() {
         </div>
         <div className="space-y-6">
           <LoungeActivity />
+          <SubjectsSection subjects={subjects} loading={loading} />
           <UpcomingEventsSection />
           <StatsSection stats={activityStats} loading={statsLoading} />
         </div>

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 // ─── ELTE Computer Science BSc Curriculum ─────────────────────────────────────
 export const SEMESTER_COURSES: Record<number, string[]> = {
@@ -129,7 +129,12 @@ export function UploadDialog({ open, onClose, onUploaded }: UploadDialogProps) {
     const path = `${user.id}/${Date.now()}_${file.name}`;
 
     const { error: storageErr } = await supabase.storage.from("vault").upload(path, file);
-    if (storageErr) console.warn("Storage upload failed:", storageErr.message);
+    if (storageErr) {
+      console.error("Storage upload failed:", storageErr.message);
+      toast.error("Upload to storage failed: " + storageErr.message);
+      setUploading(false);
+      return;
+    }
 
     const { error: dbErr } = await supabase.from("vault_files").insert({
       name: file.name,
@@ -137,7 +142,7 @@ export function UploadDialog({ open, onClose, onUploaded }: UploadDialogProps) {
       section,
       semester: semesterNum,
       file_type: section, // keep legacy compat
-      storage_path: storageErr ? null : path,
+      storage_path: path,
       uploader: displayName,
       uploader_id: user.id,
       downloads: 0,
@@ -146,10 +151,10 @@ export function UploadDialog({ open, onClose, onUploaded }: UploadDialogProps) {
 
     setUploading(false);
     if (dbErr) {
-      toast({ title: "Upload failed", description: dbErr.message, variant: "destructive" });
+      toast.error("Database record failed: " + dbErr.message);
     } else {
       const where = semester === "elective" ? `Electives / ${subject}` : `Semester ${semester} / ${subject}`;
-      toast({ title: "Uploaded! 📁", description: `${file.name} → ${where} / ${section}` });
+      toast.success(`Uploaded! 📁 ${file.name} → ${where} / ${section}`);
       reset();
       onUploaded();
       onClose();

@@ -192,8 +192,27 @@ export default function Vault() {
       const paths = (data as VaultFile[]).map((f) => f.storage_path).filter(Boolean) as string[];
       let urlMap: Record<string, string> = {};
       if (paths.length > 0) {
+        // We try to get signed URLs if possible
         const { data: signed } = await supabase.storage.from("vault").createSignedUrls(paths, 60 * 60);
-        if (signed) signed.forEach((s) => { if (s.signedUrl) urlMap[s.path] = s.signedUrl; });
+        
+        // Map by path - Supabase might return path with or without leading slash, or we might have it stored differently
+        if (signed) {
+          signed.forEach((s) => {
+            if (s.signedUrl) {
+              urlMap[s.path] = s.signedUrl;
+              // Also map the original path if it starts with/without slash
+              const altPath = s.path.startsWith("/") ? s.path.substring(1) : "/" + s.path;
+              urlMap[altPath] = s.signedUrl;
+            }
+          });
+        }
+        
+        // Fallback: If some files still don't have URLs, try getPublicUrl (works if bucket is public)
+        paths.forEach(p => {
+          if (!urlMap[p]) {
+            urlMap[p] = supabase.storage.from("vault").getPublicUrl(p).data.publicUrl;
+          }
+        });
       }
       setVaultTree(mergeFilesIntoTree(baseTree, data as VaultFile[], urlMap));
     } else {

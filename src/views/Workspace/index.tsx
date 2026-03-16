@@ -13,6 +13,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
+import { format } from "date-fns";
+import { useLocation, useNavigate } from "react-router-dom";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type BlockType = "paragraph" | "h1" | "h2" | "bullet" | "code" | "checklist" | "divider";
@@ -598,6 +600,8 @@ export default function Workspace() {
   const [editingBlockId, setEditingBlockId] = useState<string | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const titleRef = useRef<HTMLInputElement>(null);
+  const location = useLocation();
+  const navigate = useNavigate();
 
   const selectedNote = notes.find((n) => n.id === selectedId) ?? null;
 
@@ -647,6 +651,30 @@ export default function Workspace() {
     };
     load();
   }, [user]);
+
+  // ── Handle Prefill from Calendar ──────────────────────────────────────────
+  useEffect(() => {
+    if (!user || loading) return;
+    
+    const prefill = location.state as { prefillTitle?: string; prefillDate?: string } | null;
+    if (prefill?.prefillTitle) {
+      const newNote: Note = {
+        id: crypto.randomUUID(),
+        user_id: user?.id ?? "",
+        title: prefill.prefillTitle,
+        tags: ["Exam Prep"],
+        blocks: [
+          { id: crypto.randomUUID(), type: "h1", content: prefill.prefillTitle },
+          { id: crypto.randomUUID(), type: "paragraph", content: prefill.prefillDate ? "📅 Due: " + format(new Date(prefill.prefillDate), "PPP") : "" },
+          { id: crypto.randomUUID(), type: "paragraph", content: "" }
+        ],
+        updated_at: new Date().toISOString()
+      };
+      setNotes(prev => [newNote, ...prev]);
+      setSelectedId(newNote.id);
+      window.history.replaceState({}, "");
+    }
+  }, [user, loading, location.state, navigate]);
 
   // ── Save ────────────────────────────────────────────────────────────────────
   const saveNote = useCallback(async (note: Note) => {

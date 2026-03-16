@@ -25,6 +25,7 @@ import Pomodoro from "@/pages/Pomodoro";
 import Workspace from "@/pages/Workspace";
 import Messages from "@/pages/Messages";
 import Studio from "@/pages/Studio";
+import Internships from "@/pages/Internships";
 import Calendar from "@/pages/Calendar";
 import NotFound from "@/pages/NotFound";
 import { Loader2 } from "lucide-react";
@@ -73,6 +74,7 @@ function ProtectedApp() {
             <Route path="/calendar" element={<Calendar />} />
             <Route path="/messages" element={<Messages />} />
             <Route path="/studio" element={<Studio />} />
+            <Route path="/internships" element={<Internships />} />
             <Route path="/login" element={<Navigate to="/" replace />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
