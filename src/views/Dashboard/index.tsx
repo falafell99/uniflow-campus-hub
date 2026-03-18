@@ -14,6 +14,7 @@ import { GlassCard } from "@/components/GlassCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useNavigate } from "react-router-dom";
 import { PublicProfileModal } from "@/components/PublicProfileModal";
+import { StudyCoach } from "@/components/StudyCoach";
 
 type VaultResource = {
   id: string;
@@ -334,6 +335,7 @@ export default function Dashboard() {
         </div>
       </div>
       <PublicProfileModal userId={selectedProfileId} onClose={() => setSelectedProfileId(null)} />
+      <StudyCoach page="dashboard" />
     </div>
   );
 }

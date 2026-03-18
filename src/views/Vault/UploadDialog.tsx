@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { logActivity } from "@/lib/activity";
 
 // ─── ELTE Computer Science BSc Curriculum ─────────────────────────────────────
 export const SEMESTER_COURSES: Record<number, string[]> = {
@@ -164,6 +165,9 @@ export function UploadDialog({ open, onClose, onUploaded }: UploadDialogProps) {
     } else {
       const where = semester === "elective" ? `Electives / ${subject}` : `Semester ${semester} / ${subject}`;
       toast.success(`Uploaded! 📁 ${file.name} → ${where} / ${section}`);
+      
+      logActivity("file_uploaded", subject);
+      
       reset();
       onUploaded();
       onClose();

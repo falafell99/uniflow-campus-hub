@@ -12,6 +12,7 @@ import { supabase } from "@/lib/supabase";
 import { LiveNoteEditor } from "./LiveNoteEditor";
 import { formatDistanceToNow } from "date-fns";
 import { FileText as FileTextIcon, History } from "lucide-react";
+import { StudyCoach } from "@/components/StudyCoach";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type VaultFile = {
@@ -413,6 +414,7 @@ export default function Vault() {
         }} 
         note={selectedNote}
       />
+      <StudyCoach page="vault" />
     </div>
   );
 }

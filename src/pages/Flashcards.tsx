@@ -16,6 +16,7 @@ import { toast } from "@/hooks/use-toast";
 import { VaultFilePicker } from "@/components/VaultFilePicker";
 import { extractTextFromPDF } from "@/lib/pdfUtils";
 import { useLocation } from "react-router-dom";
+import { logActivity } from "@/lib/activity";
 
 const API_KEY = import.meta.env.VITE_GROQ_API_KEY as string | undefined;
 const GROQ_MODEL = "llama-3.3-70b-versatile";
@@ -76,6 +77,7 @@ function CardViewer({ cards, deckId }: { cards: Card[]; deckId: number }) {
       await supabase.from("flashcard_results").upsert({
         user_id: user.id, deck_id: deckId, card_id: card.id, result: difficulty,
       });
+      logActivity("flashcard_reviewed");
     }
     if (idx < cards.length - 1) {
       setFlipped(false);

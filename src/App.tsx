@@ -19,6 +19,7 @@ import Toolbox from "@/pages/Toolbox";
 import Profile from "@/pages/Profile";
 import VoiceLounges from "@/pages/VoiceLounges";
 import Flashcards from "@/pages/Flashcards";
+import Progress from "@/pages/Progress";
 import KnowledgeGraph from "@/pages/KnowledgeGraph";
 import Teams from "@/pages/Teams";
 import Pomodoro from "@/pages/Pomodoro";
@@ -75,6 +76,7 @@ function ProtectedApp() {
             <Route path="/workspace" element={<Workspace />} />
             <Route path="/notes" element={<Notes />} />
             <Route path="/tasks" element={<KanbanBoard />} />
+            <Route path="/progress" element={<Progress />} />
             <Route path="/calendar" element={<Calendar />} />
             <Route path="/messages" element={<Messages />} />
             <Route path="/studio" element={<Studio />} />

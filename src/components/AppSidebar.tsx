@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, Library, Bot, Users, MessageSquare,
-  Star, Wrench, UserCircle, GraduationCap, Briefcase, NotebookPen, ClipboardList
+  Star, Wrench, UserCircle, GraduationCap, Briefcase, NotebookPen, ClipboardList, TrendingUp
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -16,6 +16,7 @@ import { AvatarDisplay, AVATAR_COLORS } from "@/pages/Profile";
 
 const navItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard, emoji: "🏠" },
+  { title: "Progress", url: "/progress", icon: TrendingUp, emoji: "📈" },
   { title: "Teams Hub", url: "/teams", icon: Users, emoji: "👥" },
   { title: "Workspace", url: "/knowledge-graph", icon: GraduationCap, emoji: "📋" },
   { title: "Notes", url: "/notes", icon: NotebookPen, emoji: "📝" },

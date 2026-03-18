@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { Send, CheckCheck, Search, MessageCircle, MoreVertical, Loader2, Plus, ArrowLeft } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Search, MessageCircle, MoreVertical, Loader2, Plus, ArrowLeft, Send, CheckCheck } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -8,6 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { AvatarDisplay } from "@/pages/Profile";
 import { useSearchParams } from "react-router-dom";
+import { toast } from "sonner";
 
 type ProfileSnap = {
   id: string;
@@ -52,12 +53,35 @@ export default function Messages() {
   const [searchResults, setSearchResults] = useState<ProfileSnap[]>([]);
   const [searching, setSearching] = useState(false);
 
+  // Mentions State
+  const [mentionQuery, setMentionQuery] = useState<{ query: string, start: number } | null>(null);
+  const [mentionResults, setMentionResults] = useState<ProfileSnap[]>([]);
+  const inputRef = useRef<HTMLInputElement>(null);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Mention search effect
+  useEffect(() => {
+    if (!mentionQuery) {
+      setMentionResults([]);
+      return;
+    }
+    const search = async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("id, display_name, avatar_color, avatar_emoji")
+        .ilike("display_name", `%${mentionQuery.query}%`)
+        .limit(5);
+      setMentionResults((data as ProfileSnap[]) || []);
+    };
+    const timer = setTimeout(search, 150);
+    return () => clearTimeout(timer);
+  }, [mentionQuery]);
 
   // Use a ref to access activeUser inside the generic realtime listener
   const activeUserRef = useRef<ProfileSnap | null>(null);
@@ -210,6 +234,26 @@ export default function Messages() {
             setMessages(prev => prev.map(m => m.id === updatedMsg.id ? updatedMsg : m));
           }
         }
+
+        // Notification logic for newly received messages containing our name
+        if (payload.eventType === 'INSERT') {
+          const newMsg = payload.new as Message;
+          if (newMsg.receiver_id === user.id) {
+            const myName = user.user_metadata?.display_name || user.email?.split("@")[0];
+            if (myName && newMsg.content.includes(`@${myName}`)) {
+              supabase.from("profiles").select("display_name").eq("id", newMsg.sender_id).single().then(({data}) => {
+                const senderName = data?.display_name || "Someone";
+                const preview = newMsg.content.length > 30 ? newMsg.content.substring(0, 30) + "..." : newMsg.content;
+                if (Notification.permission === "granted") {
+                  new Notification("UniFlow", { body: `${senderName} mentioned you: "${preview}"`, icon: "/favicon.png" });
+                } else if (Notification.permission === "default") {
+                  Notification.requestPermission();
+                }
+                toast(`📣 ${senderName} mentioned you`);
+              });
+            }
+          }
+        }
       })
       .subscribe();
 
@@ -257,6 +301,41 @@ export default function Messages() {
     await supabase.from("direct_messages").update({ read: true }).eq("receiver_id", user.id).eq("read", false);
     // Locally clear counts
     setConversations(prev => prev.map(c => ({ ...c, unreadCount: 0 })));
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setNewMessage(val);
+    
+    // Check for @mention
+    const cursor = e.target.selectionStart || 0;
+    const textBeforeCursor = val.slice(0, cursor);
+    const match = textBeforeCursor.match(/@([a-zA-Z0-9_]*)$/);
+    if (match) {
+      setMentionQuery({ query: match[1], start: cursor - match[0].length });
+    } else {
+      setMentionQuery(null);
+    }
+  };
+
+  const insertMention = (name: string) => {
+    if (!mentionQuery) return;
+    const before = newMessage.slice(0, mentionQuery.start);
+    const after = newMessage.slice(mentionQuery.start + mentionQuery.query.length + 1);
+    setNewMessage(`${before}@${name} ${after}`);
+    setMentionQuery(null);
+    inputRef.current?.focus();
+  };
+
+  const renderMessageContent = (content: string) => {
+    // Split by @mention pattern
+    const parts = content.split(/(@[a-zA-Z0-9_ -]+)/gi);
+    return parts.map((part, i) => {
+      if (part.startsWith('@')) {
+        return <span key={i} className="bg-primary/15 text-primary rounded px-1 text-[13px] font-medium">{part}</span>;
+      }
+      return <span key={i}>{part}</span>;
+    });
   };
 
   // 4. Search directory for new chats
@@ -437,7 +516,7 @@ export default function Messages() {
                             ? "bg-primary text-primary-foreground rounded-br-sm" 
                             : "bg-muted/60 text-foreground rounded-bl-sm"
                         }`}>
-                          <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">{m.content}</p>
+                          <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">{renderMessageContent(m.content)}</p>
                         </div>
                       </div>
                       
@@ -455,11 +534,29 @@ export default function Messages() {
             </div>
 
             {/* Chat Input */}
-            <div className="p-4 border-t border-border/40 glass-subtle shrink-0">
+            <div className="p-4 border-t border-border/40 glass-subtle shrink-0 relative">
+              {mentionQuery && mentionResults.length > 0 && (
+                <div className="absolute bottom-full left-4 mb-2 bg-card border border-border/40 rounded-xl shadow-xl overflow-hidden z-50 w-56">
+                  {mentionResults.map(u => (
+                    <button 
+                      key={u.id}
+                      type="button"
+                      onClick={() => insertMention(u.display_name)}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-muted/20 text-left text-sm"
+                    >
+                      <div className="h-6 w-6 rounded-full bg-primary/10 text-primary text-[10px] font-bold flex items-center justify-center">
+                        {u.display_name.charAt(0)}
+                      </div>
+                      <span className="truncate">{u.display_name}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
               <form onSubmit={sendMessage} className="relative flex items-center">
                 <Input
+                  ref={inputRef}
                   value={newMessage}
-                  onChange={e => setNewMessage(e.target.value)}
+                  onChange={handleInputChange}
                   placeholder={`Message @${activeUser.display_name}...`}
                   className="w-full pr-12 rounded-xl bg-background border-border/50 h-12 shadow-sm focus-visible:ring-1"
                   autoFocus

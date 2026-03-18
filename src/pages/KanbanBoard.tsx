@@ -18,6 +18,8 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { logActivity } from "@/lib/activity";
+import { StudyCoach } from "@/components/StudyCoach";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Priority = "low" | "normal" | "high" | "urgent";
@@ -237,7 +239,10 @@ export default function KanbanBoard() {
         setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: newStatus } : t));
         const { error } = await supabase.from("tasks").update({ status: newStatus, updated_at: new Date().toISOString() }).eq("id", taskId);
         if (error) { toast.error("Failed to update task"); loadTasks(); }
-        else toast.success(`Moved to ${COLUMNS.find(c => c.status === newStatus)?.label}`);
+        else {
+          toast.success(`Moved to ${COLUMNS.find(c => c.status === newStatus)?.label}`);
+          if (newStatus === "done") logActivity("task_completed", task.subject || undefined);
+        }
       }
     }
   };
@@ -538,6 +543,7 @@ export default function KanbanBoard() {
           </div>
         </DialogContent>
       </Dialog>
+      <StudyCoach page="tasks" />
     </div>
   );
 }

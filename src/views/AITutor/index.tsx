@@ -16,6 +16,7 @@ import { VaultFilePicker } from "@/components/VaultFilePicker";
 import { supabase } from "@/lib/supabase";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ChatHistorySidebar } from "./ChatHistorySidebar";
+import { logActivity } from "@/lib/activity";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Message = {
@@ -317,6 +318,7 @@ export default function AITutor() {
 
       const assistantMsgId = Date.now() + 1;
       setMessages((p) => [...p, { id: assistantMsgId, role: "assistant", content: fullText }]);
+      logActivity("oracle_query");
       
       // Persist assistant message
       if (currentSessionId) saveMessage(currentSessionId, "assistant", fullText);

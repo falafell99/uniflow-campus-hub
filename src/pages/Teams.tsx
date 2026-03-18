@@ -9,8 +9,11 @@ import {
   ShieldCheck, UserPlus, MessageSquare, ChevronLeft,
   MoreVertical, Settings, Loader2, Trash2, Crown, Palette,
   Eye, Edit3, X, Check, Activity, Clock, TrendingUp,
-  BookmarkPlus, Pencil, Info
+  BookmarkPlus, Pencil, Info, Link2, Download, Shield, Globe, Star, CheckSquare, Briefcase, FileText, CheckCircle2, LayoutDashboard
 } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { formatDistanceToNow, format } from "date-fns";
+import { logTeamActivity } from "@/lib/teamActivity";
 import Whiteboard from "@/pages/Whiteboard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -53,7 +56,7 @@ interface TeamMember {
 }
 
 type SidebarTab = "all-teams" | "all-people" | "analytics";
-type TeamTab = "overview" | "whiteboard" | "analytics" | "members" | "priorities";
+type TeamTab = "overview" | "whiteboard" | "analytics" | "members" | "priorities" | "tasks";
 
 const ROLE_COLORS: Record<string, string> = {
   owner: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20",
@@ -95,7 +98,9 @@ export default function Teams() {
   // Invite member modal
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [inviteSearch, setInviteSearch] = useState("");
-  const [inviteRole, setInviteRole] = useState("member");
+  const [inviteRole, setInviteRole] = useState("editor");
+  const [teamActivity, setTeamActivity] = useState<any[]>([]);
+  const [kanbanTasks, setKanbanTasks] = useState<any[]>([]);
 
   // Edit team description
   const [isEditingDesc, setIsEditingDesc] = useState(false);
@@ -289,6 +294,31 @@ export default function Teams() {
     }
   }, []);
 
+  // Fetch real kanban tasks
+  const fetchKanbanTasks = useCallback(async (teamId: string) => {
+    try {
+      const { data } = await supabase.from("tasks").select("*").eq("team_id", teamId).order("created_at", { ascending: false });
+      setKanbanTasks(data || []);
+    } catch (e: any) {
+      console.error(e);
+    }
+  }, []);
+
+  // Fetch team activity
+  const fetchTeamActivity = useCallback(async (teamId: string) => {
+    try {
+      const { data } = await supabase
+        .from("team_activity")
+        .select("*, profiles!user_id(display_name)")
+        .eq("team_id", teamId)
+        .order("created_at", { ascending: false })
+        .limit(20);
+      setTeamActivity(data || []);
+    } catch (e: any) {
+      console.error(e);
+    }
+  }, []);
+
   useEffect(() => {
     if (selectedTeam) {
       fetchTeamMembers(selectedTeam.id);
@@ -301,13 +331,21 @@ export default function Teams() {
       const taskCh = supabase.channel(`tasks-${selectedTeam.id}`)
         .on("postgres_changes", { event: "*", schema: "public", table: "notes", filter: `team_id=eq.${selectedTeam.id}` }, () => fetchTeamTasks(selectedTeam.id))
         .subscribe();
+      const kanbanCh = supabase.channel(`kanban-${selectedTeam.id}`)
+        .on("postgres_changes", { event: "*", schema: "public", table: "tasks", filter: `team_id=eq.${selectedTeam.id}` }, () => fetchKanbanTasks(selectedTeam.id))
+        .subscribe();
+      const activityCh = supabase.channel(`activity-${selectedTeam.id}`)
+        .on("postgres_changes", { event: "*", schema: "public", table: "team_activity", filter: `team_id=eq.${selectedTeam.id}` }, () => fetchTeamActivity(selectedTeam.id))
+        .subscribe();
         
       return () => { 
         ch.unsubscribe(); 
         taskCh.unsubscribe();
+        kanbanCh.unsubscribe();
+        activityCh.unsubscribe();
       };
     }
-  }, [selectedTeam, fetchTeamMembers, fetchTeamTasks]);
+  }, [selectedTeam, fetchTeamMembers, fetchTeamTasks, fetchKanbanTasks, fetchTeamActivity]);
 
   // Create team
   const handleCreateTeam = async () => {
@@ -328,6 +366,7 @@ export default function Teams() {
         role: "owner",
         status: "accepted"
       }]);
+      logTeamActivity(data.id, "created this team");
       toast.success("Team created!");
       setIsCreateModalOpen(false);
       setNewTeamName(""); setNewTeamDescription(""); setNewTeamEmoji("👥");
@@ -364,7 +403,12 @@ export default function Teams() {
     if (!selectedTeam) return;
     const { error } = await supabase.from("teams").update({ description: editDesc }).eq("id", selectedTeam.id);
     if (error) toast.error(error.message);
-    else { setSelectedTeam({ ...selectedTeam, description: editDesc }); setIsEditingDesc(false); toast.success("Description updated"); }
+    else { 
+      setSelectedTeam({ ...selectedTeam, description: editDesc }); 
+      setIsEditingDesc(false); 
+      logTeamActivity(selectedTeam.id, "updated the team description");
+      toast.success("Description updated"); 
+    }
   };
 
   // Invite member
@@ -386,6 +430,7 @@ export default function Teams() {
         { team_id: selectedTeam.id, user_id: userIdToInvite, role: inviteRole, status: "pending" }
       ], { onConflict: 'team_id,user_id' });
       if (error) throw error;
+      logTeamActivity(selectedTeam.id, "invited a new member");
       toast.success("Invitation sent!"); 
       setIsInviteModalOpen(false); 
       setInviteSearch("");
@@ -404,7 +449,10 @@ export default function Teams() {
     const { error } = await supabase.from("team_members")
       .delete().eq("team_id", selectedTeam.id).eq("user_id", userId);
     if (error) toast.error(error.message);
-    else toast.success("Member removed");
+    else {
+      logTeamActivity(selectedTeam.id, "removed a member");
+      toast.success("Member removed");
+    }
   };
 
   // Update member role
@@ -651,6 +699,7 @@ export default function Teams() {
                   { id: "analytics", label: "Analytics", icon: <BarChart3 className="h-3.5 w-3.5" /> },
                   { id: "members", label: "Members", icon: <Users className="h-3.5 w-3.5" />, count: teamMembers.length },
                   { id: "priorities", label: "Priorities", icon: <Activity className="h-3.5 w-3.5" />, count: teamTasks.length },
+                  { id: "tasks", label: "Tasks", icon: <LayoutDashboard className="h-3.5 w-3.5" />, count: kanbanTasks.length },
                 ] as const).map(tab => (
                   <button
                     key={tab.id}
@@ -731,10 +780,33 @@ export default function Teams() {
                       <div className="p-4 border-b border-border/20">
                         <span className="text-sm font-semibold">Feed</span>
                       </div>
-                      <div className="p-8 flex flex-col items-center justify-center gap-3 text-center opacity-50">
-                        <Activity className="h-10 w-10 text-muted-foreground" strokeWidth={1} />
-                        <p className="text-sm font-medium">Nothing to see here</p>
-                        <p className="text-xs text-muted-foreground">Looks like there's no team activity yet.</p>
+                      <div className="p-0 flex flex-col">
+                        {teamActivity.length === 0 ? (
+                          <div className="p-8 flex flex-col items-center justify-center gap-3 text-center opacity-50">
+                            <Activity className="h-10 w-10 text-muted-foreground" strokeWidth={1} />
+                            <p className="text-sm font-medium">No team activity yet. Start collaborating!</p>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col max-h-[400px] overflow-y-auto px-4 custom-scroll">
+                            {teamActivity.map(activity => (
+                              <div key={activity.id} className="flex items-start gap-3 py-3 border-b border-border/10 last:border-0 hover:bg-muted/5 transition-colors px-2 rounded-lg my-1">
+                                <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center text-[11px] font-bold text-primary shrink-0 mt-0.5">
+                                  {(activity.profiles?.display_name || "?").charAt(0).toUpperCase()}
+                                </div>
+                                <div className="flex-1 min-w-0 flex flex-col justify-center">
+                                  <p className="text-[13px] leading-relaxed">
+                                    <span className="font-semibold">{activity.profiles?.display_name}</span>
+                                    <span className="text-muted-foreground"> {activity.action}</span>
+                                    {activity.entity_title && <span className="font-medium text-foreground"> "{activity.entity_title}"</span>}
+                                  </p>
+                                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                                    {formatDistanceToNow(new Date(activity.created_at))} ago
+                                  </p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -934,7 +1006,7 @@ export default function Teams() {
 
               {/* PRIORITIES TAB */}
               {teamTab === "priorities" && (
-                <div className="p-8 space-y-6 max-w-4xl">
+                <div className="flex-1 p-4 lg:p-6 w-full max-w-4xl mx-auto space-y-6">
                   <div className="flex items-center justify-between">
                     <h2 className="text-lg font-bold">Priorities</h2>
                     <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5" onClick={() => navigate("/workspace")}>
@@ -1138,6 +1210,57 @@ export default function Teams() {
                       ))}
                     </div>
                   )}
+                </div>
+              </div>
+            )}
+            {/* TASKS TAB */}
+            {teamTab === "tasks" && (
+              <div className="flex-1 p-6 w-full max-w-6xl mx-auto">
+                <div className="flex items-center justify-between mb-8">
+                  <div>
+                    <h2 className="text-xl font-bold tracking-tight">Team Tasks</h2>
+                    <p className="text-sm text-muted-foreground">Mini kanban view. Open full board to drag & drop.</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Button variant="outline" className="gap-2" onClick={() => navigate("/tasks")}>
+                      Open in Tasks <ChevronLeft className="h-4 w-4 rotate-180" />
+                    </Button>
+                    <Button className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => navigate("/tasks", { state: { teamId: selectedTeam.id, openCreate: true } })}>
+                      <Plus className="h-4 w-4" /> New Task
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  {([
+                    { status: "todo", label: "To Do", color: "bg-blue-400" },
+                    { status: "in_progress", label: "In Progress", color: "bg-amber-400" },
+                    { status: "review", label: "In Review", color: "bg-purple-400" },
+                    { status: "done", label: "Done", color: "bg-green-400" }
+                  ]).map(col => {
+                    const colTasks = kanbanTasks.filter(t => t.status === col.status);
+                    return (
+                      <div key={col.status} className="mb-4">
+                        <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground px-2 mb-2 flex items-center justify-between">
+                          {col.label}
+                          <span className="bg-muted px-1.5 py-0.5 rounded text-[10px] text-muted-foreground">{colTasks.length}</span>
+                        </h3>
+                        <div className="space-y-2 mt-3">
+                          {colTasks.length === 0 ? (
+                            <div className="text-center p-4 border border-dashed border-border/40 rounded-xl text-xs text-muted-foreground">Empty</div>
+                          ) : (
+                            colTasks.map((task: any) => (
+                              <div key={task.id} className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-border/20 bg-card/50 shadow-sm hover:border-primary/30 transition-all cursor-default">
+                                <div className={`h-2 w-2 rounded-full shrink-0 ${col.color}`} />
+                                <span className="text-sm flex-1 truncate">{task.title}</span>
+                                {task.due_date && <span className="text-[11px] text-muted-foreground whitespace-nowrap">{format(new Date(task.due_date), "MMM d")}</span>}
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}

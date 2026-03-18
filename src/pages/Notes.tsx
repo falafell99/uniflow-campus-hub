@@ -16,6 +16,7 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
+import { StudyCoach } from "@/components/StudyCoach";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type BlockType = "paragraph" | "h1" | "h2" | "bullet" | "code" | "checklist" | "divider";
@@ -817,6 +818,11 @@ export default function Notes() {
           )}
         </AnimatePresence>
       </div>
+      <StudyCoach 
+        page="notes" 
+        currentSubject={selectedNote?.subject || undefined} 
+        onTriggerStudyMode={() => setStudyMode(true)} 
+      />
     </div>
   );
 }

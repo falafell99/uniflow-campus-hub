@@ -14,6 +14,7 @@ const categories: { label: string; items: NavItem[] }[] = [
     label: "MAIN",
     items: [
       { title: "Dashboard", url: "/", emoji: "🏠" },
+      { title: "Progress", url: "/progress", emoji: "📈" },
       { title: "Messages", url: "/messages", emoji: "💌" },
       { title: "Teams Hub", url: "/teams", emoji: "👥" },
     ],

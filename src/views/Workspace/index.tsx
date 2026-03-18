@@ -15,6 +15,7 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { format } from "date-fns";
 import { useLocation, useNavigate } from "react-router-dom";
+import { logActivity } from "@/lib/activity";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type BlockType = "paragraph" | "h1" | "h2" | "bullet" | "code" | "checklist" | "divider";
@@ -27,6 +28,7 @@ type Note = {
   blocks: Block[];
   updated_at: string;
   team_id?: string | null;
+  subject?: string | null;
 };
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -681,6 +683,7 @@ export default function Workspace() {
         updated_at: new Date().toISOString() 
       })
       .eq("id", note.id);
+    logActivity("note_saved", note.subject || undefined);
     setSaveStatus("saved");
     setTimeout(() => setSaveStatus("idle"), 2000);
   }, [user]);
