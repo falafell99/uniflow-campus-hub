@@ -36,8 +36,13 @@ const categories: { label: string; items: NavItem[] }[] = [
   {
     label: "CAMPUS",
     items: [
+      { title: "Community Feed", url: "/feed", emoji: "📡" },
+      { title: "Q&A", url: "/qa", emoji: "❓" },
+      { title: "Study Partners", url: "/study-partners", emoji: "🤝" },
+      { title: "Study Groups", url: "/study-groups", emoji: "👥" },
+      { title: "Meetups", url: "/meetups", emoji: "📍" },
       { title: "Lobby", url: "/forums", emoji: "💬" },
-      { title: "Study Circles", url: "/meetups", emoji: "🤝" },
+      { title: "Internships", url: "/internships", emoji: "💼" },
       { title: "Voice Lounges", url: "/voice-lounges", emoji: "🎙️" },
       { title: "Studio", url: "/studio", emoji: "🎨" },
     ],

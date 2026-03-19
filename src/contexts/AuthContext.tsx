@@ -6,7 +6,9 @@ import { supabase } from "@/lib/supabase";
 type AuthContextType = {
   user: User | null;
   session: Session | null;
+  profile: any | null;
   loading: boolean;
+  refreshProfile: () => Promise<void>;
   onlineUsers: Set<string>;
   signUp: (email: string, password: string, displayName: string) => Promise<{ error: string | null }>;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
@@ -18,19 +20,35 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
+  const [profile, setProfile] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const refreshProfile = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data } = await supabase.from("profiles").select("*").eq("id", user.id).single();
+      setProfile(data);
+    } else {
+      setProfile(null);
+    }
+  };
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
-      setLoading(false);
+      if (session?.user) refreshProfile();
+      else setLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
-      setLoading(false);
+      if (session?.user) refreshProfile().then(() => setLoading(false));
+      else {
+        setProfile(null);
+        setLoading(false);
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -98,7 +116,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, onlineUsers, signUp, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, session, profile, loading, refreshProfile, onlineUsers, signUp, signIn, signOut }}>
       {children}
     </AuthContext.Provider>
   );

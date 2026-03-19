@@ -10,7 +10,7 @@ import { toast } from "sonner";
 const YEARS = ["1st year", "2nd year", "3rd year", "4th year", "5th year", "PhD", "Other"];
 
 export default function Onboarding() {
-  const { user } = useAuth();
+  const { user, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
 
@@ -30,18 +30,21 @@ export default function Onboarding() {
       display_name: name.trim(), university, faculty, year_of_study: yearOfStudy, major
     }).eq("id", user.id);
     if (error) { toast.error("Could not save profile"); return false; }
+    await refreshProfile();
     return true;
   };
 
   const handleFinish = async () => {
     if (!user) return;
     await supabase.from("profiles").update({ onboarding_completed: true }).eq("id", user.id);
+    await refreshProfile();
     navigate(firstAction === "vault" ? "/vault" : firstAction === "calendar" ? "/calendar" : firstAction === "notes" ? "/notes" : "/");
   };
 
   const skip = async () => {
     if (!user) return;
     await supabase.from("profiles").update({ onboarding_completed: true }).eq("id", user.id);
+    await refreshProfile();
     navigate("/");
   };
 

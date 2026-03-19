@@ -1,12 +1,13 @@
 import {
   LayoutDashboard, Library, Bot, Users, MessageSquare,
-  Star, Wrench, UserCircle, GraduationCap, Briefcase, NotebookPen, ClipboardList, TrendingUp
+  UserCircle, GraduationCap, NotebookPen, ClipboardList, TrendingUp,
+  Timer, Globe, Flame
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import {
-  Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent,
+  Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
   SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader,
   SidebarFooter, useSidebar,
 } from "@/components/ui/sidebar";
@@ -14,23 +15,23 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { AvatarDisplay, AVATAR_COLORS } from "@/pages/Profile";
 
-const navItems = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard, emoji: "🏠" },
-  { title: "Progress", url: "/progress", icon: TrendingUp, emoji: "📈" },
-  { title: "Teams Hub", url: "/teams", icon: Users, emoji: "👥" },
-  { title: "Workspace", url: "/knowledge-graph", icon: GraduationCap, emoji: "📋" },
-  { title: "Notes", url: "/notes", icon: NotebookPen, emoji: "📝" },
-  { title: "Tasks", url: "/tasks", icon: ClipboardList, emoji: "📋" },
-  { title: "The Vault", url: "/vault", icon: Library, emoji: "📚" },
-  { title: "AI Oracle", url: "/ai-oracle", icon: Bot, emoji: "🤖" },
-  { title: "Whiteboard", url: "/whiteboard", icon: Star, emoji: "🎨" },
-  { title: "Meetups", url: "/meetups", icon: Users, emoji: "🤝" },
-  { title: "Forums", url: "/forums", icon: MessageSquare, emoji: "💬" },
-  { title: "Internships", url: "/internships", icon: Briefcase, emoji: "💼" },
-  { title: "Messages", url: "/messages", icon: MessageSquare, emoji: "💬" },
-  { title: "Professor Radar", url: "/professors", icon: Star, emoji: "⭐" },
-  { title: "Toolbox", url: "/toolbox", icon: Wrench, emoji: "🛠" },
-  { title: "Profile", url: "/profile", icon: UserCircle, emoji: "👤" },
+const studyItems = [
+  { title: "Dashboard",       url: "/",              icon: LayoutDashboard, emoji: "🏠" },
+  { title: "Notes",           url: "/notes",         icon: NotebookPen,     emoji: "📝" },
+  { title: "Tasks",           url: "/tasks",         icon: ClipboardList,   emoji: "✅" },
+  { title: "AI Oracle",       url: "/ai-oracle",     icon: Bot,             emoji: "🤖" },
+  { title: "The Vault",       url: "/vault",         icon: Library,         emoji: "📚" },
+  { title: "Flashcards",      url: "/flashcards",    icon: Flame,           emoji: "🃏" },
+  { title: "Campus Calendar", url: "/calendar",      icon: LayoutDashboard, emoji: "📅" },
+  { title: "Progress",        url: "/progress",      icon: TrendingUp,      emoji: "📈" },
+  { title: "Workspace",       url: "/knowledge-graph", icon: GraduationCap, emoji: "🗂" },
+  { title: "Pomodoro",        url: "/pomodoro",      icon: Timer,           emoji: "⏱" },
+];
+
+const campusItems = [
+  { title: "Community",  url: "/community", icon: Globe,         emoji: "🌐" },
+  { title: "Teams Hub",  url: "/teams",     icon: Users,         emoji: "👥" },
+  { title: "Messages",   url: "/messages",  icon: MessageSquare, emoji: "💬" },
 ];
 
 type ProfileSnap = { display_name: string; status: string; avatar_color?: string; avatar_emoji?: string };
@@ -110,19 +111,46 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent className="px-2">
+        {/* Study section */}
         <SidebarGroup>
+          {!collapsed && <SidebarGroupLabel className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider px-3 mb-1">Study</SidebarGroupLabel>}
           <SidebarGroupContent>
             <SidebarMenu>
-              {navItems.map((item) => {
+              {studyItems.map((item) => {
                 const isActive = location.pathname === item.url;
-                const hasBadge = item.title === "Teams Hub" && pendingInvites > 0;
-                
                 return (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild isActive={isActive} tooltip={item.title}>
                       <NavLink
                         to={item.url}
                         end={item.url === "/"}
+                        className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-all hover:bg-sidebar-accent hover:text-sidebar-accent-foreground relative"
+                        activeClassName="!bg-sidebar-accent !text-sidebar-accent-foreground"
+                      >
+                        <span className="text-base leading-none">{item.emoji}</span>
+                        {!collapsed && <span className="flex-1">{item.title}</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Campus section */}
+        <SidebarGroup>
+          {!collapsed && <SidebarGroupLabel className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider px-3 mb-1 mt-2">Campus</SidebarGroupLabel>}
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {campusItems.map((item) => {
+                const isActive = location.pathname.startsWith(item.url === "/" ? "/x-never-match" : item.url);
+                const hasBadge = item.title === "Teams Hub" && pendingInvites > 0;
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild isActive={isActive} tooltip={item.title}>
+                      <NavLink
+                        to={item.url}
                         className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-all hover:bg-sidebar-accent hover:text-sidebar-accent-foreground relative"
                         activeClassName="!bg-sidebar-accent !text-sidebar-accent-foreground"
                       >
@@ -142,6 +170,7 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+
 
       <SidebarFooter className="p-3">
         {profile ? (

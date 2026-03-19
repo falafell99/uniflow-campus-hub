@@ -1,6 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { supabase } from "@/lib/supabase";
+import { publishToFeed } from "@/lib/feed";
 
 export type Meetup = {
   id: number;
@@ -129,6 +130,7 @@ export function MeetupProvider({ children }: { children: ReactNode }) {
     if (!error && data) {
       const inserted = data as Meetup;
       setJoinedIds((prev) => [...prev, inserted.id]);
+      publishToFeed("meetup_created", inserted.id.toString(), inserted.topic, inserted.subject);
       // The websocket insert ping will instantly refetch 'dbMeetups' and do the rest!
     }
   };

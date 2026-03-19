@@ -34,26 +34,20 @@ import KanbanBoard from "@/pages/KanbanBoard";
 import Onboarding from "@/pages/Onboarding";
 import Landing from "@/pages/Landing";
 import NotFound from "@/pages/NotFound";
+import Feed from "@/pages/Feed";
+import StudyGroups from "@/pages/StudyGroups";
+import StudyPartners from "@/pages/StudyPartners";
+import QandA from "@/pages/QandA";
+import Community from "@/pages/Community";
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 const queryClient = new QueryClient();
 
 function ProtectedApp() {
-  const { user, loading } = useAuth();
-  const [profile, setProfile] = useState<{ onboarding_completed?: boolean } | null>(null);
-  const [profileLoading, setProfileLoading] = useState(true);
+  const { user, profile, loading } = useAuth();
 
-  useEffect(() => {
-    if (user) {
-      supabase.from("profiles").select("onboarding_completed").eq("id", user.id).single()
-        .then(({ data }) => { setProfile(data); setProfileLoading(false); });
-    } else {
-      setProfileLoading(false);
-    }
-  }, [user]);
-
-  if (loading || (user && profileLoading)) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -106,6 +100,19 @@ function ProtectedApp() {
             <Route path="/messages" element={<Messages />} />
             <Route path="/studio" element={<Studio />} />
             <Route path="/internships" element={<Internships />} />
+            
+            {/* Community Hub */}
+            <Route path="/community" element={<Community />} />
+
+            {/* Redirects for old social routes */}
+            <Route path="/feed" element={<Navigate to="/community" replace />} />
+            <Route path="/forums" element={<Navigate to="/community" replace />} />
+            <Route path="/meetups" element={<Navigate to="/community" replace />} />
+            <Route path="/voice-lounges" element={<Navigate to="/community" replace />} />
+            <Route path="/qa" element={<Navigate to="/community" replace />} />
+            <Route path="/study-groups" element={<Navigate to="/community" replace />} />
+            <Route path="/study-partners" element={<Navigate to="/community" replace />} />
+
             <Route path="/login" element={<Navigate to="/" replace />} />
             <Route path="/onboarding" element={<Navigate to="/" replace />} />
             <Route path="*" element={<NotFound />} />
