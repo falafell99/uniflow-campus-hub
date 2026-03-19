@@ -1,9 +1,16 @@
 -- SQL Migration to add missing Social Features (Q&A and Study Partners)
 
+-- DROP existing tables safely before recreating them with the correct foreign keys
+DROP TABLE IF EXISTS public.study_group_invites CASCADE;
+DROP TABLE IF EXISTS public.study_partner_requests CASCADE;
+DROP TABLE IF EXISTS public.qa_answer_votes CASCADE;
+DROP TABLE IF EXISTS public.qa_answers CASCADE;
+DROP TABLE IF EXISTS public.qa_questions CASCADE;
+
 -- 1. Q&A Questions Table
 CREATE TABLE IF NOT EXISTS public.qa_questions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE,
+  user_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE,
   title text NOT NULL,
   body text,
   subject text,
@@ -21,7 +28,7 @@ CREATE POLICY "Users can update own questions" ON public.qa_questions FOR UPDATE
 CREATE TABLE IF NOT EXISTS public.qa_answers (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   question_id uuid REFERENCES public.qa_questions(id) ON DELETE CASCADE,
-  user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE,
+  user_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE,
   content text NOT NULL,
   is_accepted boolean DEFAULT false,
   upvotes integer DEFAULT 0,
@@ -36,7 +43,7 @@ CREATE POLICY "Users can update own answers" ON public.qa_answers FOR UPDATE USI
 CREATE TABLE IF NOT EXISTS public.qa_answer_votes (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   answer_id uuid REFERENCES public.qa_answers(id) ON DELETE CASCADE,
-  user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE,
+  user_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE,
   created_at timestamptz DEFAULT now(),
   UNIQUE(answer_id, user_id)
 );
@@ -47,7 +54,7 @@ CREATE POLICY "Users can vote" ON public.qa_answer_votes FOR INSERT WITH CHECK (
 -- 4. Study Partner Requests Table
 CREATE TABLE IF NOT EXISTS public.study_partner_requests (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE,
+  user_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE,
   subject text NOT NULL,
   description text,
   availability text,
