@@ -42,7 +42,7 @@ export default function QATab() {
     if (!qTitle.trim() || !user) return;
     const tagsArray = qTags.split(",").map(t => t.trim()).filter(Boolean);
     const { data: q, error } = await supabase.from("qa_questions").insert({ user_id: user.id, title: qTitle.trim(), body: qBody.trim() || null, subject: qSubject.trim() || null, tags: tagsArray }).select().single();
-    if (error || !q) { toast.error("Could not post question"); return; }
+    if (error || !q) { toast.error("Could not post question: " + (error?.message || "Unknown error")); return; }
     publishToFeed("question_asked", q.id, q.title, q.subject);
     toast.success("Question posted!"); setAskOpen(false); setQTitle(""); setQBody(""); setQSubject(""); setQTags(""); fetchQuestions();
   };
@@ -50,7 +50,7 @@ export default function QATab() {
   const handleSubmitAnswer = async () => {
     if (!newAnswer.trim() || !user || !selectedQuestion) return;
     const { error } = await supabase.from("qa_answers").insert({ question_id: selectedQuestion.id, user_id: user.id, content: newAnswer.trim() });
-    if (error) { toast.error("Could not post answer"); return; }
+    if (error) { toast.error("Could not post answer: " + error.message); return; }
     await supabase.from("qa_questions").update({ answer_count: selectedQuestion.answer_count + 1 }).eq("id", selectedQuestion.id);
     setSelectedQuestion({ ...selectedQuestion, answer_count: selectedQuestion.answer_count + 1 });
     publishToFeed("question_answered", selectedQuestion.id, selectedQuestion.title, selectedQuestion.subject || undefined);

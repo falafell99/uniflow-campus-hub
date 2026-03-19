@@ -4,6 +4,10 @@ import { FileText, NotebookPen, HelpCircle, CheckCircle, Users, Calendar, Rss, L
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatDistanceToNow } from "date-fns";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
 type FeedItem = {
   id: string;
@@ -47,6 +51,11 @@ export default function FeedTab({ onNavigate }: { onNavigate?: (tab: string) => 
   const [feedItems, setFeedItems] = useState<FeedItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState("All");
+
+  const [postOpen, setPostOpen] = useState(false);
+  const [postTitle, setPostTitle] = useState("");
+  const [postBody, setPostBody] = useState("");
+  const [posting, setPosting] = useState(false);
 
   const fetchFeed = async () => {
     // 1. Real activity_feed entries
@@ -102,12 +111,40 @@ export default function FeedTab({ onNavigate }: { onNavigate?: (tab: string) => 
 
   useEffect(() => {
     fetchFeed();
-    const channel = supabase
-      .channel("feed-realtime-community")
+    const channel1 = supabase.channel("feed-realtime-community")
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "activity_feed" }, fetchFeed)
       .subscribe();
-    return () => { channel.unsubscribe(); };
+    const channel2 = supabase.channel("feed-realtime-forums")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "forum_posts" }, fetchFeed)
+      .subscribe();
+    return () => { channel1.unsubscribe(); channel2.unsubscribe(); };
   }, []);
+
+  const handlePost = async () => {
+    if (!postTitle.trim() || !user) return;
+    setPosting(true);
+    const author = user.user_metadata?.display_name || user.email?.split("@")[0] || "Anonymous";
+    
+    // Create a forum post directly from the feed
+    const { error } = await supabase.from("forum_posts").insert({
+      title: postTitle.trim(),
+      content: postBody.trim() || "No description provided.",
+      category: "general",
+      tags: ["Discussion"],
+      author,
+      author_id: user.id,
+      upvotes: 0,
+      pinned: false
+    });
+    
+    setPosting(false);
+    if (!error) {
+      setPostOpen(false);
+      setPostTitle("");
+      setPostBody("");
+      fetchFeed();
+    }
+  };
 
   const filtered = activeFilter === "All"
     ? feedItems
@@ -121,8 +158,8 @@ export default function FeedTab({ onNavigate }: { onNavigate?: (tab: string) => 
           {user?.email?.charAt(0).toUpperCase() || "?"}
         </div>
         <button
-          onClick={() => onNavigate?.("forums")}
-          className="flex-1 bg-background border border-border/30 rounded-xl px-4 py-2.5 text-sm text-muted-foreground text-left hover:border-primary/30 transition-all"
+          onClick={() => setPostOpen(true)}
+          className="flex-1 bg-background border border-border/30 rounded-xl px-4 py-2.5 text-sm text-muted-foreground text-left hover:border-primary/30 transition-all cursor-text"
         >
           Share something with the community...
         </button>
@@ -193,6 +230,42 @@ export default function FeedTab({ onNavigate }: { onNavigate?: (tab: string) => 
           ))}
         </div>
       )}
+
+      {/* Post Modal */}
+      <Dialog open={postOpen} onOpenChange={setPostOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MessageSquare className="h-5 w-5 text-primary" />
+              Share with Community
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            <div className="space-y-2">
+              <Input
+                placeholder="What's on your mind? (Title)"
+                value={postTitle}
+                onChange={(e) => setPostTitle(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Textarea
+                placeholder="Add more details (optional)..."
+                value={postBody}
+                onChange={(e) => setPostBody(e.target.value)}
+                className="resize-none min-h-[100px]"
+              />
+            </div>
+            <Button
+              className="w-full gap-2"
+              onClick={handlePost}
+              disabled={!postTitle.trim() || posting}
+            >
+              {posting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Post to Forums"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

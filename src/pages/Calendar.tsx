@@ -142,6 +142,7 @@ export default function Calendar() {
       const { error } = await supabase
         .from('campus_events')
         .insert({
+          id: crypto.randomUUID(),
           title,
           description,
           event_type: eventType,
@@ -233,6 +234,7 @@ export default function Calendar() {
       const newEvents = vevents.map(vevent => {
         const event = new ICAL.Event(vevent);
         return {
+          id: crypto.randomUUID(),
           title: event.summary || "Imported Event",
           description: event.description || "Imported from Calendar",
           event_type: "personal" as EventType,

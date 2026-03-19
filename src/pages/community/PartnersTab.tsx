@@ -43,7 +43,7 @@ export default function PartnersTab() {
     if (!pSubject.trim() || !user) return;
     await supabase.from("study_partner_requests").update({ is_active: false }).eq("user_id", user.id);
     const { data: newReq, error } = await supabase.from("study_partner_requests").insert({ user_id: user.id, subject: pSubject.trim(), description: pDesc.trim() || null, availability: pAvail, is_active: true }).select().single();
-    if (error || !newReq) { toast.error("Failed to post request"); return; }
+    if (error || !newReq) { toast.error("Failed to post request: " + (error?.message || "Unknown error")); return; }
     publishToFeed("question_asked", newReq.id, `Looking for study partner: ${pSubject.trim()}`, pSubject.trim());
     toast.success("Your post is live!"); setPostOpen(false); setPSubject(""); setPDesc(""); fetchData();
   };
