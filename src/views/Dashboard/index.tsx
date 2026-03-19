@@ -15,6 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useNavigate } from "react-router-dom";
 import { PublicProfileModal } from "@/components/PublicProfileModal";
 import { StudyCoach } from "@/components/StudyCoach";
+import { format, differenceInDays } from "date-fns";
 
 type VaultResource = {
   id: string;
@@ -122,6 +123,12 @@ export default function Dashboard() {
   const [liveResources, setLiveResources] = useState<VaultResource[]>([]);
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
 
+  // Stats Integration State
+  const [streak, setStreak] = useState(0);
+  const [weekTotal, setWeekTotal] = useState(0);
+  const [nextDeadline, setNextDeadline] = useState<any>(null);
+  const [daysUntilDeadline, setDaysUntilDeadline] = useState(0);
+
   // Real stats from Supabase
   const [vaultCount, setVaultCount] = useState(0);
   const [myUploads, setMyUploads] = useState(0);
@@ -189,14 +196,66 @@ export default function Dashboard() {
           ]);
         }
       } catch (err) {
-        console.error("Dashboard content load fail:", err);
-        setLiveResources([]);
+        console.error("Dashboard content load error:", err);
       } finally {
         setLoading(false);
       }
     };
-    loadContent();
-  }, []);
+    if (activeCommunity) loadContent();
+  }, [activeCommunity]);
+
+  // Load progress stats
+  useEffect(() => {
+    if (!user) return;
+    const loadProgressStats = async () => {
+      // Activity
+      const { data: activityData } = await supabase
+        .from("activity_log")
+        .select("created_at, action")
+        .eq("user_id", user.id)
+        .gte("created_at", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
+        .order("created_at", { ascending: false });
+
+      if (activityData) {
+        setWeekTotal(activityData.length);
+        const dates = new Set(activityData.map(a => format(new Date(a.created_at), "yyyy-MM-dd")));
+        let currentStreak = 0;
+        let checkDate = new Date();
+        if (dates.has(format(checkDate, "yyyy-MM-dd"))) {
+          currentStreak++;
+          checkDate.setDate(checkDate.getDate() - 1);
+        } else {
+          checkDate.setDate(checkDate.getDate() - 1);
+          if (dates.has(format(checkDate, "yyyy-MM-dd"))) {
+            currentStreak++;
+            checkDate.setDate(checkDate.getDate() - 1);
+          }
+        }
+        while (currentStreak > 0 && dates.has(format(checkDate, "yyyy-MM-dd"))) {
+          currentStreak++;
+          checkDate.setDate(checkDate.getDate() - 1);
+        }
+        setStreak(currentStreak);
+      }
+
+      // Deadline
+      const { data: deadlineData } = await supabase
+        .from("campus_events")
+        .select("title, start_time")
+        .eq("user_id", user.id)
+        .eq("event_type", "deadline")
+        .gte("start_time", new Date().toISOString())
+        .order("start_time", { ascending: true })
+        .limit(1)
+        .single();
+        
+      if (deadlineData) {
+        setNextDeadline(deadlineData);
+        setDaysUntilDeadline(differenceInDays(new Date(deadlineData.start_time), new Date()));
+      }
+    };
+    loadProgressStats();
+  }, [user]);
 
   // Load real stats
   useEffect(() => {
@@ -284,6 +343,42 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6 animate-fade-in">
+      <div className="flex items-center gap-3 px-1 mb-6 flex-wrap">
+        {/* Streak */}
+        <div className="flex items-center gap-2 bg-card border border-border/40 rounded-xl px-4 py-2.5 hover:border-primary/30 transition-all cursor-pointer" onClick={() => navigate("/progress")}>
+          <span className="text-xl">{streak > 0 ? "🔥" : "💤"}</span>
+          <div>
+            <p className="text-sm font-bold leading-none">{streak} day{streak !== 1 ? "s" : ""}</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">Current streak</p>
+          </div>
+        </div>
+
+        {/* This week */}
+        <div className="flex items-center gap-2 bg-card border border-border/40 rounded-xl px-4 py-2.5 hover:border-primary/30 transition-all cursor-pointer" onClick={() => navigate("/progress")}>
+          <TrendingUp className="h-5 w-5 text-primary" />
+          <div>
+            <p className="text-sm font-bold leading-none">{weekTotal} actions</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">This week</p>
+          </div>
+        </div>
+
+        {/* Next deadline countdown */}
+        {nextDeadline && (
+          <div className="flex items-center gap-2 bg-card border border-orange-500/20 rounded-xl px-4 py-2.5 hover:border-orange-500/40 transition-all cursor-pointer" onClick={() => navigate("/calendar")}>
+            <Clock className="h-5 w-5 text-orange-400" />
+            <div>
+              <p className="text-sm font-bold leading-none text-orange-400">{daysUntilDeadline}d left</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5 max-w-[120px] truncate">{nextDeadline.title}</p>
+            </div>
+          </div>
+        )}
+
+        {/* View full progress */}
+        <button onClick={() => navigate("/progress")} className="text-xs text-muted-foreground hover:text-primary transition-colors ml-auto flex items-center gap-1">
+          Full stats <ArrowRight className="h-3 w-3" />
+        </button>
+      </div>
+
       {showOnboarding && (
         <div className="glass-card p-6 border-primary/20 bg-primary/5 rounded-3xl mb-8 flex flex-col md:flex-row items-center gap-6 shadow-2xl shadow-primary/5 animate-in fade-in slide-in-from-top-4 duration-700">
           <div className="h-20 w-20 bg-primary/10 rounded-2xl flex items-center justify-center shrink-0 scale-110">

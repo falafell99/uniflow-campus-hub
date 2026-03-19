@@ -3,7 +3,9 @@ import { useNavigate } from "react-router-dom";
 import {
   ChevronRight, ChevronDown, Folder, FileText,
   Eye, Download, Image, FileCode, FileSpreadsheet, Presentation,
-  Sparkles, Layers
+  Sparkles,
+  Layers,
+  NotebookPen
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +24,7 @@ export type FileItem = {
   storage_url?: string;
   storage_path?: string;
   file_size?: number;
+  subject?: string;
   children?: FileItem[];
 };
 
@@ -128,6 +131,21 @@ export function FileTree({ items, depth = 0, onPreview }: FileTreeProps) {
                         })}
                       >
                         <Layers className="h-3 w-3" /> Make Flashcards
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 text-[10px] gap-1.5 text-blue-400 hover:text-blue-400 hover:bg-blue-400/10"
+                        onClick={() => navigate("/notes", {
+                          state: {
+                            prefillTitle: item.name.replace(/\.[^/.]+$/, ""),
+                            prefillSubject: item.subject || "",
+                            prefillContent: `📎 Source file: ${item.name}\n\nNotes from this file:`
+                          }
+                        })}
+                        title="Create Note"
+                      >
+                        <NotebookPen className="h-3 w-3" /> Create Note
                       </Button>
                   </>
                 )}

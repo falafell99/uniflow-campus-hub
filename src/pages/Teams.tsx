@@ -7,12 +7,12 @@ import { useState, useEffect, useCallback } from "react";
 import { 
   Users, User, BarChart3, Plus, Search, ArrowRight,
   ShieldCheck, UserPlus, MessageSquare, ChevronLeft,
-  MoreVertical, Settings, Loader2, Trash2, Crown, Palette,
-  Eye, Edit3, X, Check, Activity, Clock, TrendingUp,
-  BookmarkPlus, Pencil, Info, Link2, Download, Shield, Globe, Star, CheckSquare, Briefcase, FileText, CheckCircle2, LayoutDashboard
+  MoreVertical, Settings, Loader2, Link2, Download, Shield, Globe, Star, CheckSquare, Briefcase, FileText, CheckCircle2, BookmarkPlus,
+  LayoutDashboard, Activity, Trash2, Crown, Palette,
+  Eye, Edit3, X, Check, Clock, TrendingUp, Pencil, Info
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { formatDistanceToNow, format } from "date-fns";
+import { formatDistanceToNow, format, isToday } from "date-fns";
 import { logTeamActivity } from "@/lib/teamActivity";
 import Whiteboard from "@/pages/Whiteboard";
 import { Button } from "@/components/ui/button";
@@ -112,7 +112,7 @@ export default function Teams() {
   const [isSearching, setIsSearching] = useState(false);
   const [selectedUserProfileId, setSelectedUserProfileId] = useState<string | null>(null);
   const [teamTasks, setTeamTasks] = useState<any[]>([]);
-  const [isLoadingTasks, setIsLoadingTasks] = useState(false);
+  const [loadingTasks, setLoadingTasks] = useState(false);
 
   // Invitations state
   const [invitations, setInvitations] = useState<(TeamMember & { teams: Team })[]>([]);
@@ -275,24 +275,21 @@ export default function Teams() {
     setIsLoadingMembers(false);
   }, [selectedTeam]);
 
-  // Fetch priorities/tasks for selected team
-  const fetchTeamTasks = useCallback(async (teamId: string) => {
-    setIsLoadingTasks(true);
-    try {
-      const { data, error } = await supabase
-        .from("notes")
-        .select("id, title, tags, updated_at, user_id, profiles!user_id(display_name)")
-        .eq("team_id", teamId)
-        .order("updated_at", { ascending: false });
-
-      if (error) throw error;
+  useEffect(() => {
+    if (!selectedTeam || teamTab !== "priorities") return;
+    const fetchTasks = async () => {
+      setLoadingTasks(true);
+      const { data } = await supabase
+        .from("tasks")
+        .select("*, assignee_profile:assignee_id(display_name, avatar_color)")
+        .eq("team_id", selectedTeam.id)
+        .neq("status", "done")
+        .order("due_date", { ascending: true, nullsFirst: false });
       setTeamTasks(data || []);
-    } catch (e: any) {
-      console.error("Error fetching team tasks:", e);
-    } finally {
-      setIsLoadingTasks(false);
-    }
-  }, []);
+      setLoadingTasks(false);
+    };
+    fetchTasks();
+  }, [selectedTeam, teamTab]);
 
   // Fetch real kanban tasks
   const fetchKanbanTasks = useCallback(async (teamId: string) => {
@@ -322,15 +319,13 @@ export default function Teams() {
   useEffect(() => {
     if (selectedTeam) {
       fetchTeamMembers(selectedTeam.id);
-      fetchTeamTasks(selectedTeam.id);
+      fetchKanbanTasks(selectedTeam.id);
+      fetchTeamActivity(selectedTeam.id);
       
       const ch = supabase.channel(`members-${selectedTeam.id}`)
         .on("postgres_changes", { event: "*", schema: "public", table: "team_members", filter: `team_id=eq.${selectedTeam.id}` }, () => fetchTeamMembers(selectedTeam.id))
         .subscribe();
       
-      const taskCh = supabase.channel(`tasks-${selectedTeam.id}`)
-        .on("postgres_changes", { event: "*", schema: "public", table: "notes", filter: `team_id=eq.${selectedTeam.id}` }, () => fetchTeamTasks(selectedTeam.id))
-        .subscribe();
       const kanbanCh = supabase.channel(`kanban-${selectedTeam.id}`)
         .on("postgres_changes", { event: "*", schema: "public", table: "tasks", filter: `team_id=eq.${selectedTeam.id}` }, () => fetchKanbanTasks(selectedTeam.id))
         .subscribe();
@@ -340,12 +335,11 @@ export default function Teams() {
         
       return () => { 
         ch.unsubscribe(); 
-        taskCh.unsubscribe();
         kanbanCh.unsubscribe();
         activityCh.unsubscribe();
       };
     }
-  }, [selectedTeam, fetchTeamMembers, fetchTeamTasks, fetchKanbanTasks, fetchTeamActivity]);
+  }, [selectedTeam, fetchTeamMembers, fetchKanbanTasks, fetchTeamActivity]);
 
   // Create team
   const handleCreateTeam = async () => {
@@ -1006,72 +1000,78 @@ export default function Teams() {
 
               {/* PRIORITIES TAB */}
               {teamTab === "priorities" && (
-                <div className="flex-1 p-4 lg:p-6 w-full max-w-4xl mx-auto space-y-6">
+                <div className="p-6 space-y-4 max-w-4xl mx-auto w-full">
+                  {/* Header */}
                   <div className="flex items-center justify-between">
-                    <h2 className="text-lg font-bold">Priorities</h2>
-                    <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5" onClick={() => navigate("/workspace")}>
-                      Open Workspace <ArrowRight className="h-3.5 w-3.5" />
+                    <h2 className="text-lg font-bold">Team Priorities</h2>
+                    <Button size="sm" className="h-8 text-xs gap-1.5 bg-[#7b68ee] hover:bg-[#6a5acd]"
+                      onClick={() => navigate("/tasks", { state: { teamId: selectedTeam.id, openCreate: true } })}>
+                      <Plus className="h-3.5 w-3.5" /> New Task
                     </Button>
                   </div>
-                  
-                  {isLoadingTasks ? (
-                    <div className="flex justify-center p-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+
+                  {loadingTasks ? (
+                    <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
                   ) : teamTasks.length === 0 ? (
-                    <div className="border border-border/40 rounded-2xl p-12 flex flex-col items-center gap-4 text-center">
-                      <div className="h-16 w-16 rounded-2xl bg-primary/5 flex items-center justify-center">
-                        <Activity className="h-8 w-8 text-primary/40" strokeWidth={1} />
-                      </div>
-                      <div>
-                        <p className="font-bold text-lg">No priorities yet</p>
-                        <p className="text-sm text-muted-foreground mt-1 max-w-xs">
-                          Go to the Workspace to assign notes to this team. They'll appear here as priorities.
-                        </p>
-                      </div>
-                      <Button className="bg-[#7b68ee] hover:bg-[#6a5acd]" onClick={() => {
-                        toast.info("Assign a note to this team in the Workspace to see it here.", { duration: 5000 });
-                        navigate("/workspace");
-                      }}>
-                        Assign a note to this team
+                    <div className="border border-dashed border-border/40 rounded-2xl p-12 text-center space-y-3">
+                      <Activity className="h-10 w-10 mx-auto text-muted-foreground opacity-30" strokeWidth={1} />
+                      <p className="font-bold">No active tasks</p>
+                      <p className="text-sm text-muted-foreground">Create tasks and assign them to team members.</p>
+                      <Button variant="outline" size="sm"
+                        onClick={() => navigate("/tasks", { state: { teamId: selectedTeam.id, openCreate: true } })}>
+                        Create first task
                       </Button>
                     </div>
                   ) : (
-                    <div className="grid gap-3">
-                      {teamTasks.map((task) => (
-                        <div 
-                          key={task.id} 
-                          className="flex items-center gap-4 p-4 rounded-xl border border-border/40 bg-card/10 hover:bg-card/30 transition-all group cursor-pointer"
-                          onClick={() => navigate(`/workspace?noteId=${task.id}`)}
-                        >
-                          <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-bold shrink-0">
-                            {task.title.charAt(0).toUpperCase()}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-semibold text-sm truncate">{task.title}</h3>
-                            <div className="flex items-center gap-2 mt-1">
-                              {(task.tags || []).slice(0, 3).map((tag: string) => (
-                                <Badge key={tag} variant="outline" className="text-[9px] px-1.5 h-4 bg-muted/30">
-                                  {tag}
-                                </Badge>
-                              ))}
-                              <span className="text-[10px] text-muted-foreground italic">
-                                Updated {new Date(task.updated_at).toLocaleDateString()}
+                    <div className="space-y-2">
+                      {teamTasks.map((task: any) => {
+                        const isOverdue = task.due_date && new Date(task.due_date) < new Date();
+                        const taskIsToday = task.due_date && isToday(new Date(task.due_date));
+                        const priorityColors: Record<string, string> = { urgent: "bg-red-500", high: "bg-orange-400", normal: "bg-muted-foreground/40", low: "bg-blue-400" };
+                        const statusColors: Record<string, string> = { todo: "text-muted-foreground", in_progress: "text-amber-400", review: "text-purple-400" };
+                        
+                        return (
+                          <div key={task.id}
+                            className="flex items-center gap-3 p-3.5 bg-card border border-border/40 rounded-xl hover:border-primary/30 transition-all cursor-pointer group"
+                            onClick={() => navigate("/tasks")}>
+                            
+                            {/* Priority dot */}
+                            <div className={`h-2 w-2 rounded-full shrink-0 ${priorityColors[task.priority] || priorityColors.normal}`} />
+                            
+                            {/* Title + subject */}
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">{task.title}</p>
+                              {task.subject && <p className="text-[11px] text-muted-foreground">{task.subject}</p>}
+                            </div>
+
+                            {/* Status */}
+                            <span className={`text-[11px] font-medium hidden group-hover:inline ${statusColors[task.status] || ""}`}>
+                              {task.status.replace("_", " ")}
+                            </span>
+
+                            {/* Due date */}
+                            {task.due_date && (
+                              <span className={`text-[11px] font-medium ${isOverdue ? "text-red-400" : taskIsToday ? "text-orange-400" : "text-muted-foreground"}`}>
+                                {isOverdue ? "Overdue" : format(new Date(task.due_date), "MMM d")}
                               </span>
-                            </div>
+                            )}
+
+                            {/* Assignee */}
+                            {task.assignee_profile && (
+                              <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary shrink-0">
+                                {task.assignee_profile.display_name?.charAt(0) || "?"}
+                              </div>
+                            )}
                           </div>
-                          <div className="flex items-center gap-2">
-                            <div className="text-right hidden sm:block">
-                              <p className="text-[11px] font-medium">{task.profiles?.display_name || "Unknown"}</p>
-                              <p className="text-[9px] text-muted-foreground">Assignee</p>
-                            </div>
-                            <Avatar className="h-8 w-8 border border-border/40">
-                              <AvatarFallback className="text-[10px] bg-primary/20 text-primary font-bold">
-                                {task.profiles?.display_name?.charAt(0) || "?"}
-                              </AvatarFallback>
-                            </Avatar>
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
+                  )}
+
+                  {teamTasks.length > 0 && (
+                    <button onClick={() => navigate("/tasks")} className="text-xs text-primary hover:underline flex items-center gap-1">
+                      View all in Tasks board <ArrowRight className="h-3 w-3" />
+                    </button>
                   )}
                 </div>
               )}

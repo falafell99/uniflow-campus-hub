@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
+import { useLocation } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import { StudyCoach } from "@/components/StudyCoach";
 
@@ -471,6 +472,9 @@ function StudyModePanel({ note, onClose }: { note: StudentNote; onClose: () => v
 // ─── Main Notes Page ──────────────────────────────────────────────────────────
 export default function Notes() {
   const { user } = useAuth();
+  const location = useLocation();
+  const prefill = location.state as { prefillTitle?: string; prefillSubject?: string; prefillContent?: string } | null;
+
   const [notes, setNotes] = useState<StudentNote[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -486,6 +490,40 @@ export default function Notes() {
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const titleRef = useRef<HTMLInputElement>(null);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+
+  // Auto-create from Vault prefill
+  useEffect(() => {
+    if (!prefill?.prefillTitle || !user) return;
+    
+    const newNote: StudentNote = {
+      id: crypto.randomUUID(),
+      user_id: user.id,
+      title: prefill.prefillTitle,
+      subject: prefill.prefillSubject || "",
+      topic: "",
+      blocks: [
+        { id: crypto.randomUUID(), type: "paragraph", content: prefill.prefillContent || "" },
+        { id: crypto.randomUUID(), type: "paragraph", content: "" }
+      ],
+      tags: [],
+      is_shared: false,
+      team_id: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    supabase.from("student_notes").insert(newNote).then(({ error }) => {
+      if (error) {
+        toast({ title: "Error", description: "Could not create note", variant: "destructive" });
+      } else {
+        setNotes(prev => [newNote, ...prev]);
+        setSelectedId(newNote.id);
+        toast({ title: "Success", description: `Note created from "${prefill.prefillTitle}"` });
+      }
+    });
+
+    window.history.replaceState({}, "");
+  }, [user, prefill]);
 
   const selectedNote = notes.find(n => n.id === selectedId) ?? null;
 

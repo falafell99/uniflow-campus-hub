@@ -120,6 +120,7 @@ export default function KanbanBoard() {
   const [subjectFilter, setSubjectFilter] = useState<string>("");
   const [modalOpen, setModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [upcomingDeadlines, setUpcomingDeadlines] = useState<any[]>([]);
 
   // Form state
   const [formTitle, setFormTitle] = useState("");
@@ -171,6 +172,23 @@ export default function KanbanBoard() {
       }
     };
     load();
+  }, [user]);
+
+  // ── Fetch upcoming deadlines ──
+  useEffect(() => {
+    if (!user) return;
+    const fetchDeadlines = async () => {
+      const { data } = await supabase
+        .from("campus_events")
+        .select("title, start_time")
+        .eq("user_id", user.id)
+        .eq("event_type", "deadline")
+        .gte("start_time", new Date().toISOString())
+        .order("start_time", { ascending: true })
+        .limit(3);
+      setUpcomingDeadlines(data || []);
+    };
+    fetchDeadlines();
   }, [user]);
 
   // ── Fetch tasks ──
@@ -241,7 +259,20 @@ export default function KanbanBoard() {
         if (error) { toast.error("Failed to update task"); loadTasks(); }
         else {
           toast.success(`Moved to ${COLUMNS.find(c => c.status === newStatus)?.label}`);
-          if (newStatus === "done") logActivity("task_completed", task.subject || undefined);
+          if (newStatus === "done") {
+            logActivity("task_completed", task.subject || undefined);
+            if (task.due_date) await supabase.from("campus_events").delete().eq("id", `task-${taskId}`);
+          } else if (task.due_date) {
+            await supabase.from("campus_events").upsert({
+              id: `task-${taskId}`,
+              user_id: user?.id,
+              title: `📋 ${task.title}`,
+              description: `Task from Kanban${task.subject ? ` · ${task.subject}` : ""}`,
+              event_type: "deadline",
+              start_time: task.due_date,
+              end_time: null
+            }, { onConflict: "id" });
+          }
         }
       }
     }
@@ -282,14 +313,30 @@ export default function KanbanBoard() {
       updated_at: new Date().toISOString(),
     };
 
+    const taskId = editingTask ? editingTask.id : crypto.randomUUID();
+
     if (editingTask) {
-      const { error } = await supabase.from("tasks").update(payload).eq("id", editingTask.id);
+      const { error } = await supabase.from("tasks").update(payload).eq("id", taskId);
       if (error) toast.error("Save failed: " + error.message);
       else toast.success("Task updated!");
     } else {
-      const { error } = await supabase.from("tasks").insert({ ...payload, id: crypto.randomUUID() });
+      const { error } = await supabase.from("tasks").insert({ ...payload, id: taskId });
       if (error) toast.error("Create failed: " + error.message);
       else toast.success("Task created!");
+    }
+
+    if (payload.due_date && payload.status !== "done") {
+      await supabase.from("campus_events").upsert({
+        id: `task-${taskId}`,
+        user_id: user.id,
+        title: `📋 ${payload.title}`,
+        description: `Task from Kanban${payload.subject ? ` · ${payload.subject}` : ""}`,
+        event_type: "deadline",
+        start_time: payload.due_date,
+        end_time: null
+      }, { onConflict: "id" });
+    } else {
+      await supabase.from("campus_events").delete().eq("id", `task-${taskId}`);
     }
 
     setSaving(false);
@@ -301,7 +348,10 @@ export default function KanbanBoard() {
     if (!editingTask) return;
     const { error } = await supabase.from("tasks").delete().eq("id", editingTask.id);
     if (error) toast.error("Delete failed: " + error.message);
-    else toast.success("Task deleted");
+    else {
+      toast.success("Task deleted");
+      await supabase.from("campus_events").delete().eq("id", `task-${editingTask.id}`);
+    }
     setModalOpen(false);
     loadTasks();
   };
@@ -384,6 +434,21 @@ export default function KanbanBoard() {
           )}
         </div>
       </div>
+
+      {upcomingDeadlines && upcomingDeadlines.length > 0 && (
+        <div className="flex items-center gap-2 px-6 py-2 border-b border-border/20 bg-orange-500/5 overflow-x-auto">
+          <Clock className="h-3.5 w-3.5 text-orange-400 shrink-0" />
+          <span className="text-[11px] text-orange-400 font-medium shrink-0">Upcoming:</span>
+          {upcomingDeadlines.map((d, i) => (
+            <span key={i} className="text-[11px] text-muted-foreground shrink-0 bg-card border border-border/30 rounded-md px-2 py-0.5">
+              {d.title} · {format(new Date(d.start_time), "MMM d")}
+            </span>
+          ))}
+          <button onClick={() => navigate("/calendar")} className="text-[11px] text-primary hover:underline shrink-0 ml-auto">
+            View Calendar →
+          </button>
+        </div>
+      )}
 
       {/* Board */}
       <div className="flex-1 overflow-x-auto overflow-y-hidden p-4">
