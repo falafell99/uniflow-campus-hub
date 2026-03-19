@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   Plus, Clock, Search, Filter, Trash2, Loader2,
-  CalendarPlus, X, GripVertical, Download
+  CalendarPlus, X, GripVertical, Download, CheckCircle2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -45,12 +45,12 @@ type Task = {
 type TeamOption = { id: string; name: string };
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const COLUMNS: { status: Status; label: string; accent: string; dotColor: string }[] = [
-  { status: "todo", label: "To Do", accent: "border-t-blue-500/60", dotColor: "bg-blue-500" },
-  { status: "in_progress", label: "In Progress", accent: "border-t-amber-500/60", dotColor: "bg-amber-500" },
-  { status: "review", label: "In Review", accent: "border-t-purple-500/60", dotColor: "bg-purple-500" },
-  { status: "done", label: "Done", accent: "border-t-emerald-500/60", dotColor: "bg-emerald-500" },
-];
+const COLUMN_STYLES: Record<Status, { label: string; color: string; light: string }> = {
+  todo: { label: "To Do", color: "bg-slate-400", light: "bg-slate-500/10" },
+  in_progress: { label: "In Progress", color: "bg-amber-400", light: "bg-amber-500/10" },
+  review: { label: "In Review", color: "bg-purple-400", light: "bg-purple-500/10" },
+  done: { label: "Done", color: "bg-green-400", light: "bg-green-500/10" },
+};
 
 const PRIORITY_COLORS: Record<Priority, string> = {
   urgent: "bg-red-500", high: "bg-orange-400", normal: "bg-muted-foreground/40", low: "bg-blue-400",
@@ -60,7 +60,7 @@ const PRIORITY_LABELS: Priority[] = ["low", "normal", "high", "urgent"];
 type FilterKey = "mine" | "today" | "high" | "overdue";
 
 // ─── Sortable Task Card ───────────────────────────────────────────────────────
-function SortableTaskCard({ task, onClick }: { task: Task; onClick: () => void }) {
+function SortableTaskCard({ task, onClick, onComplete }: { task: Task; onClick: () => void; onComplete?: () => void }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 };
 
@@ -74,8 +74,19 @@ function SortableTaskCard({ task, onClick }: { task: Task; onClick: () => void }
 
   return (
     <div ref={setNodeRef} style={style}
-      className="bg-card border border-border/40 rounded-xl p-3 space-y-2 cursor-pointer hover:border-primary/30 transition-all group"
+      className="relative bg-card border border-border/40 rounded-xl p-3 space-y-2 cursor-pointer transition-all hover:-translate-y-0.5 hover:shadow-md hover:shadow-black/20 hover:border-primary/30 group"
       onClick={onClick}>
+      
+      {task.status !== "done" && onComplete && (
+        <button 
+          onClick={(e) => { e.stopPropagation(); onComplete(); }}
+          className="absolute bottom-3 right-3 h-6 w-6 rounded-md bg-muted hover:bg-emerald-500/20 text-muted-foreground hover:text-emerald-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all border border-border/40 hover:border-emerald-500/40 z-10"
+          title="Mark as Done"
+        >
+          <CheckCircle2 className="h-3.5 w-3.5" />
+        </button>
+      )}
+
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-start gap-1.5 flex-1 min-w-0">
           <div {...attributes} {...listeners} className="pt-1 cursor-grab opacity-0 group-hover:opacity-60 transition-opacity">
@@ -121,6 +132,7 @@ export default function KanbanBoard() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [upcomingDeadlines, setUpcomingDeadlines] = useState<any[]>([]);
+  const [mobileColumn, setMobileColumn] = useState<Status>("todo");
 
   // Form state
   const [formTitle, setFormTitle] = useState("");
@@ -250,7 +262,7 @@ export default function KanbanBoard() {
     const overId = over.id as string;
 
     // Check if dropped on a column droppable
-    const newStatus = COLUMNS.find(c => c.status === overId)?.status;
+    const newStatus = (Object.keys(COLUMN_STYLES) as Status[]).find(s => s === overId);
     if (newStatus) {
       const task = tasks.find(t => t.id === taskId);
       if (task && task.status !== newStatus) {
@@ -258,7 +270,7 @@ export default function KanbanBoard() {
         const { error } = await supabase.from("tasks").update({ status: newStatus, updated_at: new Date().toISOString() }).eq("id", taskId);
         if (error) { toast.error("Failed to update task"); loadTasks(); }
         else {
-          toast.success(`Moved to ${COLUMNS.find(c => c.status === newStatus)?.label}`);
+          toast.success(`Moved to ${COLUMN_STYLES[newStatus].label}`);
           if (newStatus === "done") {
             logActivity("task_completed", task.subject || undefined);
             if (task.due_date) await supabase.from("campus_events").delete().eq("id", `task-${taskId}`);
@@ -279,6 +291,17 @@ export default function KanbanBoard() {
   };
 
   // ── Modal helpers ──
+  const handleCompleteTask = async (task: Task) => {
+    setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: "done" } : t));
+    const { error } = await supabase.from("tasks").update({ status: "done", updated_at: new Date().toISOString() }).eq("id", task.id);
+    if (error) { toast.error("Failed to execute"); loadTasks(); }
+    else {
+      toast.success("Task completed! 🎉");
+      logActivity("task_completed", task.subject || undefined);
+      if (task.due_date) await supabase.from("campus_events").delete().eq("id", `task-${task.id}`);
+    }
+  };
+
   const openCreate = (status: Status = "todo") => {
     setEditingTask(null);
     setFormTitle(""); setFormDesc(""); setFormStatus(status); setFormPriority("normal");
@@ -318,11 +341,17 @@ export default function KanbanBoard() {
     if (editingTask) {
       const { error } = await supabase.from("tasks").update(payload).eq("id", taskId);
       if (error) toast.error("Save failed: " + error.message);
-      else toast.success("Task updated!");
+      else {
+        toast.success("Task updated!");
+        if (payload.status === "done" && editingTask.status !== "done") logActivity("task_completed", payload.subject || undefined);
+      }
     } else {
       const { error } = await supabase.from("tasks").insert({ ...payload, id: taskId });
       if (error) toast.error("Create failed: " + error.message);
-      else toast.success("Task created!");
+      else {
+        toast.success("Task created!");
+        if (payload.status === "done") logActivity("task_completed", payload.subject || undefined);
+      }
     }
 
     if (payload.due_date && payload.status !== "done") {
@@ -458,41 +487,62 @@ export default function KanbanBoard() {
         </div>
       )}
 
+      {/* Mobile Column Selector */}
+      <div className="flex gap-2 overflow-x-auto px-4 pb-2 mb-2 md:hidden hide-scrollbar scroll-smooth">
+        {(Object.keys(COLUMN_STYLES) as Status[]).map(status => {
+          const style = COLUMN_STYLES[status];
+          const count = columnTasks(status).length;
+          return (
+            <button key={status} onClick={() => setMobileColumn(status)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all flex border ${
+                mobileColumn === status ? "bg-primary text-primary-foreground border-primary" : "bg-muted/30 text-muted-foreground border-border/40 hover:bg-muted/50"
+              }`}>
+              {style.label} <span className="ml-1.5 opacity-60">({count})</span>
+            </button>
+          );
+        })}
+      </div>
+
       {/* Board */}
-      <div className="flex-1 overflow-x-auto overflow-y-hidden p-4">
+      <div className="flex-1 overflow-x-auto overflow-y-hidden p-4 pt-0 md:pt-4">
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <div className="flex gap-4 h-full min-w-max">
-            {COLUMNS.map(col => {
-              const colTasks = columnTasks(col.status);
+          <div className="flex gap-4 h-full md:min-w-max">
+            {(Object.keys(COLUMN_STYLES) as Status[]).map(status => {
+              const style = COLUMN_STYLES[status];
+              const colTasks = columnTasks(status);
+              
               return (
-                <div key={col.status}
-                  className={`min-w-[280px] max-w-[320px] w-[300px] flex flex-col rounded-2xl border border-border/30 bg-card/20 border-t-2 ${col.accent}`}>
+                <div key={status}
+                  className={`min-w-full md:min-w-[280px] md:max-w-[320px] md:w-[300px] flex-col rounded-2xl border border-border/30 bg-card/20 overflow-hidden ${
+                    mobileColumn === status ? "flex" : "hidden md:flex"
+                  }`}>
                   {/* Column header */}
-                  <div className="flex items-center justify-between px-3 py-2 border-b border-border/20">
+                  <div className={`flex items-center justify-between px-4 py-3 ${style.light} border-b border-border/20`}>
                     <div className="flex items-center gap-2">
-                      <div className={`h-2 w-2 rounded-full ${col.dotColor}`} />
-                      <span className="text-sm font-semibold">{col.label}</span>
-                      <span className="text-xs bg-muted/50 px-1.5 rounded font-mono">{colTasks.length}</span>
+                      <div className={`h-2.5 w-2.5 rounded-full ${style.color}`} />
+                      <span className="font-semibold text-sm">{style.label}</span>
+                      <span className="text-xs bg-background/50 px-2 py-0.5 rounded-full ml-1">{colTasks.length}</span>
                     </div>
-                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => openCreate(col.status)}>
-                      <Plus className="h-3 w-3" />
+                    <Button variant="ghost" size="icon" className="h-6 w-6 hover:bg-background/50 text-muted-foreground hover:text-foreground" onClick={() => openCreate(status)}>
+                      <Plus className="h-4 w-4" />
                     </Button>
                   </div>
 
                   {/* Column body */}
-                  <SortableContext items={colTasks.map(t => t.id)} strategy={verticalListSortingStrategy} id={col.status}>
-                    <div className="flex-1 overflow-y-auto custom-scroll p-2 space-y-2">
+                  <SortableContext items={colTasks.map(t => t.id)} strategy={verticalListSortingStrategy} id={status}>
+                    <div className="flex-1 overflow-y-auto custom-scroll p-3 space-y-3">
                       {loading ? (
                         Array.from({ length: 2 }).map((_, i) => (
-                          <div key={i} className="h-20 rounded-xl glass-subtle animate-pulse" />
+                          <div key={i} className="h-24 rounded-xl glass-subtle animate-pulse" />
                         ))
                       ) : colTasks.length === 0 ? (
-                        <div className="text-center py-8 opacity-40">
-                          <p className="text-xs">No tasks</p>
+                        <div className="flex flex-col items-center justify-center py-12 px-4 text-center opacity-40">
+                          <div className="text-3xl mb-2">+</div>
+                          <p className="text-xs text-muted-foreground">Drop tasks here or click +</p>
                         </div>
                       ) : (
                         colTasks.map(task => (
-                          <SortableTaskCard key={task.id} task={task} onClick={() => openEdit(task)} />
+                          <SortableTaskCard key={task.id} task={task} onClick={() => openEdit(task)} onComplete={() => handleCompleteTask(task)} />
                         ))
                       )}
                     </div>
@@ -529,12 +579,12 @@ export default function KanbanBoard() {
             <div className="space-y-1">
               <label className="text-xs font-medium text-muted-foreground">Status</label>
               <div className="flex gap-1">
-                {COLUMNS.map(c => (
-                  <button key={c.status} onClick={() => setFormStatus(c.status)}
+                {(Object.keys(COLUMN_STYLES) as Status[]).map(c => (
+                  <button key={c} onClick={() => setFormStatus(c)}
                     className={`flex-1 py-1.5 rounded-lg text-xs border capitalize transition-all ${
-                      formStatus === c.status ? "bg-primary text-primary-foreground border-primary" : "border-border/50 text-muted-foreground hover:border-primary/50"
+                      formStatus === c ? "bg-primary text-primary-foreground border-primary" : "border-border/50 text-muted-foreground hover:border-primary/50"
                     }`}>
-                    {c.label}
+                    {COLUMN_STYLES[c].label}
                   </button>
                 ))}
               </div>

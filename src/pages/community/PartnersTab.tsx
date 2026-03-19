@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { Plus, Clock, MessageSquare, Users, Loader2, Search } from "lucide-react";
+import { Plus, Clock, MessageSquare, Users, Loader2, Search, UserSearch } from "lucide-react";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -81,8 +82,17 @@ export default function PartnersTab() {
         </div>
       </div>
 
-      {loading ? <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div> : filtered.length === 0 ? (
-        <div className="text-center py-20 opacity-40"><Users className="h-12 w-12 mx-auto mb-3 text-muted-foreground" strokeWidth={1} /><p className="font-bold">No partners found</p><p className="text-sm text-muted-foreground text-balance">Try adjusting your filters or be the first to post a request!</p></div>
+      {loading ? <div className="flex justify-center py-24"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div> : filtered.length === 0 ? (
+        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-24">
+          <div className="h-20 w-20 rounded-full bg-muted/50 flex items-center justify-center mx-auto mb-4 border border-border/30">
+            <UserSearch className="h-8 w-8 text-muted-foreground" />
+          </div>
+          <h3 className="text-lg font-bold">No one looking for a partner yet</h3>
+          <p className="text-sm text-muted-foreground mt-1 mb-6">Post your request to find a study partner!</p>
+          <Button onClick={() => setPostOpen(true)} className="gap-2">
+            Post your request
+          </Button>
+        </motion.div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {filtered.map(p => (

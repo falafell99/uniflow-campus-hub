@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { Plus, Search, Users, Send, FileText, Download, Loader2, LogOut, BookOpen, Check, X, UserPlus } from "lucide-react";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -219,8 +220,17 @@ export default function GroupsTab() {
       {/* Right panel */}
       <div className="flex-1 flex flex-col min-w-0">
         {!selectedGroup ? (
-          <div className="flex-1 flex items-center justify-center text-center text-muted-foreground">
-            <div><BookOpen className="h-12 w-12 mx-auto mb-3 opacity-20" /><p className="font-medium">Select a group to start chatting</p></div>
+          <div className="flex-1 flex flex-col items-center justify-center text-center">
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="max-w-xs mx-auto">
+              <div className="h-20 w-20 rounded-full bg-muted/50 flex items-center justify-center mx-auto mb-4 border border-border/30">
+                <BookOpen className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <h3 className="text-lg font-bold">No study groups yet</h3>
+              <p className="text-sm text-muted-foreground mt-1 mb-6">Create a group or select one from the sidebar to start chatting.</p>
+              <Button onClick={() => setCreateOpen(true)} className="gap-2">
+                Create a group
+              </Button>
+            </motion.div>
           </div>
         ) : (
           <>

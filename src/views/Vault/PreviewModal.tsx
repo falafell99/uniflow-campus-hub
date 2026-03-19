@@ -3,7 +3,7 @@ import { FileText, Download, X, ExternalLink, Loader2, Image, FileCode, Sparkles
 import { Button } from "@/components/ui/button";
 import { ResourceBadge } from "@/components/ResourceBadge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { type FileItem } from "./FileTree";
+import { type FileItem, getFileTypeEmoji } from "./FileTree";
 import { useNavigate } from "react-router-dom";
 import { extractTextFromPDF } from "@/lib/pdfUtils";
 import { toast } from "sonner";
@@ -240,78 +240,73 @@ export function PreviewModal({ file, onClose, initialTab = "preview" }: PreviewM
 
   return (
     <Dialog open={!!file} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl w-full max-h-[90vh] flex flex-col">
-        <DialogHeader className="shrink-0">
-          <DialogTitle className="flex items-center gap-2 text-base">
-            <FileText className="h-5 w-5 text-primary shrink-0" />
-            <span className="truncate">{file.name}</span>
-          </DialogTitle>
+      <DialogContent className="max-w-4xl w-full max-h-[90vh] flex flex-col p-0 overflow-hidden gap-0 border-border/50">
+        <DialogHeader className="sr-only">
+          <DialogTitle>{file.name}</DialogTitle>
         </DialogHeader>
 
-        {/* Meta row */}
-        <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap shrink-0 pb-2 border-b border-border/30">
-          {file.author && <span>by <span className="font-medium text-foreground">{file.author}</span></span>}
-          {file.date && <><span>·</span><span>{file.date}</span></>}
-          {file.downloads !== undefined && <><span>·</span><span>{file.downloads} downloads</span></>}
-          {file.tag && <ResourceBadge tag={file.tag} tagClass={file.tagClass ?? ""} />}
+        {/* Enhanced File Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4 p-5 sm:p-6 border-b border-border/20 bg-card shrink-0">
+          <div className="flex items-start gap-4 flex-1 min-w-0">
+            <div className="h-12 w-12 rounded-[14px] bg-primary/10 flex items-center justify-center text-2xl shrink-0 shadow-inner">
+              {getFileTypeEmoji(file.tag || "")}
+            </div>
+            <div className="min-w-0 flex-1 pt-0.5">
+              <h2 className="font-bold text-lg truncate flex items-center gap-2 text-foreground/90">
+                {file.name}
+              </h2>
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs text-muted-foreground mt-1.5 font-medium">
+                {file.subject && <span className="bg-muted/40 px-2 py-0.5 rounded text-[10px] uppercase tracking-wider">{file.subject}</span>}
+                {file.author && <span>by <span className="text-foreground/80">{file.author}</span></span>}
+                {file.author && <span className="text-border/40">•</span>}
+                {file.downloads !== undefined && <span>{file.downloads} downloads</span>}
+                {file.downloads !== undefined && <span className="text-border/40">•</span>}
+                <span>{file.date}</span>
+                {file.tag && <><span className="text-border/40">•</span><ResourceBadge tag={file.tag} tagClass={file.tagClass ?? ""} /></>}
+              </div>
+            </div>
+          </div>
+          <div className="flex shrink-0 gap-2 sm:ml-auto mt-2 sm:mt-0">
+            {file.storage_path && (
+              <Button variant="outline" size="sm" className="h-9 gap-1.5 px-3 text-primary hover:text-primary hover:bg-primary/10" title="Ask AI" onClick={() => { onClose(); navigate("/ai-oracle", { state: { attachFile: { name: file.name, storagePath: file.storage_path } } }); }}>
+                <Sparkles className="h-4 w-4" />
+                <span className="hidden sm:inline">Ask Oracle</span>
+              </Button>
+            )}
+            {file.storage_url && (
+              <a href={file.storage_url} download={file.name} target="_blank" rel="noopener noreferrer">
+                <Button variant="outline" size="sm" className="h-9 w-9 p-0 bg-muted/20 hover:bg-muted/50" title="Download">
+                  <Download className="h-4 w-4" />
+                </Button>
+              </a>
+            )}
+            <Button variant="ghost" size="sm" onClick={onClose} className="h-9 w-9 p-0 rounded-full hover:bg-muted/50 text-muted-foreground hover:text-foreground hidden sm:flex">
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
 
         {/* Tab bar for PDFs */}
         {isPdf && file.storage_path && (
-          <div className="flex gap-1 border-b border-border/30 shrink-0">
+          <div className="flex gap-1 border-b border-border/20 shrink-0 px-4 bg-muted/5">
             {(["preview", "summary"] as const).map(tab => (
               <button key={tab} onClick={() => setActiveTab(tab)}
-                className={`px-4 py-2 text-xs font-medium border-b-2 transition-all capitalize ${
-                  activeTab === tab ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
+                className={`px-4 py-3 text-xs font-semibold border-b-2 transition-all capitalize -mb-px ${
+                  activeTab === tab ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"
                 }`}>
-                {tab === "summary" ? "AI Summary" : "Preview"}
+                {tab === "summary" ? "✨ AI Summary" : "Preview"}
               </button>
             ))}
           </div>
         )}
 
         {/* Content area */}
-        <div className="flex-1 overflow-auto">
+        <div className="flex-1 overflow-auto bg-background/50">
           {activeTab === "summary" && isPdf && file.storage_path ? (
             <AISummaryTab file={file} />
           ) : (
             <PreviewContent file={file} />
           )}
-        </div>
-
-        {/* Action bar */}
-        <div className="flex items-center gap-2 pt-3 border-t border-border/30 shrink-0">
-          {file.storage_url ? (
-            <a href={file.storage_url} download={file.name} target="_blank" rel="noopener noreferrer" className="flex-1">
-              <Button className="w-full gap-2">
-                <Download className="h-4 w-4" /> Download {file.name.split(".").pop()?.toUpperCase()}
-              </Button>
-            </a>
-          ) : (
-            <Button className="flex-1 gap-2" disabled>
-              <Download className="h-4 w-4" /> No file stored
-            </Button>
-          )}
-          {file.storage_path && (
-            <Button
-              variant="outline"
-              className="gap-1.5 shrink-0"
-              onClick={() => { onClose(); navigate("/ai-oracle", { state: { attachFile: { name: file.name, storagePath: file.storage_path } } }); }}
-            >
-              <Sparkles className="h-4 w-4 text-primary" />
-              Ask AI
-            </Button>
-          )}
-          {file.storage_url && (
-            <a href={file.storage_url} target="_blank" rel="noopener noreferrer">
-              <Button variant="outline" size="icon" title="Open in new tab">
-                <ExternalLink className="h-4 w-4" />
-              </Button>
-            </a>
-          )}
-          <Button variant="outline" onClick={onClose} size="icon">
-            <X className="h-4 w-4" />
-          </Button>
         </div>
       </DialogContent>
     </Dialog>

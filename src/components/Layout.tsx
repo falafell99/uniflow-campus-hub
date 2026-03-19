@@ -5,6 +5,7 @@ import { ActivityFeed } from "@/components/ActivityFeed";
 import { TopHeader } from "@/components/TopHeader";
 import { CommandPalette } from "@/components/CommandPalette";
 import { ReminderBanner } from "@/components/ReminderBanner";
+import { MobileNav } from "@/components/MobileNav";
 import { initReminders } from "@/lib/reminders";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -26,14 +27,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <FacultyBar />
         <CategorySidebar />
       </div>
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
         <TopHeader />
         <ReminderBanner />
-        <main className="flex-1 p-6 overflow-y-auto custom-scroll">
-          <div className="page-slide-in">
+        <main className="flex-1 p-4 md:p-6 pb-[4.5rem] md:pb-6 overflow-y-auto custom-scroll">
+          <div className="page-slide-in h-full">
             {children}
           </div>
         </main>
+        <MobileNav />
       </div>
       <ActivityFeed />
     </div>

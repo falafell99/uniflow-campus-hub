@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { FileText, NotebookPen, HelpCircle, CheckCircle, Users, Calendar, Rss, Loader2, MessageSquare } from "lucide-react";
+import { FileText, NotebookPen, HelpCircle, CheckCircle, Users, Calendar, Rss, Loader2, MessageSquare, Plus } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatDistanceToNow } from "date-fns";
@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { useNavigate } from "react-router-dom";
 
 type FeedItem = {
   id: string;
@@ -46,39 +47,58 @@ const FILTER_MAP: Record<string, string> = {
   Groups:    "joined_group",
 };
 
+// Extracted skeleton component
+const SkeletonCard = () => (
+  <div className="bg-card/50 border border-border/20 rounded-2xl p-4 flex gap-3 animate-pulse">
+    <div className="h-9 w-9 rounded-full bg-border/40 shrink-0" />
+    <div className="flex-1 space-y-3 py-1">
+      <div className="h-3 w-1/3 bg-border/40 rounded-full" />
+      <div className="h-12 w-full bg-border/20 rounded-xl" />
+      <div className="h-2 w-16 bg-border/30 rounded-full" />
+    </div>
+  </div>
+);
+
 export default function FeedTab({ onNavigate }: { onNavigate?: (tab: string) => void }) {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [feedItems, setFeedItems] = useState<FeedItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [activeFilter, setActiveFilter] = useState("All");
+  const [limit, setLimit] = useState(30);
+  const [, setTick] = useState(0);
 
   const [postOpen, setPostOpen] = useState(false);
   const [postTitle, setPostTitle] = useState("");
   const [postBody, setPostBody] = useState("");
   const [posting, setPosting] = useState(false);
 
-  const fetchFeed = async () => {
-    // 1. Real activity_feed entries
+  // Auto-refresh relative timestamps every 60s
+  useEffect(() => {
+    const timer = setInterval(() => setTick(t => t + 1), 60000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const fetchFeed = async (currentLimit = limit) => {
     const { data: feedData } = await supabase
       .from("activity_feed")
       .select("*, profiles!user_id(display_name)")
       .eq("is_public", true)
       .order("created_at", { ascending: false })
-      .limit(20);
+      .limit(currentLimit);
 
-    // 2. Recent vault files as synthetic feed items
     const { data: vaultFiles } = await supabase
       .from("vault_files")
       .select("id, name, subject, uploader, created_at")
       .order("created_at", { ascending: false })
-      .limit(10);
+      .limit(Math.max(10, currentLimit / 2));
 
-    // 3. Recent forum threads as synthetic feed items
     const { data: forumThreads } = await supabase
       .from("forum_posts")
       .select("id, title, author, created_at")
       .order("created_at", { ascending: false })
-      .limit(5);
+      .limit(Math.max(5, currentLimit / 3));
 
     const synthetic: FeedItem[] = [
       ...(vaultFiles || []).map(f => ({
@@ -103,29 +123,29 @@ export default function FeedTab({ onNavigate }: { onNavigate?: (tab: string) => 
 
     const allItems = [...(feedData as FeedItem[] || []), ...synthetic]
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-      .slice(0, 30);
+      .slice(0, currentLimit);
 
     setFeedItems(allItems);
     setLoading(false);
+    setLoadingMore(false);
   };
 
   useEffect(() => {
-    fetchFeed();
+    fetchFeed(limit);
     const channel1 = supabase.channel("feed-realtime-community")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "activity_feed" }, fetchFeed)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "activity_feed" }, () => fetchFeed(limit))
       .subscribe();
     const channel2 = supabase.channel("feed-realtime-forums")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "forum_posts" }, fetchFeed)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "forum_posts" }, () => fetchFeed(limit))
       .subscribe();
     return () => { channel1.unsubscribe(); channel2.unsubscribe(); };
-  }, []);
+  }, [limit]);
 
   const handlePost = async () => {
     if (!postTitle.trim() || !user) return;
     setPosting(true);
     const author = user.user_metadata?.display_name || user.email?.split("@")[0] || "Anonymous";
     
-    // Create a forum post directly from the feed
     const { error } = await supabase.from("forum_posts").insert({
       title: postTitle.trim(),
       content: postBody.trim() || "No description provided.",
@@ -142,8 +162,13 @@ export default function FeedTab({ onNavigate }: { onNavigate?: (tab: string) => 
       setPostOpen(false);
       setPostTitle("");
       setPostBody("");
-      fetchFeed();
+      fetchFeed(limit);
     }
+  };
+
+  const handleLoadMore = () => {
+    setLoadingMore(true);
+    setLimit(prev => prev + 20);
   };
 
   const filtered = activeFilter === "All"
@@ -151,30 +176,31 @@ export default function FeedTab({ onNavigate }: { onNavigate?: (tab: string) => 
     : feedItems.filter(i => i.action_type === FILTER_MAP[activeFilter]);
 
   return (
-    <div className="max-w-2xl mx-auto p-6">
+    <div className="max-w-2xl mx-auto p-6 pb-24">
       {/* Post box */}
-      <div className="bg-card border border-border/40 rounded-2xl p-4 mb-6 flex gap-3">
+      <div className="bg-card flex gap-3 border border-border/40 rounded-2xl p-4 mb-6 relative overflow-hidden group hover:border-primary/30 transition-all">
         <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm shrink-0">
-          {user?.email?.charAt(0).toUpperCase() || "?"}
+          {user?.user_metadata?.display_name?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || "?"}
         </div>
         <button
           onClick={() => setPostOpen(true)}
-          className="flex-1 bg-background border border-border/30 rounded-xl px-4 py-2.5 text-sm text-muted-foreground text-left hover:border-primary/30 transition-all cursor-text"
+          className="flex-1 bg-background border border-border/30 rounded-xl px-4 py-2.5 text-sm text-muted-foreground text-left hover:border-primary/40 transition-all cursor-text flex items-center justify-between group-hover:bg-muted/30"
         >
-          Share something with the community...
+          <span>Share something with the community...</span>
+          <Plus className="h-4 w-4 text-muted-foreground opacity-50" />
         </button>
       </div>
 
       {/* Filters */}
-      <div className="flex gap-2 mb-5 flex-wrap">
+      <div className="flex gap-2 mb-6 flex-wrap">
         {["All", "Files", "Questions", "Notes", "Groups"].map(filter => (
           <button
             key={filter}
             onClick={() => setActiveFilter(filter)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+            className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all ${
               activeFilter === filter
-                ? "bg-primary text-primary-foreground"
-                : "bg-muted/30 text-muted-foreground hover:bg-muted/50"
+                ? "bg-primary text-primary-foreground shadow-sm shadow-primary/20"
+                : "bg-muted text-muted-foreground hover:bg-muted hover:text-foreground"
             }`}
           >
             {filter}
@@ -183,57 +209,77 @@ export default function FeedTab({ onNavigate }: { onNavigate?: (tab: string) => 
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <div className="space-y-3">
+          <SkeletonCard />
+          <SkeletonCard />
+          <SkeletonCard />
         </div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-20 opacity-40">
-          <Rss className="h-12 w-12 mx-auto mb-3 text-muted-foreground" strokeWidth={1} />
-          <p className="font-bold">Feed is empty</p>
-          <p className="text-sm text-muted-foreground">Be the first to share something!</p>
-        </div>
+        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-24">
+          <div className="h-20 w-20 rounded-full bg-muted/50 flex items-center justify-center mx-auto mb-4 border border-border/30">
+            <Rss className="h-8 w-8 text-muted-foreground" />
+          </div>
+          <h3 className="text-lg font-bold">Nothing here yet</h3>
+          <p className="text-sm text-muted-foreground mt-1 mb-6">Be the first to share something with the community!</p>
+          <Button onClick={() => navigate("/vault")} className="gap-2">
+            Upload a file →
+          </Button>
+        </motion.div>
       ) : (
         <div className="space-y-3">
-          {filtered.map(item => (
+          {filtered.map((item, i) => (
             <motion.div
               key={item.id}
-              initial={{ opacity: 0, y: 10 }}
+              initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-card border border-border/40 rounded-2xl p-4 hover:border-primary/20 transition-all"
+              transition={{ delay: i * 0.05, duration: 0.3 }}
+              className="bg-card border border-border/40 rounded-2xl p-4 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 transition-all group"
             >
               <div className="flex items-start gap-3">
                 <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm shrink-0">
-                  {item.profiles?.display_name?.charAt(0) || "?"}
+                  {item.profiles?.display_name?.charAt(0).toUpperCase() || "?"}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm">
-                    <span className="font-semibold">{item.profiles?.display_name}</span>
+                  <p className="text-sm leading-snug">
+                    <span className="font-bold text-foreground">{item.profiles?.display_name}</span>
                     <span className="text-muted-foreground"> {ACTION_LABELS[item.action_type] || item.action_type}</span>
                   </p>
+                  
                   {item.entity_title && (
-                    <div className="mt-2 flex items-center gap-2 bg-background border border-border/30 rounded-xl px-3 py-2">
+                    <div className="mt-2.5 flex items-center gap-2.5 bg-background border border-border/30 rounded-xl px-3.5 py-2.5 group-hover:border-primary/20 transition-colors">
                       {ACTION_ICONS[item.action_type]}
-                      <span className="text-sm font-medium truncate">{item.entity_title}</span>
+                      <span className="text-sm font-semibold truncate text-foreground/90">{item.entity_title}</span>
                       {item.entity_subject && (
-                        <span className="text-[11px] text-muted-foreground bg-muted/30 px-2 py-0.5 rounded-full shrink-0">
+                        <span className="text-[10px] font-medium text-muted-foreground border border-border/40 px-2 py-0.5 rounded-full shrink-0">
                           {item.entity_subject}
                         </span>
                       )}
                     </div>
                   )}
-                  <p className="text-[11px] text-muted-foreground mt-2">
+                  
+                  <p className="text-xs font-medium text-muted-foreground/60 mt-3 flex items-center gap-1.5">
+                    <span className="h-1 w-1 rounded-full bg-muted-foreground/30" />
                     {formatDistanceToNow(new Date(item.created_at))} ago
                   </p>
                 </div>
               </div>
             </motion.div>
           ))}
+          
+          {filtered.length >= limit && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="pt-4 flex justify-center">
+              <Button variant="outline" onClick={handleLoadMore} disabled={loadingMore} className="rounded-full px-6">
+                {loadingMore ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                Load more activity
+              </Button>
+            </motion.div>
+          )}
         </div>
       )}
 
       {/* Post Modal */}
       <Dialog open={postOpen} onOpenChange={setPostOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md bg-[#1a1a1a] border-border/50">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <MessageSquare className="h-5 w-5 text-primary" />
@@ -241,23 +287,26 @@ export default function FeedTab({ onNavigate }: { onNavigate?: (tab: string) => 
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 pt-4">
-            <div className="space-y-2">
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground">Title</label>
               <Input
-                placeholder="What's on your mind? (Title)"
+                placeholder="What's on your mind?"
                 value={postTitle}
                 onChange={(e) => setPostTitle(e.target.value)}
+                autoFocus
               />
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground">Description (Optional)</label>
               <Textarea
-                placeholder="Add more details (optional)..."
+                placeholder="Add more details..."
                 value={postBody}
                 onChange={(e) => setPostBody(e.target.value)}
                 className="resize-none min-h-[100px]"
               />
             </div>
             <Button
-              className="w-full gap-2"
+              className="w-full gap-2 mt-2"
               onClick={handlePost}
               disabled={!postTitle.trim() || posting}
             >

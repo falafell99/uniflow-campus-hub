@@ -48,96 +48,198 @@ export default function Onboarding() {
     navigate("/");
   };
 
-  const dots = (
-    <div className="flex items-center gap-2 mb-10">
-      {[0, 1, 2, 3].map(i => (
-        <div key={i} className={`h-2 rounded-full transition-all ${i === step ? "w-6 bg-primary" : "w-2 bg-muted/40"}`} />
-      ))}
-    </div>
-  );
+  const totalSteps = 4;
+  const currentStep = step + 1;
 
-  const transition = { initial: { opacity: 0, x: 40 }, animate: { opacity: 1, x: 0 }, exit: { opacity: 0, x: -40 }, transition: { duration: 0.3 } };
+  const actionCards = [
+    { key: "vault" as const, emoji: "📚", title: "Upload a lecture", desc: "Store your PDFs and notes in the Vault" },
+    { key: "calendar" as const, emoji: "📅", title: "Add a deadline", desc: "Track exams and assignments in Calendar" },
+    { key: "notes" as const, emoji: "📝", title: "Create a note", desc: "Write and organize your study notes" },
+  ];
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6">
-      {dots}
+    <div className="min-h-screen bg-[#030303] flex flex-col items-center justify-center relative overflow-hidden px-6">
+      {/* Animated background */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_50%,rgba(123,104,238,0.08),transparent_70%)] pointer-events-none" />
+      <div className="absolute inset-0 bg-[linear-gradient(rgba(123,104,238,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(123,104,238,0.02)_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none" />
+
+      {/* Progress Indicator */}
+      <div className="w-full max-w-sm mb-8 relative z-10">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs text-white/40">Step {currentStep} of {totalSteps}</span>
+          <span className="text-xs text-white/40">{Math.round((currentStep / totalSteps) * 100)}%</span>
+        </div>
+        <div className="h-1 bg-white/10 rounded-full overflow-hidden">
+          <motion.div
+            className="h-full bg-[#7b68ee] rounded-full"
+            initial={{ width: 0 }}
+            animate={{ width: `${(currentStep / totalSteps) * 100}%` }}
+            transition={{ duration: 0.5, ease: "easeInOut" }}
+          />
+        </div>
+      </div>
+
+      {/* Step Transitions */}
       <AnimatePresence mode="wait">
+        {/* STEP 0 — Welcome */}
         {step === 0 && (
-          <motion.div key="s0" {...transition} className="flex flex-col items-center text-center max-w-md space-y-6">
-            <span className="text-6xl">🎓</span>
-            <h1 className="text-3xl font-black tracking-tight">Welcome to UniFlow</h1>
-            <p className="text-muted-foreground">Your personal student OS. Let's set up your space in 4 quick steps.</p>
-            <Button size="lg" className="h-12 px-8 bg-primary text-primary-foreground font-bold rounded-xl" onClick={() => setStep(1)}>
+          <motion.div
+            key="s0"
+            initial={{ opacity: 0, x: 30 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -30 }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+            className="w-full max-w-sm flex flex-col items-center text-center space-y-6 relative z-10"
+          >
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.5, ease: "backOut" }}
+              className="h-20 w-20 rounded-3xl bg-[#7b68ee] flex items-center justify-center text-white font-black text-4xl mb-2 shadow-2xl shadow-[#7b68ee]/30 mx-auto"
+            >
+              U
+            </motion.div>
+            <h1 className="text-3xl font-black text-white text-center">Welcome to UniFlow</h1>
+            <p className="text-white/50 text-center leading-relaxed">
+              Your personal student OS. Notes, tasks, AI tutor, and your study community — all in one place.
+            </p>
+            <button
+              onClick={() => setStep(1)}
+              className="w-full h-12 rounded-xl bg-[#7b68ee] hover:bg-[#6a5acd] text-white font-bold transition-all active:scale-95"
+            >
               Get Started →
-            </Button>
+            </button>
           </motion.div>
         )}
 
+        {/* STEP 1 — Profile */}
         {step === 1 && (
-          <motion.div key="s1" {...transition} className="flex flex-col items-center text-center max-w-sm w-full space-y-5">
-            <h2 className="text-2xl font-bold">Tell us about yourself</h2>
-            <div className="w-full space-y-3 text-left">
-              <div>
-                <label className="text-xs text-muted-foreground font-medium">Display name *</label>
-                <Input value={name} onChange={e => setName(e.target.value)} placeholder="Your name" className="mt-1" />
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground font-medium">University</label>
-                <Input value={university} onChange={e => setUniversity(e.target.value)} placeholder="e.g. ELTE, BME, Corvinus" className="mt-1" />
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground font-medium">Faculty / Department</label>
-                <Input value={faculty} onChange={e => setFaculty(e.target.value)} placeholder="e.g. Faculty of Informatics" className="mt-1" />
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground font-medium">Year of study</label>
-                <select value={yearOfStudy} onChange={e => setYearOfStudy(e.target.value)} className="mt-1 w-full bg-transparent border border-border/40 rounded-lg px-3 py-2 text-sm outline-none">
-                  <option value="" className="bg-[#1a1a1a]">Select year...</option>
-                  {YEARS.map(y => <option key={y} value={y} className="bg-[#1a1a1a]">{y}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground font-medium">Major</label>
-                <Input value={major} onChange={e => setMajor(e.target.value)} placeholder="e.g. Computer Science" className="mt-1" />
+          <motion.div
+            key="s1"
+            initial={{ opacity: 0, x: 30 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -30 }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+            className="w-full max-w-sm relative z-10"
+          >
+            <div className="bg-white/[0.04] border border-white/[0.08] rounded-2xl p-6 space-y-4">
+              <h2 className="text-lg font-bold text-white">Tell us about yourself</h2>
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs text-white/40 font-medium">Display name *</label>
+                  <Input value={name} onChange={e => setName(e.target.value)} placeholder="Your name"
+                    className="mt-1 bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:border-[#7b68ee]/60" />
+                </div>
+                <div>
+                  <label className="text-xs text-white/40 font-medium">University</label>
+                  <Input value={university} onChange={e => setUniversity(e.target.value)} placeholder="e.g. ELTE, BME, Corvinus"
+                    className="mt-1 bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:border-[#7b68ee]/60" />
+                </div>
+                <div>
+                  <label className="text-xs text-white/40 font-medium">Faculty / Department</label>
+                  <Input value={faculty} onChange={e => setFaculty(e.target.value)} placeholder="e.g. Faculty of Informatics"
+                    className="mt-1 bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:border-[#7b68ee]/60" />
+                </div>
+                <div>
+                  <label className="text-xs text-white/40 font-medium">Year of study</label>
+                  <select value={yearOfStudy} onChange={e => setYearOfStudy(e.target.value)}
+                    className="mt-1 w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-[#7b68ee]/60">
+                    <option value="" className="bg-[#0a0a0a]">Select year...</option>
+                    {YEARS.map(y => <option key={y} value={y} className="bg-[#0a0a0a]">{y}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-white/40 font-medium">Major</label>
+                  <Input value={major} onChange={e => setMajor(e.target.value)} placeholder="e.g. Computer Science"
+                    className="mt-1 bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:border-[#7b68ee]/60" />
+                </div>
               </div>
             </div>
-            <Button className="w-full h-11 font-bold" onClick={async () => { if (await saveProfile()) setStep(2); }}>Next →</Button>
-            <button onClick={skip} className="text-xs text-muted-foreground hover:text-foreground transition-colors">Skip setup</button>
+            <button
+              className="w-full h-12 rounded-xl bg-[#7b68ee] hover:bg-[#6a5acd] text-white font-bold transition-all active:scale-95 mt-5"
+              onClick={async () => { if (await saveProfile()) setStep(2); }}
+            >
+              Next →
+            </button>
+            <button onClick={skip} className="text-xs text-white/30 hover:text-white/50 transition-colors mt-4 block text-center w-full">
+              Skip setup
+            </button>
           </motion.div>
         )}
 
+        {/* STEP 2 — First Action */}
         {step === 2 && (
-          <motion.div key="s2" {...transition} className="flex flex-col items-center text-center max-w-sm w-full space-y-5">
-            <h2 className="text-2xl font-bold">What do you want to do first?</h2>
-            <p className="text-sm text-muted-foreground">Pick one to get started — you can always do the rest later.</p>
+          <motion.div
+            key="s2"
+            initial={{ opacity: 0, x: 30 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -30 }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+            className="w-full max-w-sm relative z-10 space-y-5"
+          >
+            <div className="text-center">
+              <h2 className="text-2xl font-bold text-white">What do you want to do first?</h2>
+              <p className="text-sm text-white/40 mt-2">Pick one to get started — you can always do the rest later.</p>
+            </div>
             <div className="grid grid-cols-1 gap-3 w-full">
-              {([
-                { key: "vault" as const, emoji: "📚", title: "Upload a lecture", desc: "Store your PDFs and notes in the Vault" },
-                { key: "calendar" as const, emoji: "📅", title: "Add a deadline", desc: "Track exams and assignments in Calendar" },
-                { key: "notes" as const, emoji: "📝", title: "Create a note", desc: "Write and organize your study notes" },
-              ]).map(c => (
-                <button key={c.key} onClick={() => setFirstAction(c.key)}
-                  className={`p-5 rounded-2xl border-2 text-left transition-all ${firstAction === c.key ? "border-primary bg-primary/10" : "border-border/40 hover:border-border"}`}>
-                  <div className="text-2xl mb-2">{c.emoji}</div>
-                  <p className="font-bold text-sm">{c.title}</p>
-                  <p className="text-xs text-muted-foreground mt-1">{c.desc}</p>
-                </button>
+              {actionCards.map((card, i) => (
+                <motion.button
+                  key={card.key}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.1 }}
+                  onClick={() => setFirstAction(card.key)}
+                  className={`w-full p-4 rounded-2xl border-2 text-left transition-all ${
+                    firstAction === card.key
+                      ? "border-[#7b68ee] bg-[#7b68ee]/10"
+                      : "border-white/10 hover:border-white/20 bg-white/[0.02]"
+                  }`}
+                >
+                  <span className="text-2xl">{card.emoji}</span>
+                  <p className="font-bold text-white mt-2">{card.title}</p>
+                  <p className="text-sm text-white/40 mt-0.5">{card.desc}</p>
+                </motion.button>
               ))}
             </div>
-            <Button className="w-full h-11 font-bold" disabled={!firstAction} onClick={() => setStep(3)}>Next →</Button>
-            <button onClick={skip} className="text-xs text-muted-foreground hover:text-foreground transition-colors">Skip setup</button>
+            <button
+              className="w-full h-12 rounded-xl bg-[#7b68ee] hover:bg-[#6a5acd] text-white font-bold transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+              disabled={!firstAction}
+              onClick={() => setStep(3)}
+            >
+              Next →
+            </button>
+            <button onClick={skip} className="text-xs text-white/30 hover:text-white/50 transition-colors mt-4 block text-center w-full">
+              Skip setup
+            </button>
           </motion.div>
         )}
 
+        {/* STEP 3 — Done */}
         {step === 3 && (
-          <motion.div key="s3" {...transition} className="flex flex-col items-center text-center max-w-sm w-full space-y-6">
-            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 200, damping: 15 }}
-              className="h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center text-4xl">
+          <motion.div
+            key="s3"
+            initial={{ opacity: 0, x: 30 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -30 }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+            className="w-full max-w-sm flex flex-col items-center text-center space-y-6 relative z-10"
+          >
+            <motion.div
+              initial={{ scale: 0, rotate: -180 }}
+              animate={{ scale: 1, rotate: 0 }}
+              transition={{ duration: 0.6, ease: "backOut" }}
+              className="h-24 w-24 rounded-full bg-[#7b68ee]/20 border-2 border-[#7b68ee] flex items-center justify-center text-5xl mx-auto"
+            >
               ✓
             </motion.div>
-            <h2 className="text-2xl font-bold">You're all set!</h2>
-            <p className="text-muted-foreground">UniFlow is ready. Let's go.</p>
-            <Button size="lg" className="w-full h-12 font-bold bg-primary" onClick={handleFinish}>Open UniFlow →</Button>
+            <h2 className="text-2xl font-black text-white text-center">You're all set!</h2>
+            <p className="text-white/40 text-center">UniFlow is ready. Let's go.</p>
+            <button
+              className="w-full h-12 rounded-xl bg-[#7b68ee] hover:bg-[#6a5acd] text-white font-bold transition-all active:scale-95"
+              onClick={handleFinish}
+            >
+              Open UniFlow →
+            </button>
           </motion.div>
         )}
       </AnimatePresence>

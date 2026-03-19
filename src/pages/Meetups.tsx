@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Calendar, Clock, MapPin, Users, Plus, Loader2, Wifi, Building2, Search } from "lucide-react";
+import { Calendar, Clock, MapPin, Users, Plus, Loader2, Wifi, Building2, Search, CalendarDays } from "lucide-react";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -293,14 +294,16 @@ export default function Meetups() {
                 {Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)}
               </div>
             ) : items.length === 0 ? (
-              <div className="glass-subtle rounded-xl p-12 text-center">
-                <p className="text-4xl mb-3">🤝</p>
-                <p className="font-medium">No meetups here yet</p>
-                <p className="text-sm text-muted-foreground mt-1">Be the first to create a study session!</p>
-                <Button className="mt-4 gap-2" size="sm" onClick={() => setCreateOpen(true)}>
-                  <Plus className="h-4 w-4" /> Create Meetup
+              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-20 glass-subtle rounded-xl">
+                <div className="h-20 w-20 rounded-full bg-muted/50 flex items-center justify-center mx-auto mb-4 border border-border/30">
+                  <CalendarDays className="h-8 w-8 text-muted-foreground" />
+                </div>
+                <h3 className="text-lg font-bold">No meetups scheduled</h3>
+                <p className="text-sm text-muted-foreground mt-1 mb-6">Create a meetup to study with others!</p>
+                <Button onClick={() => setCreateOpen(true)} className="gap-2">
+                  Create a meetup
                 </Button>
-              </div>
+              </motion.div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                 {items.map((m) => <MeetupCard key={m.id} m={m} />)}

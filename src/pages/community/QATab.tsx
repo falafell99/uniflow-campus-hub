@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { HelpCircle, ChevronLeft, CheckCircle, ThumbsUp, Plus, Search, Loader2 } from "lucide-react";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -104,8 +105,17 @@ export default function QATab() {
             </div>
             <div className="relative flex-1"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Search subject or title..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9 bg-card border-border/40" /></div>
           </div>
-          {loading ? <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div> : filtered.length === 0 ? (
-            <div className="text-center py-20 opacity-40"><HelpCircle className="h-12 w-12 mx-auto mb-3 text-muted-foreground" strokeWidth={1} /><p className="font-bold">No questions found</p><p className="text-sm text-muted-foreground">Adjust filters or ask a new question!</p></div>
+          {loading ? <div className="flex justify-center py-24"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div> : filtered.length === 0 ? (
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-24">
+              <div className="h-20 w-20 rounded-full bg-muted/50 flex items-center justify-center mx-auto mb-4 border border-border/30">
+                <HelpCircle className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <h3 className="text-lg font-bold">No questions yet</h3>
+              <p className="text-sm text-muted-foreground mt-1 mb-6">Ask the first question and get help from the community.</p>
+              <Button onClick={() => setAskOpen(true)} className="gap-2">
+                Ask the first question
+              </Button>
+            </motion.div>
           ) : (
             <div className="space-y-3">
               {filtered.map(q => (

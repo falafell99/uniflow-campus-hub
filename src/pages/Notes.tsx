@@ -97,17 +97,21 @@ function SlashMenu({
       initial={{ opacity: 0, y: -8, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: -8, scale: 0.96 }} transition={{ duration: 0.12 }}
       style={{ position: "fixed", top: position.top, left: position.left, zIndex: 9999 }}
-      className="glass-card border border-border/60 rounded-xl shadow-2xl w-64 py-1 overflow-hidden"
+      className="bg-card border border-border/40 rounded-xl shadow-xl overflow-hidden w-64"
     >
-      <p className="text-[10px] text-muted-foreground px-3 py-1">BLOCKS</p>
+      <div className="px-3 py-2 border-b border-border/20">
+        <p className="text-xs text-muted-foreground font-medium">Block type</p>
+      </div>
       {filtered.length === 0 && <p className="text-xs text-muted-foreground px-3 py-2">No matching block type</p>}
       {filtered.map((cmd, i) => (
         <button key={cmd.type} onClick={() => onSelect(cmd.type)} onMouseEnter={() => setIdx(i)}
-          className={`w-full flex items-center gap-3 px-3 py-2 text-left transition-colors ${i === idx ? "bg-primary/10 text-primary" : "hover:bg-muted/50"}`}>
-          <div className={`p-1.5 rounded-md ${i === idx ? "bg-primary/20" : "bg-muted/50"}`}>{cmd.icon}</div>
+          className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors ${i === idx ? "bg-primary/10" : "hover:bg-primary/5"}`}>
+          <div className="h-8 w-8 rounded-lg bg-muted/30 flex items-center justify-center text-muted-foreground shrink-0">
+            {cmd.icon}
+          </div>
           <div>
-            <p className="text-xs font-medium">{cmd.label}</p>
-            <p className="text-[10px] text-muted-foreground">{cmd.description}</p>
+            <p className="text-sm font-medium">{cmd.label}</p>
+            <p className="text-xs text-muted-foreground">{cmd.description}</p>
           </div>
         </button>
       ))}
@@ -478,7 +482,7 @@ export default function Notes() {
   const [notes, setNotes] = useState<StudentNote[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [search, setSearch] = useState("");
   const [editingTitle, setEditingTitle] = useState(false);
   const [showTagPicker, setShowTagPicker] = useState(false);
@@ -570,7 +574,7 @@ export default function Notes() {
       tags: note.tags, blocks: note.blocks, is_shared: note.is_shared, team_id: note.team_id,
       updated_at: new Date().toISOString(),
     });
-    if (error) toast({ title: "Save failed", description: error.message, variant: "destructive" });
+    if (error) { toast({ title: "Save failed", description: error.message, variant: "destructive" }); setSaveStatus("error"); setTimeout(() => setSaveStatus("idle"), 2000); return; }
     setSaveStatus("saved");
     setTimeout(() => setSaveStatus("idle"), 2000);
   }, [user]);
@@ -669,9 +673,9 @@ export default function Notes() {
   const toggleGroup = (key: string) => setCollapsedGroups(prev => ({ ...prev, [key]: !prev[key] }));
 
   return (
-    <div className="flex h-[calc(100vh-5rem)] md:h-[calc(100vh-6rem)] overflow-hidden animate-fade-in">
+    <div className="flex h-[calc(100vh-5rem)] md:h-[calc(100vh-6rem)] overflow-hidden animate-fade-in relative">
       {/* ── Left Sidebar ── */}
-      <div className="w-64 shrink-0 border-r border-border/40 flex flex-col bg-card/30">
+      <div className={`${selectedId ? "hidden md:flex" : "flex w-full"} md:w-64 shrink-0 md:border-r border-border/40 flex-col bg-card/30 absolute inset-0 md:relative z-20`}>
         <div className="p-3 border-b border-border/40 space-y-2">
           <div className="flex items-center justify-between">
             <h2 className="font-bold text-sm flex items-center gap-2"><NotebookPen className="h-4 w-4 text-primary" /> Notes</h2>
@@ -702,19 +706,27 @@ export default function Notes() {
                 </button>
                 {!collapsedGroups[group] && groupNotes.map(note => (
                   <button key={note.id} onClick={() => setSelectedId(note.id)}
-                    className={`w-full text-left px-3 py-2 rounded-lg transition-all text-xs border group ${
-                      selectedId === note.id ? "bg-primary/10 border-primary/30 text-primary" : "border-transparent hover:bg-muted/30 text-muted-foreground hover:text-foreground"
+                    className={`w-full text-left px-3 py-2 rounded-lg transition-all text-xs group ${
+                      selectedId === note.id ? "bg-primary/10 border border-primary/30 text-primary" : "border border-transparent hover:bg-muted/30"
                     }`}>
-                    <div className="flex items-center justify-between">
-                      <p className="font-medium truncate flex-1">{note.title || "Untitled"}</p>
+                    <div className="flex items-start justify-between">
+                      <div className="min-w-0 flex-1">
+                        <p className={`font-medium truncate ${selectedId === note.id ? "text-primary" : "text-foreground"}`}>{note.title || "Untitled"}</p>
+                        <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
+                          {note.blocks.find(b => b.content.trim() !== '')?.content || 'Empty note'}
+                        </p>
+                        <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                          {note.subject && <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4">{note.subject}</Badge>}
+                          <span className="text-[10px] text-muted-foreground/60 shrink-0">
+                            {formatDistanceToNow(new Date(note.updated_at), { addSuffix: true })}
+                          </span>
+                        </div>
+                      </div>
                       <button onClick={e => { e.stopPropagation(); deleteNote(note.id); }}
-                        className="opacity-0 group-hover:opacity-100 text-destructive h-4 w-4 flex items-center justify-center rounded transition-opacity ml-1">
+                        className="opacity-0 group-hover:opacity-100 text-destructive h-5 w-5 flex items-center justify-center rounded hover:bg-destructive/10 transition-all shrink-0 ml-1">
                         <X className="h-3 w-3" />
                       </button>
                     </div>
-                    <p className="text-[10px] text-muted-foreground/60 mt-0.5">
-                      {formatDistanceToNow(new Date(note.updated_at), { addSuffix: true })}
-                    </p>
                   </button>
                 ))}
               </div>
@@ -724,7 +736,7 @@ export default function Notes() {
       </div>
 
       {/* ── Editor ── */}
-      <div className="flex-1 flex min-w-0 overflow-hidden">
+      <div className={`${!selectedId ? "hidden md:flex" : "flex"} flex-1 flex-col min-w-0 overflow-hidden relative z-10 bg-background`}>
         <div className="flex-1 flex flex-col min-w-0">
           {selectedNote ? (
             <>
@@ -732,18 +744,23 @@ export default function Notes() {
               <div className="p-4 border-b border-border/40 space-y-3">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0 space-y-2">
-                    {editingTitle ? (
-                      <Input ref={titleRef} autoFocus value={selectedNote.title}
-                        onChange={e => updateSelected({ title: e.target.value })}
-                        onBlur={() => setEditingTitle(false)}
-                        onKeyDown={e => e.key === "Enter" && setEditingTitle(false)}
-                        className="text-2xl font-bold h-auto py-0 border-0 bg-transparent focus-visible:ring-0 px-0" />
-                    ) : (
-                      <button onClick={() => setEditingTitle(true)} className="flex items-center gap-1.5 text-left min-w-0 group">
-                        <h1 className="text-2xl font-bold tracking-tight truncate">{selectedNote.title || "Untitled Note"}</h1>
-                        <Edit2 className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 shrink-0 transition-opacity" />
-                      </button>
-                    )}
+                    <div className="flex items-center gap-2">
+                      <Button variant="ghost" size="icon" className="md:hidden shrink-0 h-8 w-8 -ml-2" onClick={() => setSelectedId(null)}>
+                        <ChevronRight className="h-5 w-5 rotate-180" />
+                      </Button>
+                      {editingTitle ? (
+                        <Input ref={titleRef} autoFocus value={selectedNote.title}
+                          onChange={e => updateSelected({ title: e.target.value })}
+                          onBlur={() => setEditingTitle(false)}
+                          onKeyDown={e => e.key === "Enter" && setEditingTitle(false)}
+                          className="text-2xl font-bold h-auto py-0 border-0 bg-transparent focus-visible:ring-0 px-0" />
+                      ) : (
+                        <button onClick={() => setEditingTitle(true)} className="flex items-center gap-1.5 text-left min-w-0 group">
+                          <h1 className="text-2xl font-bold tracking-tight truncate">{selectedNote.title || "Untitled Note"}</h1>
+                          <Edit2 className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 shrink-0 transition-opacity" />
+                        </button>
+                      )}
+                    </div>
 
                     <div className="flex items-center gap-2 flex-wrap">
                       <div className="relative">
@@ -798,14 +815,23 @@ export default function Notes() {
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">
-                    <div className={`flex items-center gap-1.5 text-xs px-2 py-1 rounded-md transition-all ${
-                      saveStatus === "saving" ? "text-primary" : saveStatus === "saved" ? "text-success" : "text-muted-foreground"
-                    }`}>
-                      {saveStatus === "saving" ? <Cloud className="h-3.5 w-3.5 animate-pulse" /> :
-                       saveStatus === "saved" ? <Check className="h-3.5 w-3.5" /> :
-                       <Cloud className="h-3.5 w-3.5" />}
-                      {saveStatus === "saving" ? "Saving..." : saveStatus === "saved" ? "Saved" : ""}
-                    </div>
+                    <AnimatePresence mode="wait">
+                      {saveStatus === "saving" && (
+                        <motion.div key="saving" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-1.5 text-xs text-muted-foreground px-2 py-1">
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" /> Saving...
+                        </motion.div>
+                      )}
+                      {saveStatus === "saved" && (
+                        <motion.div key="saved" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-1.5 text-xs text-green-400 px-2 py-1">
+                          <Check className="h-3.5 w-3.5" /> Saved
+                        </motion.div>
+                      )}
+                      {saveStatus === "error" && (
+                        <motion.div key="error" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-1.5 text-xs text-red-400 px-2 py-1">
+                          <X className="h-3.5 w-3.5" /> Error saving
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                     <Button variant="ghost" size="sm" className="h-8 text-xs gap-1.5" onClick={() => {
                       import("@/lib/exportPDF").then(({ exportToPDF, noteToHTML }) => {
                         if (selectedNote) { exportToPDF(selectedNote.title, noteToHTML(selectedNote)); }

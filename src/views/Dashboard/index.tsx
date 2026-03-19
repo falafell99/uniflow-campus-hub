@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Clock, FileText, Mic, MessageSquare, Briefcase, TrendingUp, ArrowRight } from "lucide-react";
+import { Clock, FileText, Mic, MessageSquare, Briefcase, TrendingUp, ArrowRight, NotebookPen, Sparkles, Upload, CalendarPlus } from "lucide-react";
 import { useMeetups } from "@/contexts/MeetupContext";
 import { useApp } from "@/contexts/AppContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -15,7 +15,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useNavigate } from "react-router-dom";
 import { PublicProfileModal } from "@/components/PublicProfileModal";
 import { StudyCoach } from "@/components/StudyCoach";
-import { format, differenceInDays } from "date-fns";
+import { format, differenceInCalendarDays, formatDistanceToNow } from "date-fns";
+import { motion } from "framer-motion";
 
 type VaultResource = {
   id: string;
@@ -26,8 +27,6 @@ type VaultResource = {
   tag: string;
   tagClass: string;
 };
-
-// Fallbacks are now handled inside the component logic
 
 const fallbackResources: VaultResource[] = [
   { id: "res-1", title: "Calculus II Final Cheat Sheet", author: "Anna K.", downloads: 234, tag: "Exam Prep", tagClass: "badge-exam" },
@@ -41,12 +40,20 @@ function tagClassForType(fileType: string): string {
   if (fileType === "Lecture Slides") return "badge-slides";
   return "badge-golden";
 }
+
 function getFirstName(fullName?: string) {
   if (!fullName) return "Student";
   return fullName.split(" ")[0];
 }
 
-// Read accumulated voice time from localStorage
+function getGreeting(firstName: string): string {
+  const hour = new Date().getHours();
+  if (hour >= 5 && hour <= 11) return `Good morning, ${firstName} ☀️`;
+  if (hour >= 12 && hour <= 17) return `Good afternoon, ${firstName} 👋`;
+  if (hour >= 18 && hour <= 23) return `Good evening, ${firstName} 🌙`;
+  return `Still up, ${firstName}? 🦉`;
+}
+
 function getVoiceTimeStr(): string {
   const secs = parseInt(localStorage.getItem("uniflow-voice-total-secs") ?? "0");
   if (!secs) return "0h";
@@ -55,6 +62,21 @@ function getVoiceTimeStr(): string {
   if (h === 0) return `${m}m`;
   return m > 0 ? `${h}h ${m}m` : `${h}h`;
 }
+
+const ACTION_ICONS: Record<string, string> = {
+  note_saved: "📝",
+  file_uploaded: "📁",
+  task_completed: "✅",
+  oracle_query: "🧠",
+  flashcard_reviewed: "🃏",
+};
+const ACTION_LABELS: Record<string, string> = {
+  note_saved: "Saved a note",
+  file_uploaded: "Uploaded a file",
+  task_completed: "Completed a task",
+  oracle_query: "Asked the Oracle",
+  flashcard_reviewed: "Reviewed flashcards",
+};
 
 // ─── Stat Card ────────────────────────────────────────────────────────────────
 type StatDef = {
@@ -136,8 +158,13 @@ export default function Dashboard() {
   const [voiceTimeStr, setVoiceTimeStr] = useState("0h");
   const [savedInternships, setSavedInternships] = useState(0);
 
+  // Recent activity
+  const [recentActivity, setRecentActivity] = useState<any[]>([]);
+  const [activityLoading, setActivityLoading] = useState(true);
+
   const displayName = user?.user_metadata?.display_name || user?.email?.split("@")[0] || "Student";
   const firstName = getFirstName(displayName);
+  const greeting = getGreeting(firstName);
 
   // Load trending vault files and subjects
   useEffect(() => {
@@ -156,7 +183,6 @@ export default function Dashboard() {
             .not("subject", "is", null)
         ]);
 
-        // Process Resources
         if (filesRes.data && filesRes.data.length > 0) {
           setLiveResources(
             filesRes.data.map((f) => ({
@@ -170,7 +196,6 @@ export default function Dashboard() {
           );
         }
 
-        // Process Subjects (Top 3 by file count)
         if (subjectsRes.data && subjectsRes.data.length > 0) {
           const counts: Record<string, number> = {};
           subjectsRes.data.forEach(item => {
@@ -184,7 +209,7 @@ export default function Dashboard() {
               id: idx,
               name,
               code: name === "Linear Algebra" ? "GEIAL145" : name === "Algorithms" ? "GEIAL219" : "ELTE-CS",
-              progress: Math.min(100, Math.round((count / 10) * 100)), // Mock progress formula
+              progress: Math.min(100, Math.round((count / 10) * 100)),
               color: ["bg-primary", "bg-success", "bg-warning"][idx] || "bg-primary"
             }));
           setSubjects(sorted);
@@ -204,33 +229,42 @@ export default function Dashboard() {
     if (activeCommunity) loadContent();
   }, [activeCommunity]);
 
-  // Load progress stats
+  // Load progress stats (streak from 365 days)
   useEffect(() => {
     if (!user) return;
     const loadProgressStats = async () => {
-      // Activity
+      // Fetch last 365 days of activity for accurate streak
       const { data: activityData } = await supabase
         .from("activity_log")
         .select("created_at, action")
         .eq("user_id", user.id)
-        .gte("created_at", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
+        .gte("created_at", new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString())
         .order("created_at", { ascending: false });
 
       if (activityData) {
-        setWeekTotal(activityData.length);
+        // Week total (last 7 days)
+        const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+        setWeekTotal(activityData.filter(a => new Date(a.created_at) >= weekAgo).length);
+
+        // Streak calculation
         const dates = new Set(activityData.map(a => format(new Date(a.created_at), "yyyy-MM-dd")));
         let currentStreak = 0;
+        const today = format(new Date(), "yyyy-MM-dd");
+        const yesterday = format(new Date(Date.now() - 86400000), "yyyy-MM-dd");
+
         let checkDate = new Date();
-        if (dates.has(format(checkDate, "yyyy-MM-dd"))) {
-          currentStreak++;
+        if (dates.has(today)) {
+          // Today has activity — start counting
+          currentStreak = 1;
           checkDate.setDate(checkDate.getDate() - 1);
-        } else {
+        } else if (dates.has(yesterday)) {
+          // Grace period: today not done yet, but yesterday was
+          currentStreak = 1;
+          checkDate = new Date(Date.now() - 86400000);
           checkDate.setDate(checkDate.getDate() - 1);
-          if (dates.has(format(checkDate, "yyyy-MM-dd"))) {
-            currentStreak++;
-            checkDate.setDate(checkDate.getDate() - 1);
-          }
         }
+
+        // Walk backwards through consecutive days
         while (currentStreak > 0 && dates.has(format(checkDate, "yyyy-MM-dd"))) {
           currentStreak++;
           checkDate.setDate(checkDate.getDate() - 1);
@@ -251,10 +285,27 @@ export default function Dashboard() {
         
       if (deadlineData) {
         setNextDeadline(deadlineData);
-        setDaysUntilDeadline(differenceInDays(new Date(deadlineData.start_time), new Date()));
+        setDaysUntilDeadline(differenceInCalendarDays(new Date(deadlineData.start_time), new Date()));
       }
     };
     loadProgressStats();
+  }, [user]);
+
+  // Load recent activity (last 5)
+  useEffect(() => {
+    if (!user) return;
+    const loadRecentActivity = async () => {
+      setActivityLoading(true);
+      const { data } = await supabase
+        .from("activity_log")
+        .select("id, action, created_at")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(5);
+      setRecentActivity(data || []);
+      setActivityLoading(false);
+    };
+    loadRecentActivity();
   }, [user]);
 
   // Load real stats
@@ -262,24 +313,19 @@ export default function Dashboard() {
     const loadStats = async () => {
       setStatsLoading(true);
 
-      // 1. Total vault files
       const { count: totalFiles } = await supabase
         .from("vault_files").select("id", { count: "exact", head: true });
 
-      // 2. My uploads (by email prefix or display name)
       const uploaderName = user?.email?.split("@")[0] || displayName;
       const { count: myFiles } = await supabase
         .from("vault_files").select("id", { count: "exact", head: true })
         .ilike("uploader", `%${uploaderName}%`);
 
-      // 3. Forum posts count (threads)
       const { count: threads } = await supabase
         .from("forum_threads").select("id", { count: "exact", head: true });
 
-      // 4. Voice time from localStorage
       setVoiceTimeStr(getVoiceTimeStr());
 
-      // 5. Saved internships from localStorage
       try {
         const statusMap = JSON.parse(localStorage.getItem("uniflow-internship-status") ?? "{}");
         setSavedInternships(Object.keys(statusMap).length);
@@ -293,7 +339,7 @@ export default function Dashboard() {
     if (user) loadStats();
   }, [user, displayName]);
 
-  // Filtering logic based on community
+  // Filtering logic
   const mathSubjects = ["Linear Algebra", "Calculus I", "Calculus II", "Discrete Math", "Probability Theory"];
   const infoSubjects = ["Algorithms", "Data Structures", "Operating Systems", "Programming"];
 
@@ -307,7 +353,6 @@ export default function Dashboard() {
   const favoriteResources = (liveResources.length > 0 ? liveResources : fallbackResources).filter((r) => favorites.includes(r.id));
 
   const activityStats: StatDef[] = [
-    // ... same stats ...
     {
       label: "Files in The Vault",
       value: String(vaultCount),
@@ -341,15 +386,47 @@ export default function Dashboard() {
 
   const showOnboarding = liveResources.length === 0 && vaultCount === 0 && !loading;
 
+  // Deadline display helpers
+  const deadlineColorClass = daysUntilDeadline === 0 ? "text-red-400" : daysUntilDeadline === 1 ? "text-orange-400" : daysUntilDeadline <= 7 ? "text-amber-400" : "text-orange-400";
+  const deadlineBorderClass = daysUntilDeadline === 0 ? "border-red-500/20 hover:border-red-500/40" : daysUntilDeadline === 1 ? "border-orange-500/20 hover:border-orange-500/40" : "border-amber-500/20 hover:border-amber-500/40";
+  const deadlineLabel = daysUntilDeadline === 0 ? "Today!" : daysUntilDeadline === 1 ? "Tomorrow" : `${daysUntilDeadline} days`;
+
+  const quickActions = [
+    { label: "New Note", icon: <NotebookPen className="h-5 w-5" />, path: "/notes" },
+    { label: "Ask Oracle", icon: <Sparkles className="h-5 w-5" />, path: "/ai-oracle" },
+    { label: "Upload File", icon: <Upload className="h-5 w-5" />, path: "/vault" },
+    { label: "Add Deadline", icon: <CalendarPlus className="h-5 w-5" />, path: "/calendar" },
+  ];
+
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center gap-3 px-1 mb-6 flex-wrap">
+      {/* Greeting */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+      >
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">
+          {greeting}
+        </h1>
+        <p className="text-muted-foreground mt-1 text-sm">
+          Currently in <span className="text-primary font-medium">{activeCommunity === "informatics" ? "Informatics Faculty" : activeCommunity === "mathematics" ? "Mathematics Faculty" : "Your Personal Workspace"}</span>
+        </p>
+      </motion.div>
+
+      {/* Top strip: Streak + Week + Deadline */}
+      <motion.div
+        className="flex items-center gap-3 px-1 flex-wrap"
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.1 }}
+      >
         {/* Streak */}
         <div className="flex items-center gap-2 bg-card border border-border/40 rounded-xl px-4 py-2.5 hover:border-primary/30 transition-all cursor-pointer" onClick={() => navigate("/progress")}>
           <span className="text-xl">{streak > 0 ? "🔥" : "💤"}</span>
           <div>
-            <p className="text-sm font-bold leading-none">{streak} day{streak !== 1 ? "s" : ""}</p>
-            <p className="text-[11px] text-muted-foreground mt-0.5">Current streak</p>
+            <p className="text-sm font-bold leading-none">{streak > 0 ? `${streak} day${streak !== 1 ? "s" : ""} streak` : "Start your streak today"}</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">{streak > 0 ? "Keep going!" : "Do something to begin"}</p>
           </div>
         </div>
 
@@ -363,21 +440,46 @@ export default function Dashboard() {
         </div>
 
         {/* Next deadline countdown */}
-        {nextDeadline && (
-          <div className="flex items-center gap-2 bg-card border border-orange-500/20 rounded-xl px-4 py-2.5 hover:border-orange-500/40 transition-all cursor-pointer" onClick={() => navigate("/calendar")}>
-            <Clock className="h-5 w-5 text-orange-400" />
+        {nextDeadline ? (
+          <div className={`flex items-center gap-2 bg-card border ${deadlineBorderClass} rounded-xl px-4 py-2.5 transition-all cursor-pointer`} onClick={() => navigate("/calendar")}>
+            <Clock className={`h-5 w-5 ${deadlineColorClass}`} />
             <div>
-              <p className="text-sm font-bold leading-none text-orange-400">{daysUntilDeadline}d left</p>
+              <p className={`text-sm font-bold leading-none ${deadlineColorClass}`}>{deadlineLabel}</p>
               <p className="text-[11px] text-muted-foreground mt-0.5 max-w-[120px] truncate">{nextDeadline.title}</p>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 bg-card border border-border/40 rounded-xl px-4 py-2.5 hover:border-primary/30 transition-all cursor-pointer" onClick={() => navigate("/calendar")}>
+            <Clock className="h-5 w-5 text-muted-foreground/50" />
+            <div>
+              <p className="text-sm font-medium leading-none text-muted-foreground">No upcoming deadlines</p>
+              <p className="text-[11px] text-primary mt-0.5">Add one →</p>
             </div>
           </div>
         )}
 
-        {/* View full progress */}
         <button onClick={() => navigate("/progress")} className="text-xs text-muted-foreground hover:text-primary transition-colors ml-auto flex items-center gap-1">
           Full stats <ArrowRight className="h-3 w-3" />
         </button>
-      </div>
+      </motion.div>
+
+      {/* Quick Actions */}
+      <motion.div
+        className="grid grid-cols-4 gap-3"
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.2 }}
+      >
+        {quickActions.map(action => (
+          <button key={action.label} onClick={() => navigate(action.path)}
+            className="flex flex-col items-center gap-2 p-4 bg-card border border-border/40 rounded-2xl hover:border-primary/30 hover:bg-primary/5 transition-all group">
+            <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary/20 transition-colors">
+              {action.icon}
+            </div>
+            <span className="text-xs font-medium text-muted-foreground group-hover:text-foreground">{action.label}</span>
+          </button>
+        ))}
+      </motion.div>
 
       {showOnboarding && (
         <div className="glass-card p-6 border-primary/20 bg-primary/5 rounded-3xl mb-8 flex flex-col md:flex-row items-center gap-6 shadow-2xl shadow-primary/5 animate-in fade-in slide-in-from-top-4 duration-700">
@@ -400,14 +502,6 @@ export default function Dashboard() {
           </div>
         </div>
       )}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">
-          Welcome back, {firstName} 👋
-        </h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Currently in <span className="text-primary font-medium">{activeCommunity === "informatics" ? "Informatics Faculty" : activeCommunity === "mathematics" ? "Mathematics Faculty" : "Your Personal Workspace"}</span>
-        </p>
-      </div>
 
       <FavoritesSection resources={favoriteResources} />
 
@@ -429,6 +523,46 @@ export default function Dashboard() {
           <StatsSection stats={activityStats} loading={statsLoading} />
         </div>
       </div>
+
+      {/* Recent Activity */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.3 }}
+      >
+        <GlassCard>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold">Recent Activity</h2>
+            <button onClick={() => navigate("/progress")} className="text-xs text-muted-foreground hover:text-primary transition-colors flex items-center gap-1">
+              View all <ArrowRight className="h-3 w-3" />
+            </button>
+          </div>
+          {activityLoading ? (
+            <div className="space-y-3">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <Skeleton className="h-8 w-8 rounded-lg" />
+                  <Skeleton className="h-4 w-48" />
+                </div>
+              ))}
+            </div>
+          ) : recentActivity.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-4 text-center">No activity yet. Start studying to see your progress here!</p>
+          ) : (
+            <div className="space-y-2.5">
+              {recentActivity.map(item => (
+                <div key={item.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/10 transition-colors">
+                  <span className="text-xl">{ACTION_ICONS[item.action] || "📌"}</span>
+                  <span className="text-sm text-muted-foreground">
+                    {ACTION_LABELS[item.action] || item.action} · {formatDistanceToNow(new Date(item.created_at))} ago
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </GlassCard>
+      </motion.div>
+
       <PublicProfileModal userId={selectedProfileId} onClose={() => setSelectedProfileId(null)} />
       <StudyCoach page="dashboard" />
     </div>

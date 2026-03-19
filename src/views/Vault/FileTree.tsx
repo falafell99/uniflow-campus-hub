@@ -5,7 +5,8 @@ import {
   Eye, Download, Image, FileCode, FileSpreadsheet, Presentation,
   Sparkles,
   Layers,
-  NotebookPen
+  NotebookPen,
+  Heart
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -40,6 +41,24 @@ function getFileIcon(name: string) {
     return <Presentation className="h-4 w-4 text-orange-400 shrink-0" />;
   return <FileText className="h-4 w-4 text-muted-foreground shrink-0" />;
 }
+
+export const getFileTypeEmoji = (type: string) => ({
+  "Lectures": "📖", "Practices": "💡", "Labs": "🔬", "Exams": "📝",
+  "Homeworks": "📋", "Projects": "🧩", "Notes": "📌", "Cheat Sheets": "🗒️",
+  "Past Papers": "📂"
+})[type] || "📄";
+
+export const getFileTypeColor = (type: string) => ({
+  "Lectures": "bg-blue-500", "Practices": "bg-green-500", "Labs": "bg-purple-500",
+  "Exams": "bg-red-500", "Homeworks": "bg-orange-500", "Projects": "bg-pink-500",
+  "Notes": "bg-yellow-500", "Cheat Sheets": "bg-teal-500", "Past Papers": "bg-gray-500"
+})[type] || "bg-primary";
+
+export const getFileTypeBg = (type: string) => ({
+  "Lectures": "bg-blue-500/10 text-blue-500", "Practices": "bg-green-500/10 text-green-500", "Labs": "bg-purple-500/10 text-purple-500",
+  "Exams": "bg-red-500/10 text-red-500", "Homeworks": "bg-orange-500/10 text-orange-500", "Projects": "bg-pink-500/10 text-pink-500",
+  "Notes": "bg-yellow-500/10 text-yellow-500", "Cheat Sheets": "bg-teal-500/10 text-teal-500", "Past Papers": "bg-gray-500/10 text-gray-500"
+})[type] || "bg-primary/10 text-primary";
 
 function formatSize(bytes?: number) {
   if (!bytes) return null;
@@ -172,64 +191,63 @@ export function FileTree({ items, depth = 0, onPreview }: FileTreeProps) {
 // ─── Grid View Card ───────────────────────────────────────────────────────────
 export function FileCard({ item, onPreview }: { item: FileItem; onPreview: (f: FileItem) => void }) {
   const navigate = useNavigate();
-  const ext = item.name.split(".").pop()?.toLowerCase() ?? "";
-  const isImage = ["jpg", "jpeg", "png", "gif", "webp"].includes(ext);
+  const [isLiked, setIsLiked] = useState(false);
+  const [likeCount, setLikeCount] = useState(0);
+
+  const handleLike = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsLiked(!isLiked);
+    setLikeCount(isLiked ? likeCount - 1 : likeCount + 1);
+  };
 
   return (
-    <div
-      className="glass-card p-4 flex flex-col gap-3 cursor-pointer hover:border-primary/30 transition-all hover:shadow-lg group"
-      onClick={() => onPreview(item)}
-    >
-      {/* Thumbnail or icon */}
-      <div className="h-28 rounded-lg bg-muted/40 flex items-center justify-center overflow-hidden">
-        {isImage && item.storage_url ? (
-          <img src={item.storage_url} alt={item.name} className="h-full w-full object-cover" />
-        ) : (
-          <div className="flex flex-col items-center gap-2 text-muted-foreground">
-            {getFileIcon(item.name)}
-            <span className="text-[10px] uppercase font-mono">.{ext || "file"}</span>
+    <div className="group relative bg-card border border-border/40 rounded-2xl overflow-hidden hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300">
+      
+      {/* File type color strip at top */}
+      <div className={`h-1.5 w-full ${getFileTypeColor(item.tag || "")} opacity-80 group-hover:opacity-100 transition-opacity`} />
+      
+      {/* Card body */}
+      <div className="p-4 space-y-4">
+        
+        {/* Icon + title */}
+        <div className="flex items-start gap-3">
+          <div className={`h-10 w-10 rounded-[10px] flex items-center justify-center text-xl shrink-0 ${getFileTypeBg(item.tag || "")} shadow-inner`}>
+            {getFileTypeEmoji(item.tag || "")}
           </div>
-        )}
+          <div className="flex-1 min-w-0 pt-0.5">
+            <p className="font-bold text-sm leading-snug line-clamp-2 text-foreground/90 group-hover:text-foreground transition-colors" title={item.name}>{item.name}</p>
+            <p className="text-[11px] font-medium text-muted-foreground mt-1 truncate">{item.subject || "No subject"}</p>
+          </div>
+        </div>
+        
+        {/* Meta row */}
+        <div className="flex items-center gap-3.5 text-[11px] font-medium text-muted-foreground/80">
+          <span className="flex items-center gap-1.5"><Download className="h-3 w-3" />{item.downloads || 0}</span>
+          <span className="flex items-center gap-1.5"><Heart className={`h-3 w-3 ${isLiked ? "fill-red-400 text-red-400" : ""}`} />{likeCount}</span>
+          <span className="ml-auto truncate">{item.date}</span>
+        </div>
+        
+        {/* Uploader */}
+        <div className="flex items-center gap-2.5 pt-3 border-t border-border/20">
+          <div className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center text-[9px] font-bold text-primary shrink-0">
+            {item.author?.charAt(0).toUpperCase() || "?"}
+          </div>
+          <span className="text-[11px] font-semibold text-muted-foreground truncate">{item.author || "Unknown"}</span>
+        </div>
       </div>
-
-      <div className="flex-1 min-w-0">
-        <p className="text-xs font-medium truncate" title={item.name}>{item.name}</p>
-        <p className="text-[10px] text-muted-foreground mt-0.5">{item.author} · {item.date}</p>
-        {item.tag && <ResourceBadge tag={item.tag} tagClass={item.tagClass ?? ""} />}
-      </div>
-
-      <div className="flex items-center gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
-        {item.storage_path && (
-          <>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-6 w-6 text-primary" 
-              title="Ask Oracle"
-              onClick={() => navigate("/ai-oracle", { state: { vaultFile: item } })}
-            >
-              <Sparkles className="h-3 w-3" />
-            </Button>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-6 w-6 text-amber-400" 
-              title="Make Flashcards"
-              onClick={() => navigate("/flashcards", { state: { vaultFile: { name: item.name, storage_path: item.storage_path } } })}
-            >
-              <Layers className="h-3 w-3" />
-            </Button>
-          </>
-        )}
-        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onPreview(item)}>
-          <Eye className="h-3 w-3" />
+      
+      {/* Hover actions overlay */}
+      <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-card via-card to-transparent opacity-0 translate-y-2 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 flex gap-2 items-center z-10" onClick={(e) => e.stopPropagation()}>
+        <Button size="sm" className="flex-1 h-8 text-xs font-semibold shadow-sm" onClick={() => onPreview(item)}>
+          <Eye className="h-3.5 w-3.5 mr-1.5" /> Preview
         </Button>
-        {item.storage_url && (
-          <a href={item.storage_url} download={item.name} target="_blank" rel="noopener noreferrer">
-            <Button variant="ghost" size="icon" className="h-6 w-6">
-              <Download className="h-3 w-3" />
-            </Button>
-          </a>
+        <Button size="icon" variant="outline" className="h-8 w-8 hover:bg-muted shadow-sm shrink-0" onClick={handleLike}>
+          <Heart className={`h-3.5 w-3.5 ${isLiked ? "fill-red-400 text-red-400" : ""}`} />
+        </Button>
+        {item.storage_path && (
+          <Button size="icon" variant="outline" className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10 shadow-sm shrink-0" onClick={() => navigate("/ai-oracle", { state: { vaultFile: item } })}>
+            <Sparkles className="h-3.5 w-3.5" />
+          </Button>
         )}
       </div>
     </div>

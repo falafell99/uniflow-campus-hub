@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { motion } from "framer-motion";
 import AgoraRTC, {
   IAgoraRTCClient,
   ILocalAudioTrack,
@@ -469,6 +470,17 @@ export default function VoiceLounges() {
         <div className="flex-1 h-[70vh] min-h-[600px]">
           <Whiteboard roomId={`lounge-${joinedRoom.id}`} embedded />
         </div>
+      ) : allRooms.length === 0 ? (
+        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-24">
+          <div className="h-20 w-20 rounded-full bg-muted/50 flex items-center justify-center mx-auto mb-4 border border-border/30">
+            <Mic className="h-8 w-8 text-muted-foreground" />
+          </div>
+          <h3 className="text-lg font-bold">No active voice lounges</h3>
+          <p className="text-sm text-muted-foreground mt-1 mb-6">Create a lounge to start voice chatting!</p>
+          <Button onClick={() => setCreateOpen(true)} className="gap-2">
+            Create a lounge
+          </Button>
+        </motion.div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {allRooms.map((room) => {

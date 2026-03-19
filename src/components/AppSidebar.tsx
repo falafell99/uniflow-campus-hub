@@ -1,10 +1,10 @@
 import {
   LayoutDashboard, Library, Bot, Users, MessageSquare,
   UserCircle, GraduationCap, NotebookPen, ClipboardList, TrendingUp,
-  Timer, Globe, Flame
+  Timer, Globe, Flame, Settings
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
@@ -40,10 +40,13 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
+  const navigate = useNavigate();
   const { user, onlineUsers } = useAuth();
 
   const [profile, setProfile] = useState<ProfileSnap | null>(null);
   const [pendingInvites, setPendingInvites] = useState(0);
+  const [onlineCount, setOnlineCount] = useState(0);
+  const [unreadMessages, setUnreadMessages] = useState(0);
 
   useEffect(() => {
     if (!user) return;
@@ -66,8 +69,27 @@ export function AppSidebar() {
       setPendingInvites(count || 0);
     };
 
+    const loadOnlineCount = async () => {
+      const { count } = await supabase
+        .from("profiles")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "Online");
+      setOnlineCount(count || 0);
+    };
+
+    const loadUnread = async () => {
+      const { count } = await supabase
+        .from("direct_messages")
+        .select("id", { count: "exact", head: true })
+        .eq("receiver_id", user.id)
+        .eq("read", false);
+      setUnreadMessages(count || 0);
+    };
+
     loadProfile();
     loadInvites();
+    loadOnlineCount();
+    loadUnread();
 
     const profileChannel = supabase
       .channel("sidebar-profile-sync")
@@ -88,23 +110,39 @@ export function AppSidebar() {
       })
       .subscribe();
 
+    const messagesChannel = supabase
+      .channel("sidebar-dm-sync")
+      .on("postgres_changes", {
+        event: "*",
+        schema: "public",
+        table: "direct_messages",
+        filter: `receiver_id=eq.${user.id}`
+      }, () => {
+        loadUnread();
+      })
+      .subscribe();
+
     return () => { 
       profileChannel.unsubscribe(); 
       invitesChannel.unsubscribe();
+      messagesChannel.unsubscribe();
     };
   }, [user]);
 
+  const displayName = profile?.display_name || user?.email?.split("@")[0] || "Student";
+
   return (
     <Sidebar collapsible="icon" className="glass-sidebar">
-      <SidebarHeader className="p-4">
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <GraduationCap className="h-5 w-5" />
+      {/* App Header with Logo Mark */}
+      <SidebarHeader className="p-0">
+        <div className="flex items-center gap-2.5 px-4 py-4 border-b border-border/20">
+          <div className="h-8 w-8 rounded-xl bg-[#7b68ee] flex items-center justify-center text-white font-black text-sm shadow-lg shadow-[#7b68ee]/20 shrink-0">
+            U
           </div>
           {!collapsed && (
-            <div className="flex flex-col">
-              <span className="text-base font-bold tracking-tight text-foreground">UniFlow</span>
-              <span className="text-[11px] font-medium text-muted-foreground">University Hub</span>
+            <div>
+              <p className="font-bold text-sm leading-none">UniFlow</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Student OS</p>
             </div>
           )}
         </div>
@@ -113,19 +151,23 @@ export function AppSidebar() {
       <SidebarContent className="px-2">
         {/* Study section */}
         <SidebarGroup>
-          {!collapsed && <SidebarGroupLabel className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider px-3 mb-1">Study</SidebarGroupLabel>}
+          {!collapsed && <SidebarGroupLabel className="px-4 pt-5 pb-1.5 text-[9px] font-bold uppercase tracking-[0.12em] text-muted-foreground/50">Study</SidebarGroupLabel>}
           <SidebarGroupContent>
             <SidebarMenu>
               {studyItems.map((item) => {
-                const isActive = location.pathname === item.url;
+                const isActive = item.url === "/" ? location.pathname === "/" : location.pathname.startsWith(item.url);
                 return (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild isActive={isActive} tooltip={item.title}>
                       <NavLink
                         to={item.url}
                         end={item.url === "/"}
-                        className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-all hover:bg-sidebar-accent hover:text-sidebar-accent-foreground relative"
-                        activeClassName="!bg-sidebar-accent !text-sidebar-accent-foreground"
+                        className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150 ${
+                          isActive 
+                            ? "bg-primary/12 text-primary font-semibold border-l-2 border-primary" 
+                            : "text-muted-foreground hover:bg-primary/[0.08] hover:text-foreground border-l-2 border-transparent"
+                        }`}
+                        activeClassName="!bg-primary/12 !text-primary !font-semibold"
                       >
                         <span className="text-base leading-none">{item.emoji}</span>
                         {!collapsed && <span className="flex-1">{item.title}</span>}
@@ -140,25 +182,35 @@ export function AppSidebar() {
 
         {/* Campus section */}
         <SidebarGroup>
-          {!collapsed && <SidebarGroupLabel className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider px-3 mb-1 mt-2">Campus</SidebarGroupLabel>}
+          {!collapsed && <SidebarGroupLabel className="px-4 pt-5 pb-1.5 text-[9px] font-bold uppercase tracking-[0.12em] text-muted-foreground/50">Campus</SidebarGroupLabel>}
           <SidebarGroupContent>
             <SidebarMenu>
               {campusItems.map((item) => {
                 const isActive = location.pathname.startsWith(item.url === "/" ? "/x-never-match" : item.url);
                 const hasBadge = item.title === "Teams Hub" && pendingInvites > 0;
+                const hasUnread = item.title === "Messages" && unreadMessages > 0;
                 return (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild isActive={isActive} tooltip={item.title}>
                       <NavLink
                         to={item.url}
-                        className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-all hover:bg-sidebar-accent hover:text-sidebar-accent-foreground relative"
-                        activeClassName="!bg-sidebar-accent !text-sidebar-accent-foreground"
+                        className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150 ${
+                          isActive 
+                            ? "bg-primary/12 text-primary font-semibold border-l-2 border-primary" 
+                            : "text-muted-foreground hover:bg-primary/[0.08] hover:text-foreground border-l-2 border-transparent"
+                        }`}
+                        activeClassName="!bg-primary/12 !text-primary !font-semibold"
                       >
                         <span className="text-base leading-none">{item.emoji}</span>
                         {!collapsed && <span className="flex-1">{item.title}</span>}
                         {hasBadge && (
                           <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground">
                             {pendingInvites}
+                          </span>
+                        )}
+                        {hasUnread && (
+                          <span className="ml-auto text-[9px] bg-red-500 text-white px-1.5 rounded-full font-bold">
+                            {unreadMessages}
                           </span>
                         )}
                       </NavLink>
@@ -169,27 +221,44 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {/* Online Status Indicator */}
+        {!collapsed && (
+          <div className="px-4 py-2 mt-auto">
+            <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+              <div className="h-1.5 w-1.5 rounded-full bg-green-400 animate-pulse" />
+              <span>{onlineCount > 0 ? onlineCount : onlineUsers.size || 1} online now</span>
+            </div>
+          </div>
+        )}
       </SidebarContent>
 
-
-      <SidebarFooter className="p-3">
+      {/* User Section */}
+      <SidebarFooter className="p-3 border-t border-border/20">
         {profile ? (
-          <NavLink to="/profile" className="flex items-center gap-2.5 p-2 rounded-lg hover:bg-sidebar-accent transition-colors group">
-            <AvatarDisplay
-              name={profile.display_name}
-              avatarColor={profile.avatar_color}
-              avatarEmoji={profile.avatar_emoji}
-              size="sm"
-            />
+          <div 
+            className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-muted/20 transition-colors cursor-pointer"
+            onClick={() => navigate("/profile")}
+          >
+            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary text-sm font-bold shrink-0">
+              {displayName.charAt(0).toUpperCase()}
+            </div>
             {!collapsed && (
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold truncate">{profile.display_name}</p>
-                <p className="text-[10px] text-muted-foreground truncate">
-                  {onlineUsers.size > 0 ? "🟢 Online" : profile.status}
+                <p className="text-sm font-medium truncate">{displayName}</p>
+                <p className="text-[10px] text-green-400 flex items-center gap-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-green-400 inline-block" />
+                  Online
                 </p>
               </div>
             )}
-          </NavLink>
+            {!collapsed && (
+              <Settings 
+                className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" 
+                onClick={(e) => { e.stopPropagation(); navigate("/profile"); }} 
+              />
+            )}
+          </div>
         ) : (
           !collapsed && (
           <div className="glass-subtle p-3 text-center">

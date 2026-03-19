@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import {
   Award, Users, Edit2, Check, X,
-  LogOut, Loader2, Shield, Coins, Smile
+  LogOut, Loader2, Shield, Coins, Smile,
+  FileText, NotebookPen, CheckSquare
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -42,22 +43,9 @@ const BADGES = [
 
 const STATUS_OPTIONS = ["🟢 Online", "🔴 Focusing", "☕ Taking a break", "📚 Studying", "🌙 Away"];
 
-export const AVATAR_COLORS = [
-  { from: "#6366f1", to: "#8b5cf6", label: "Violet" },
-  { from: "#10b981", to: "#059669", label: "Emerald" },
-  { from: "#f59e0b", to: "#d97706", label: "Amber" },
-  { from: "#ef4444", to: "#dc2626", label: "Red" },
-  { from: "#ec4899", to: "#db2777", label: "Pink" },
-  { from: "#3b82f6", to: "#2563eb", label: "Blue" },
-  { from: "#14b8a6", to: "#0d9488", label: "Teal" },
-  { from: "#f97316", to: "#ea580c", label: "Orange" },
-];
+export const AVATAR_COLORS = ["#7b68ee", "#10b981", "#f59e0b", "#ef4444", "#3b82f6", "#ec4899", "#8b5cf6", "#14b8a6"];
 
-const AVATAR_EMOJIS = [
-  "🦁", "🐻", "🦊", "🐺", "🦝", "🐼", "🐨", "🦄",
-  "🐸", "🦋", "🐙", "🦑", "🦔", "🐬", "🦅", "🦉",
-  "🚀", "⚡", "🔥", "💎", "🌙", "🌟", "🎯", "🎮",
-];
+const AVATAR_EMOJIS = ["🎓", "📚", "🧠", "💻", "⚡", "🔥", "🌟", "🎯", "🚀", "🦊", "🐺", "🦁", "🐉", "👾", "🤖"];
 
 function getInitials(name: string) {
   return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
@@ -76,11 +64,11 @@ export function AvatarDisplay({
   size?: "sm" | "md" | "lg";
 }) {
   const sizeMap = { sm: "h-8 w-8 text-sm rounded-xl", md: "h-10 w-10 text-base rounded-xl", lg: "h-20 w-20 text-2xl rounded-2xl" };
-  const colorEntry = AVATAR_COLORS.find((c) => c.from === avatarColor) ?? AVATAR_COLORS[0];
+  const bg = avatarColor || "#7b68ee";
   return (
     <div
       className={`${sizeMap[size]} flex items-center justify-center shrink-0 font-bold text-white`}
-      style={{ background: `linear-gradient(135deg, ${colorEntry.from}, ${colorEntry.to})` }}
+      style={{ background: bg }}
     >
       {avatarEmoji || getInitials(name || "?")}
     </div>
@@ -106,8 +94,12 @@ export default function Profile() {
   const [yearOfStudy, setYearOfStudy] = useState("");
   const [major, setMajor] = useState("");
   const [status, setStatus] = useState("");
-  const [avatarColor, setAvatarColor] = useState(AVATAR_COLORS[0].from);
+  const [avatarColor, setAvatarColor] = useState(AVATAR_COLORS[0]);
   const [avatarEmoji, setAvatarEmoji] = useState("");
+
+  const [fileCount, setFileCount] = useState(0);
+  const [noteCount, setNoteCount] = useState(0);
+  const [taskCount, setTaskCount] = useState(0);
 
   const joinedMeetups = meetups.filter((m) => m.joined).length;
 
@@ -116,6 +108,16 @@ export default function Profile() {
       if (!user) return;
       setLoading(true);
       const { data } = await supabase.from("profiles").select("*").eq("id", user.id).single();
+      
+      const [{ count: fCount }, { count: nCount }, { count: tCount }] = await Promise.all([
+        supabase.from("files").select("*", { count: "exact", head: true }).eq("user_id", user.id),
+        supabase.from("student_notes").select("*", { count: "exact", head: true }).eq("user_id", user.id),
+        supabase.from("tasks").select("*", { count: "exact", head: true }).eq("user_id", user.id),
+      ]);
+      setFileCount(fCount || 0);
+      setNoteCount(nCount || 0);
+      setTaskCount(tCount || 0);
+
       const fallback: Profile = {
         display_name: user.user_metadata?.display_name || user.email?.split("@")[0] || "Student",
         email: user.email || "",
@@ -126,7 +128,7 @@ export default function Profile() {
         faculty: "Faculty of Science",
         year_of_study: "Year 1",
         major: "Computer Science",
-        avatar_color: AVATAR_COLORS[0].from,
+        avatar_color: AVATAR_COLORS[0],
         avatar_emoji: "",
       };
       const p = data ? { ...fallback, ...data } : fallback;
@@ -138,7 +140,7 @@ export default function Profile() {
       setYearOfStudy(p.year_of_study || "Year 1");
       setMajor(p.major || "Computer Science");
       setStatus(p.status || "🟢 Online");
-      setAvatarColor(p.avatar_color || AVATAR_COLORS[0].from);
+      setAvatarColor(p.avatar_color || AVATAR_COLORS[0]);
       setAvatarEmoji(p.avatar_emoji || "");
       setLoading(false);
     };
@@ -212,110 +214,82 @@ export default function Profile() {
       </div>
 
       {/* Profile Card */}
-      <div className="glass-card p-6">
-        <div className="flex items-start gap-5">
-          {/* Avatar */}
-          <div className="relative">
-            <AvatarDisplay name={displayName} avatarColor={avatarColor} avatarEmoji={avatarEmoji} size="lg" />
-            {editing && (
-              <button
-                onClick={() => setShowAvatarPicker((v) => !v)}
-                className="absolute -bottom-2 -right-2 h-7 w-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-md hover:scale-110 transition-transform"
-              >
-                <Smile className="h-3.5 w-3.5" />
-              </button>
-            )}
-          </div>
-
-          {/* Info */}
-          <div className="flex-1 space-y-2">
-            {editing ? (
-              <div className="space-y-2">
-                <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="Display name" className="text-lg font-bold h-9" />
-                <div className="grid grid-cols-2 gap-2">
-                  <Input value={university} onChange={(e) => setUniversity(e.target.value)} placeholder="University" className="text-sm" title="University" />
-                  <Input value={faculty} onChange={(e) => setFaculty(e.target.value)} placeholder="Faculty" className="text-sm" title="Faculty" />
-                  <Input value={major} onChange={(e) => setMajor(e.target.value)} placeholder="Major" className="text-sm" title="Major" />
-                  <Input value={yearOfStudy} onChange={(e) => setYearOfStudy(e.target.value)} placeholder="Year of Study" className="text-sm" title="Year of Study" />
-                </div>
-                <Textarea value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Short bio..." rows={2} className="text-sm" />
-              </div>
-            ) : (
-              <>
-                <div className="flex items-center gap-2">
-                  <h2 className="text-xl font-bold">{profile?.display_name}</h2>
-                  <span className="text-xs text-muted-foreground">{status}</span>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  {profile?.major || "Computer Science"} · {profile?.year_of_study || "Year 1"}
-                </p>
-                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider text-primary">
-                  {profile?.university || "UniFlow University"} · {profile?.faculty || "Science"}
-                </p>
-                <p className="text-[10px] text-muted-foreground">{user?.email}</p>
-                {profile?.bio && <p className="text-sm mt-2">{profile.bio}</p>}
-              </>
-            )}
-            <div className="flex items-center gap-4 pt-1 text-xs text-muted-foreground">
-              <span className="flex items-center gap-1.5"><Coins className="h-3.5 w-3.5 text-warning" /> {credits} credits</span>
-              <span className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5" /> {joinedMeetups} meetups</span>
-              <span className="flex items-center gap-1.5"><Shield className="h-3.5 w-3.5 text-primary" /> Student</span>
+      <div className="glass-card overflow-hidden">
+        <div className="relative">
+          {/* Cover/banner */}
+          <div className="h-32 bg-gradient-to-br from-[#7b68ee]/30 via-[#7b68ee]/10 to-transparent rounded-t-2xl" />
+          
+          {/* Avatar overlapping the banner */}
+          <div className="absolute -bottom-6 left-6">
+            <div
+              className="h-20 w-20 rounded-2xl border-4 border-background flex items-center justify-center text-3xl font-black text-white shadow-xl cursor-pointer hover:opacity-90 transition-opacity"
+              style={{ background: avatarColor || "#7b68ee" }}
+              onClick={() => setShowAvatarPicker((v) => !v)}
+            >
+              {avatarEmoji || displayName?.charAt(0)?.toUpperCase() || "?"}
             </div>
           </div>
         </div>
 
+        <div className="mt-10 px-6 pb-6">
+          {editing ? (
+            <div className="space-y-3 mt-4">
+              <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="Display name" className="text-lg font-bold h-9 bg-background" />
+              <div className="grid grid-cols-2 gap-3">
+                <Input value={university} onChange={(e) => setUniversity(e.target.value)} placeholder="University" className="text-sm bg-background" title="University" />
+                <Input value={faculty} onChange={(e) => setFaculty(e.target.value)} placeholder="Faculty" className="text-sm bg-background" title="Faculty" />
+                <Input value={major} onChange={(e) => setMajor(e.target.value)} placeholder="Major" className="text-sm bg-background" title="Major" />
+                <Input value={yearOfStudy} onChange={(e) => setYearOfStudy(e.target.value)} placeholder="Year of Study" className="text-sm bg-background" title="Year of Study" />
+              </div>
+              <Textarea value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Short bio..." rows={2} className="text-sm bg-background" />
+            </div>
+          ) : (
+            <>
+              <h1 className="text-2xl font-black">{displayName}</h1>
+              <p className="text-muted-foreground text-sm mt-1">{profile?.university || "Add your university"} · {profile?.faculty || "Add faculty"}</p>
+              <div className="flex items-center gap-4 mt-3 text-sm text-muted-foreground flex-wrap">
+                <span className="flex items-center gap-1.5"><FileText className="h-4 w-4" />{fileCount} files</span>
+                <span className="flex items-center gap-1.5"><NotebookPen className="h-4 w-4" />{noteCount} notes</span>
+                <span className="flex items-center gap-1.5"><CheckSquare className="h-4 w-4" />{taskCount} tasks</span>
+              </div>
+              {profile?.bio && <p className="text-sm mt-4">{profile.bio}</p>}
+              <div className="flex items-center gap-4 mt-4 pt-4 border-t border-border/40 text-xs text-muted-foreground">
+                <span className="flex items-center gap-1.5"><Coins className="h-3.5 w-3.5 text-warning" /> {credits} credits</span>
+                <span className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5" /> {joinedMeetups} meetups</span>
+                <span className="flex items-center gap-1.5"><Shield className="h-3.5 w-3.5 text-primary" /> Student</span>
+              </div>
+            </>
+          )}
+        </div>
+
         {/* Avatar Picker */}
         {showAvatarPicker && (
-          <div className="mt-5 pt-5 border-t border-border/30 space-y-4">
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground mb-2">Avatar Color</p>
-              <div className="flex gap-2 flex-wrap">
-                {AVATAR_COLORS.map((c) => (
-                  <button
-                    key={c.from}
-                    onClick={() => { setAvatarColor(c.from); setAvatarEmoji(""); }}
-                    title={c.label}
-                    className={`h-8 w-8 rounded-full transition-all hover:scale-110 ${avatarColor === c.from && !avatarEmoji ? "ring-2 ring-offset-2 ring-white/60" : ""}`}
-                    style={{ background: `linear-gradient(135deg, ${c.from}, ${c.to})` }}
-                  />
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground mb-2">Or pick an emoji avatar</p>
-              <div className="flex gap-1.5 flex-wrap">
-                <button
-                  onClick={() => setAvatarEmoji("")}
-                  className={`h-9 w-9 rounded-lg text-xs border transition-all flex items-center justify-center ${!avatarEmoji ? "border-primary bg-primary/10" : "border-border/50 hover:border-primary/50"}`}
-                >
-                  ABC
+          <div className="px-6 pb-6 pt-2">
+            <h3 className="font-semibold text-sm mb-3">Choose Avatar</h3>
+            <div className="grid grid-cols-5 gap-2 p-4 bg-background border border-border/40 rounded-2xl">
+              {AVATAR_EMOJIS.map(emoji => (
+                <button key={emoji} onClick={() => setAvatarEmoji(emoji)}
+                  className={`h-10 w-10 rounded-xl text-xl flex items-center justify-center hover:bg-primary/10 transition-colors ${avatarEmoji === emoji ? "bg-primary/20 ring-1 ring-primary" : ""}`}>
+                  {emoji}
                 </button>
-                {AVATAR_EMOJIS.map((emoji) => (
-                  <button
-                    key={emoji}
-                    onClick={() => setAvatarEmoji(emoji)}
-                    className={`h-9 w-9 rounded-lg text-lg border transition-all hover:scale-110 ${avatarEmoji === emoji ? "border-primary bg-primary/10 scale-110" : "border-border/50 hover:border-primary/50"}`}
-                  >
-                    {emoji}
-                  </button>
+              ))}
+              <div className="col-span-5 mt-2 flex gap-2 flex-wrap">
+                {AVATAR_COLORS.map(color => (
+                  <button key={color} onClick={() => setAvatarColor(color)}
+                    className={`h-8 w-8 rounded-full transition-transform hover:scale-110 ${avatarColor === color ? "ring-2 ring-white ring-offset-2 ring-offset-background" : ""}`}
+                    style={{ background: color }} />
                 ))}
-              </div>
-            </div>
-
-            {/* Live preview */}
-            <div className="flex items-center gap-3 p-3 glass-subtle rounded-xl">
-              <AvatarDisplay name={displayName} avatarColor={avatarColor} avatarEmoji={avatarEmoji} size="md" />
-              <div>
-                <p className="text-sm font-medium">{displayName || "Your Name"}</p>
-                <p className="text-xs text-muted-foreground">{avatarEmoji ? "Emoji avatar" : "Initials avatar"}</p>
               </div>
             </div>
           </div>
         )}
       </div>
 
-      {/* Status Picker */}
+      <div className="py-2"><hr className="border-border/40"/></div>
+      <h2 className="text-xl font-bold tracking-tight">Settings</h2>
+
+      {/* Status & Options */}
+      <div className="grid md:grid-cols-2 gap-6">
       <div className="glass-card p-5 space-y-3">
         <h3 className="font-semibold text-sm">Current Status</h3>
         <div className="flex flex-wrap gap-2">
@@ -345,33 +319,39 @@ export default function Profile() {
         </div>
         <Switch checked={tutoringAvailable} onCheckedChange={setTutoringAvailable} />
       </div>
-
-      {/* Account */}
-      <div className="glass-card p-5 space-y-3">
-        <h3 className="font-semibold text-sm flex items-center gap-2"><Shield className="h-4 w-4 text-primary" /> Account</h3>
-        <div className="space-y-0 text-sm divide-y divide-border/30">
-          <div className="flex items-center justify-between py-2"><span className="text-muted-foreground">Email</span><span className="font-medium">{user?.email}</span></div>
-          <div className="flex items-center justify-between py-2"><span className="text-muted-foreground">Account ID</span><span className="font-mono text-xs text-muted-foreground">{user?.id?.slice(0, 8)}…</span></div>
-          <div className="flex items-center justify-between py-2"><span className="text-muted-foreground">Member since</span><span>{user?.created_at ? new Date(user.created_at).toLocaleDateString("en-GB", { month: "long", year: "numeric" }) : "—"}</span></div>
-        </div>
       </div>
 
-      {/* Notifications */}
-      <div className="glass-card p-5">
-        <h3 className="font-semibold flex items-center gap-2 mb-4">🔔 Notifications</h3>
-        <div className="flex items-center justify-between p-3 bg-card border border-border/40 rounded-xl">
-          <div>
-            <p className="text-sm font-medium">Deadline reminders</p>
-            <p className="text-xs text-muted-foreground">Get notified 7 days, 3 days, 1 day, and 3 hours before deadlines</p>
+      <div className="grid md:grid-cols-2 gap-6">
+        {/* Account */}
+        <div className="glass-card p-5 space-y-3">
+          <h3 className="font-semibold text-sm flex items-center justify-between">
+            <div className="flex items-center gap-2"><Shield className="h-4 w-4 text-primary" /> Account details</div>
+            <button className="text-xs text-primary hover:underline" onClick={() => toast({title: "Check email for reset link"})}>Reset Password</button>
+          </h3>
+          <div className="space-y-0 text-sm divide-y divide-border/30">
+            <div className="flex items-center justify-between py-2"><span className="text-muted-foreground">Email</span><span className="font-medium">{user?.email}</span></div>
+            <div className="flex items-center justify-between py-2"><span className="text-muted-foreground">Account ID</span><span className="font-mono text-xs text-muted-foreground">{user?.id?.slice(0, 8)}…</span></div>
+            <div className="flex items-center justify-between py-2"><span className="text-muted-foreground">Member since</span><span>{user?.created_at ? new Date(user.created_at).toLocaleDateString("en-GB", { month: "long", year: "numeric" }) : "—"}</span></div>
           </div>
-          <Button size="sm" variant="outline" onClick={async () => {
-            if (typeof Notification === "undefined") { toast({ title: "Not supported", description: "This browser doesn't support notifications" }); return; }
-            const permission = await Notification.requestPermission();
-            if (permission === "granted") toast({ title: "✓ Enabled", description: "Notifications enabled!" });
-            else toast({ title: "Blocked", description: "Please allow notifications in your browser settings", variant: "destructive" });
-          }}>
-            {typeof Notification !== "undefined" && Notification.permission === "granted" ? "✓ Enabled" : "Enable"}
-          </Button>
+        </div>
+
+        {/* Notifications */}
+        <div className="glass-card p-5">
+          <h3 className="font-semibold text-sm flex items-center gap-2 mb-4">🔔 Notifications</h3>
+          <div className="flex items-center justify-between p-3 bg-background border border-border/40 rounded-xl">
+            <div>
+              <p className="text-sm font-medium">Deadline reminders</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Alerts before task deadlines</p>
+            </div>
+            <Button size="sm" variant="outline" onClick={async () => {
+              if (typeof Notification === "undefined") { toast({ title: "Not supported", description: "This browser doesn't support notifications" }); return; }
+              const permission = await Notification.requestPermission();
+              if (permission === "granted") toast({ title: "✓ Enabled", description: "Notifications enabled!" });
+              else toast({ title: "Blocked", description: "Please allow notifications in your browser settings", variant: "destructive" });
+            }}>
+              {typeof Notification !== "undefined" && Notification.permission === "granted" ? "✓ Enabled" : "Enable"}
+            </Button>
+          </div>
         </div>
       </div>
 
