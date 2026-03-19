@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
+import { initReminders } from "@/lib/reminders";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { SyllabusImporter } from "@/components/SyllabusImporter";
 import { Settings2 } from "lucide-react";
@@ -163,6 +164,10 @@ export default function Calendar() {
         });
       } else {
         toast.success("Event created!");
+      }
+
+      if (eventType === "deadline" || eventType === "exam") {
+        initReminders(user.id);
       }
       
       setIsModalOpen(false);

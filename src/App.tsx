@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -30,15 +31,29 @@ import Internships from "@/pages/Internships";
 import Calendar from "@/pages/Calendar";
 import Notes from "@/pages/Notes";
 import KanbanBoard from "@/pages/KanbanBoard";
+import Onboarding from "@/pages/Onboarding";
+import Landing from "@/pages/Landing";
 import NotFound from "@/pages/NotFound";
 import { Loader2 } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 
 const queryClient = new QueryClient();
 
 function ProtectedApp() {
   const { user, loading } = useAuth();
+  const [profile, setProfile] = useState<{ onboarding_completed?: boolean } | null>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
 
-  if (loading) {
+  useEffect(() => {
+    if (user) {
+      supabase.from("profiles").select("onboarding_completed").eq("id", user.id).single()
+        .then(({ data }) => { setProfile(data); setProfileLoading(false); });
+    } else {
+      setProfileLoading(false);
+    }
+  }, [user]);
+
+  if (loading || (user && profileLoading)) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -50,7 +65,17 @@ function ProtectedApp() {
     return (
       <Routes>
         <Route path="/login" element={<Login />} />
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route path="/" element={<Landing />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    );
+  }
+
+  if (!profile?.onboarding_completed) {
+    return (
+      <Routes>
+        <Route path="/onboarding" element={<Onboarding />} />
+        <Route path="*" element={<Navigate to="/onboarding" replace />} />
       </Routes>
     );
   }
@@ -82,6 +107,7 @@ function ProtectedApp() {
             <Route path="/studio" element={<Studio />} />
             <Route path="/internships" element={<Internships />} />
             <Route path="/login" element={<Navigate to="/" replace />} />
+            <Route path="/onboarding" element={<Navigate to="/" replace />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Layout>

@@ -356,6 +356,25 @@ export default function Profile() {
         </div>
       </div>
 
+      {/* Notifications */}
+      <div className="glass-card p-5">
+        <h3 className="font-semibold flex items-center gap-2 mb-4">🔔 Notifications</h3>
+        <div className="flex items-center justify-between p-3 bg-card border border-border/40 rounded-xl">
+          <div>
+            <p className="text-sm font-medium">Deadline reminders</p>
+            <p className="text-xs text-muted-foreground">Get notified 7 days, 3 days, 1 day, and 3 hours before deadlines</p>
+          </div>
+          <Button size="sm" variant="outline" onClick={async () => {
+            if (typeof Notification === "undefined") { toast({ title: "Not supported", description: "This browser doesn't support notifications" }); return; }
+            const permission = await Notification.requestPermission();
+            if (permission === "granted") toast({ title: "✓ Enabled", description: "Notifications enabled!" });
+            else toast({ title: "Blocked", description: "Please allow notifications in your browser settings", variant: "destructive" });
+          }}>
+            {typeof Notification !== "undefined" && Notification.permission === "granted" ? "✓ Enabled" : "Enable"}
+          </Button>
+        </div>
+      </div>
+
       {/* Achievements */}
       <div className="glass-card p-5">
         <h3 className="font-semibold flex items-center gap-2 mb-4"><Award className="h-5 w-5 text-primary" /> Achievements</h3>

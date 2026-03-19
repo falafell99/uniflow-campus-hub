@@ -1,11 +1,12 @@
 import { useState, useEffect, useMemo } from "react";
 import { format, subDays, startOfDay, eachDayOfInterval, isSameDay } from "date-fns";
 import {
-  TrendingUp, FileText, Upload, CheckSquare, Sparkles, Loader2
+  TrendingUp, FileText, Upload, CheckSquare, Sparkles, Loader2, Download
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer } from "recharts";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
+import { Button } from "@/components/ui/button";
 
 type Period = "This Week" | "This Month" | "All Time";
 
@@ -181,20 +182,46 @@ export default function Progress() {
       <div className="flex flex-col sm:flex-row items-baseline justify-between gap-4">
         <h1 className="text-3xl font-bold tracking-tight">Your Progress</h1>
         
-        <div className="flex bg-muted/30 p-1 rounded-xl">
-          {(["This Week", "This Month", "All Time"] as Period[]).map((p) => (
-            <button
-              key={p}
-              onClick={() => setPeriod(p)}
-              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                period === p 
-                  ? "bg-background shadow-sm text-foreground" 
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {p}
-            </button>
-          ))}
+        <div className="flex items-center gap-3">
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={() => {
+            import("@/lib/exportPDF").then(({ exportToPDF }) => {
+              const reportHTML = `
+                <h1>UniFlow Progress Report</h1>
+                <div class="meta">Generated on ${new Date().toLocaleDateString()}</div>
+                <h2>Stats</h2>
+                <ul>
+                  <li>Current streak: ${currentStreak} days</li>
+                  <li>Best streak: ${bestStreak} days</li>
+                  <li>Notes saved: ${notesSaved}</li>
+                  <li>Files uploaded: ${filesUploaded}</li>
+                  <li>Tasks completed: ${tasksCompleted}</li>
+                  <li>Oracle queries: ${oracleQueries}</li>
+                </ul>
+                <h2>Most Active Subjects</h2>
+                <ul>
+                  ${topSubjects.map(s => `<li>${s.name}: ${s.count} activities</li>`).join("")}
+                </ul>
+              `;
+              exportToPDF("UniFlow Progress Report", reportHTML);
+            });
+          }}>
+            <Download className="h-3.5 w-3.5" /> Export Report
+          </Button>
+          <div className="flex bg-muted/30 p-1 rounded-xl">
+            {(["This Week", "This Month", "All Time"] as Period[]).map((p) => (
+              <button
+                key={p}
+                onClick={() => setPeriod(p)}
+                className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                  period === p 
+                    ? "bg-background shadow-sm text-foreground" 
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {p}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 

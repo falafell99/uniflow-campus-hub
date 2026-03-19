@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   Plus, Clock, Search, Filter, Trash2, Loader2,
-  CalendarPlus, X, GripVertical
+  CalendarPlus, X, GripVertical, Download
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -405,6 +405,14 @@ export default function KanbanBoard() {
                 {teams.map(t => <option key={t.id} value={t.id} className="bg-[#1a1a1a]">{t.name}</option>)}
               </select>
             )}
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => {
+              import("@/lib/exportPDF").then(({ exportToPDF, tasksToHTML }) => {
+                const title = selectedTeamId ? `Team Tasks` : "My Tasks";
+                exportToPDF(title, tasksToHTML(filteredTasks, title));
+              });
+            }}>
+              <Download className="h-3.5 w-3.5" /> Export PDF
+            </Button>
             <Button className="gap-1.5" size="sm" onClick={() => openCreate()}><Plus className="h-3.5 w-3.5" /> New Task</Button>
           </div>
         </div>

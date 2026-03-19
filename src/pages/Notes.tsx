@@ -6,7 +6,7 @@ import {
   Bold, Heading1, Heading2, List, Code, Plus, Trash2, GripVertical,
   Cloud, Check, Search, Tag, X, Edit2, CheckSquare, Minus,
   ChevronRight, ChevronDown, NotebookPen, BookOpen, Share2,
-  Loader2, CheckCircle, XCircle
+  Loader2, CheckCircle, XCircle, Download
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -806,6 +806,13 @@ export default function Notes() {
                        <Cloud className="h-3.5 w-3.5" />}
                       {saveStatus === "saving" ? "Saving..." : saveStatus === "saved" ? "Saved" : ""}
                     </div>
+                    <Button variant="ghost" size="sm" className="h-8 text-xs gap-1.5" onClick={() => {
+                      import("@/lib/exportPDF").then(({ exportToPDF, noteToHTML }) => {
+                        if (selectedNote) { exportToPDF(selectedNote.title, noteToHTML(selectedNote)); }
+                      });
+                    }}>
+                      <Download className="h-3.5 w-3.5" /> Export
+                    </Button>
                     <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => setStudyMode(true)} disabled={!API_KEY}>
                       <BookOpen className="h-3.5 w-3.5" /> Study Mode
                     </Button>
