@@ -12,6 +12,7 @@ import { useApp } from "@/contexts/AppContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { FacultyBar } from "@/components/FacultyBar";
 import { CategorySidebar } from "@/components/CategorySidebar";
+import { SplitScreen } from "@/components/SplitScreen";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { motion } from "framer-motion";
@@ -155,7 +156,8 @@ export function TopHeader() {
         <span className="text-xs font-semibold">{credits.toLocaleString()} Credits</span>
       </div>
 
-      {/* Theme Toggle */}
+      {/* Theme Toggle & Split Screen */}
+      <SplitScreen />
       <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={toggleTheme}>
         {theme === "light" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
       </Button>

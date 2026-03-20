@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, Library, Bot, Users, MessageSquare,
   UserCircle, GraduationCap, NotebookPen, ClipboardList, TrendingUp,
-  Timer, Globe, Flame, Settings
+  Timer, Globe, Flame, Settings, Calculator
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -24,6 +24,7 @@ const studyItems = [
   { title: "Flashcards",      url: "/flashcards",    icon: Flame,           emoji: "🃏" },
   { title: "Campus Calendar", url: "/calendar",      icon: LayoutDashboard, emoji: "📅" },
   { title: "Progress",        url: "/progress",      icon: TrendingUp,      emoji: "📈" },
+  { title: "GPA Calculator",  url: "/gpa",           icon: Calculator,      emoji: "🎓" },
   { title: "Workspace",       url: "/knowledge-graph", icon: GraduationCap, emoji: "🗂" },
   { title: "Pomodoro",        url: "/pomodoro",      icon: Timer,           emoji: "⏱" },
 ];

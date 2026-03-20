@@ -26,6 +26,7 @@ import Teams from "@/pages/Teams";
 import Pomodoro from "@/pages/Pomodoro";
 import Workspace from "@/pages/Workspace";
 import Messages from "@/pages/Messages";
+import GPACalculator from "@/pages/GPACalculator";
 import Studio from "@/pages/Studio";
 import Internships from "@/pages/Internships";
 import Calendar from "@/pages/Calendar";
@@ -119,6 +120,7 @@ function ProtectedApp() {
             <Route path="/notes" element={<Notes />} />
             <Route path="/tasks" element={<KanbanBoard />} />
             <Route path="/progress" element={<Progress />} />
+            <Route path="/gpa" element={<GPACalculator />} />
             <Route path="/calendar" element={<Calendar />} />
             <Route path="/messages" element={<Messages />} />
             <Route path="/studio" element={<Studio />} />

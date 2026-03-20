@@ -73,11 +73,79 @@ interface FileTreeProps {
   onPreview: (file: FileItem) => void;
 }
 
+const getSemesterColor = (name: string) => {
+  const n = parseInt(name.replace(/\D/g, "")) || 0;
+  const colors = ["bg-blue-500", "bg-green-500", "bg-purple-500", "bg-orange-500", "bg-pink-500", "bg-teal-500"];
+  return colors[(n - 1) % colors.length] || "bg-primary";
+};
+
+function FileRow({ item, onPreview, navigate }: { item: FileItem; onPreview: (f: FileItem) => void; navigate: any }) {
+  return (
+    <div
+      className="flex items-center gap-2 px-3 py-2.5 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer group border border-transparent hover:border-border/30"
+      onClick={() => onPreview(item)}
+    >
+      {getFileIcon(item.name)}
+      <span className="text-sm font-medium truncate flex-1">{item.name}</span>
+
+      {item.isNew && (
+        <Badge className="text-[10px] bg-primary text-primary-foreground border-0 animate-fade-in shrink-0">New</Badge>
+      )}
+      {formatSize(item.file_size) && (
+        <span className="text-[10px] text-muted-foreground shrink-0">{formatSize(item.file_size)}</span>
+      )}
+      {item.tag && <ResourceBadge tag={item.tag} tagClass={item.tagClass ?? ""} />}
+
+      <div className="hidden group-hover:flex items-center gap-1 shrink-0 ml-2" onClick={(e) => e.stopPropagation()}>
+        <Button variant="ghost" size="icon" className="h-7 w-7" title="Preview" onClick={() => onPreview(item)}>
+          <Eye className="h-3.5 w-3.5" />
+        </Button>
+        {item.storage_path && (
+          <>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-[10px] gap-1.5 text-primary hover:text-primary hover:bg-primary/10"
+              onClick={() => navigate("/ai-oracle", { 
+                state: { vaultFile: { name: item.name, storage_path: item.storage_path } } 
+              })}
+            >
+              <Sparkles className="h-3.5 w-3.5" /> Ask Oracle
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-[10px] gap-1.5 text-amber-500 hover:text-amber-500 hover:bg-amber-500/10"
+              onClick={() => navigate("/flashcards", { 
+                state: { vaultFile: { name: item.name, storage_path: item.storage_path } } 
+              })}
+            >
+              <Layers className="h-3.5 w-3.5" /> Flashcards
+            </Button>
+          </>
+        )}
+        {item.storage_url ? (
+          <a href={item.storage_url} download={item.name} target="_blank" rel="noopener noreferrer">
+            <Button variant="ghost" size="icon" className="h-7 w-7" title="Download">
+              <Download className="h-3.5 w-3.5" />
+            </Button>
+          </a>
+        ) : (
+          <Button variant="ghost" size="icon" className="h-7 w-7 opacity-40" disabled title="No file stored">
+            <Download className="h-3.5 w-3.5" />
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function FileTree({ items, depth = 0, onPreview }: FileTreeProps) {
   const navigate = useNavigate();
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(
-    new Set(["root", "1", "2", "3"])
+    new Set(["root", "sem-1", "sem-2"])
   );
+  const [activeSection, setActiveSection] = useState<Record<string, string>>({});
 
   const toggleFolder = (folderId: string) => {
     setExpandedFolders(prev => {
@@ -89,107 +157,151 @@ export function FileTree({ items, depth = 0, onPreview }: FileTreeProps) {
   };
 
   return (
-    <div className="space-y-0.5">
-      {items.map((item) => (
-        <div key={item.id}>
-          {item.type === "folder" ? (
-            <>
+    <div className="space-y-4">
+      {items.map((item) => {
+        if (depth === 0 && item.type === "folder") {
+          const sem = item;
+          const isExpanded = expandedFolders.has(sem.id);
+          const headerTitle = sem.name.replace("📅 Semester ", "").replace("⭐ Elective Courses", "⭐");
+          
+          return (
+            <div key={sem.id} className="mb-6">
               <div
-                onClick={() => toggleFolder(item.id)}
-                className="flex items-center gap-2 w-full px-2 py-1.5 rounded-md hover:bg-muted/50 transition-colors text-sm cursor-pointer select-none"
-                style={{ paddingLeft: `${depth * 20 + 8}px` }}
+                className="bg-card border border-border/40 rounded-2xl overflow-hidden hover:border-primary/30 transition-all cursor-pointer shadow-sm"
+                onClick={() => toggleFolder(sem.id)}
               >
-                <ChevronRight 
-                  className={`h-3.5 w-3.5 text-muted-foreground transition-transform duration-200 ${
-                    expandedFolders.has(item.id) ? "rotate-90 text-primary" : ""
-                  }`} 
-                />
-                <Folder className={`h-4 w-4 shrink-0 ${expandedFolders.has(item.id) ? "text-primary" : "text-muted-foreground"}`} />
-                <span className="font-medium truncate flex-1 leading-tight py-0.5">{item.name}</span>
-                {item.children && (
-                  <span className="text-xs text-muted-foreground ml-auto pr-1">{item.children.length}</span>
-                )}
+                <div className={`h-1.5 ${getSemesterColor(headerTitle)}`} />
+                <div className="p-5">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-4">
+                      <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-black text-xl shadow-inner">
+                        {headerTitle}
+                      </div>
+                      <div>
+                        <p className="font-bold text-lg">{sem.name.replace("📅 ", "")}</p>
+                        <p className="text-sm text-muted-foreground">{sem.children?.length || 0} subjects</p>
+                      </div>
+                    </div>
+                    <ChevronRight className={`h-6 w-6 text-muted-foreground transition-transform duration-300 ${isExpanded ? "rotate-90 text-primary" : ""}`} />
+                  </div>
+                  
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {sem.children?.slice(0, 4).map(subject => (
+                      <span key={subject.id} className="text-xs font-medium bg-muted/40 text-muted-foreground px-2.5 py-1 rounded-full border border-border/50">
+                        {subject.name}
+                      </span>
+                    ))}
+                    {(sem.children?.length || 0) > 4 && (
+                      <span className="text-xs font-semibold text-primary px-2.5 py-1 bg-primary/5 rounded-full">
+                        +{(sem.children?.length || 0) - 4} more
+                      </span>
+                    )}
+                  </div>
+                </div>
               </div>
-              {expandedFolders.has(item.id) && item.children && (
-                <FileTree items={item.children} depth={depth + 1} onPreview={onPreview} />
-              )}
-            </>
-          ) : (
-            <div
-              className="flex items-center gap-2 px-2 py-2 rounded-md hover:bg-muted/50 transition-colors cursor-pointer group"
-              style={{ paddingLeft: `${depth * 20 + 8}px` }}
-              onClick={() => onPreview(item)}
-            >
-              {getFileIcon(item.name)}
-              <span className="text-sm truncate flex-1">{item.name}</span>
 
-              {item.isNew && (
-                <Badge className="text-[10px] bg-primary text-primary-foreground border-0 animate-fade-in shrink-0">New</Badge>
+              {isExpanded && sem.children && (
+                <div className="pl-4 md:pl-8 border-l-2 border-border/40 ml-6 md:ml-10 mt-5 space-y-4">
+                  {sem.children.map(subject => {
+                    const subjExpanded = expandedFolders.has(subject.id);
+                    return (
+                      <div key={subject.id} className="bg-card border border-border/40 rounded-2xl overflow-hidden shadow-sm">
+                        <div 
+                          className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/30 transition-colors"
+                          onClick={() => toggleFolder(subject.id)}
+                        >
+                          <div className="flex items-center gap-3">
+                            <Folder className={`h-5 w-5 ${subjExpanded ? "text-primary fill-primary/20" : "text-muted-foreground"}`} />
+                            <p className="font-bold">{subject.name}</p>
+                          </div>
+                          <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform duration-300 ${subjExpanded ? "rotate-180" : ""}`} />
+                        </div>
+                        
+                        {subjExpanded && subject.children && (
+                          <div className="border-t border-border/20 bg-background/30">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 p-4">
+                              {subject.children.map(section => {
+                                const sectionId = section.name.replace(/^[^\s]+ /, ""); // strip emoji
+                                const isSectionActive = activeSection[subject.id] === section.id;
+                                const fileCount = section.children?.length || 0;
+                                
+                                return (
+                                  <button key={section.id}
+                                    onClick={() => setActiveSection(prev => ({ ...prev, [subject.id]: section.id }))}
+                                    className={`flex items-center gap-3 p-3 rounded-xl transition-all text-left ${
+                                      isSectionActive 
+                                        ? "bg-primary text-primary-foreground shadow-md scale-[1.02]" 
+                                        : "bg-card border border-border/50 hover:border-primary/40 hover:bg-primary/5"
+                                    }`}
+                                  >
+                                    <span className="text-2xl drop-shadow-sm">{getFileTypeEmoji(sectionId)}</span>
+                                    <div className="min-w-0">
+                                      <p className={`text-xs font-bold truncate ${isSectionActive ? "text-primary-foreground" : "text-foreground"}`}>{sectionId}</p>
+                                      <p className={`text-[10px] ${isSectionActive ? "text-primary-foreground/80" : "text-muted-foreground"}`}>{fileCount} file{fileCount !== 1 ? "s" : ""}</p>
+                                    </div>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                            
+                            {activeSection[subject.id] && (
+                              <div className="p-4 pt-0">
+                                {subject.children.find(s => s.id === activeSection[subject.id])?.children?.length ? (
+                                  <div className="space-y-1.5 bg-card/60 rounded-xl p-2 border border-border/30">
+                                    {subject.children.find(s => s.id === activeSection[subject.id])!.children!.map(file => (
+                                      <FileRow key={file.id} item={file} onPreview={onPreview} navigate={navigate} />
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <div className="text-center py-6 border border-border/30 border-dashed rounded-xl bg-muted/10 mx-4 mb-4">
+                                    <p className="text-sm font-medium text-muted-foreground">No files here yet</p>
+                                    <p className="text-xs text-muted-foreground/70 mt-1">Be the first to upload resources for this section!</p>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               )}
-              {formatSize(item.file_size) && (
-                <span className="text-[10px] text-muted-foreground shrink-0">{formatSize(item.file_size)}</span>
-              )}
-              {item.tag && <ResourceBadge tag={item.tag} tagClass={item.tagClass ?? ""} />}
-
-              <div className="hidden group-hover:flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-                <Button variant="ghost" size="icon" className="h-6 w-6" title="Preview" onClick={() => onPreview(item)}>
-                  <Eye className="h-3 w-3" />
-                </Button>
-                {item.storage_path && (
-                  <>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 text-[10px] gap-1.5 text-primary hover:text-primary hover:bg-primary/10"
-                        onClick={() => navigate("/ai-oracle", { 
-                          state: { vaultFile: { name: item.name, storage_path: item.storage_path } } 
-                        })}
-                      >
-                        <Sparkles className="h-3 w-3" /> Ask Oracle
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 text-[10px] gap-1.5 text-amber-400 hover:text-amber-400 hover:bg-amber-400/10"
-                        onClick={() => navigate("/flashcards", { 
-                          state: { vaultFile: { name: item.name, storage_path: item.storage_path } } 
-                        })}
-                      >
-                        <Layers className="h-3 w-3" /> Make Flashcards
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 text-[10px] gap-1.5 text-blue-400 hover:text-blue-400 hover:bg-blue-400/10"
-                        onClick={() => navigate("/notes", {
-                          state: {
-                            prefillTitle: item.name.replace(/\.[^/.]+$/, ""),
-                            prefillSubject: item.subject || "",
-                            prefillContent: `📎 Source file: ${item.name}\n\nNotes from this file:`
-                          }
-                        })}
-                        title="Create Note"
-                      >
-                        <NotebookPen className="h-3 w-3" /> Create Note
-                      </Button>
-                  </>
-                )}
-                {item.storage_url ? (
-                  <a href={item.storage_url} download={item.name} target="_blank" rel="noopener noreferrer">
-                    <Button variant="ghost" size="icon" className="h-6 w-6" title="Download">
-                      <Download className="h-3 w-3" />
-                    </Button>
-                  </a>
-                ) : (
-                  <Button variant="ghost" size="icon" className="h-6 w-6 opacity-40" disabled title="No file stored">
-                    <Download className="h-3 w-3" />
-                  </Button>
-                )}
-              </div>
             </div>
-          )}
-        </div>
-      ))}
+          );
+        }
+
+        // Fallback for flat structure or deep matching in search
+        return (
+          <div key={item.id}>
+            {item.type === "folder" ? (
+              <>
+                <div
+                  onClick={() => toggleFolder(item.id)}
+                  className="flex items-center gap-2 w-full px-2 py-1.5 rounded-md hover:bg-muted/50 transition-colors text-sm cursor-pointer select-none"
+                  style={{ paddingLeft: `${depth * 20 + 8}px` }}
+                >
+                  <ChevronRight 
+                    className={`h-3.5 w-3.5 text-muted-foreground transition-transform duration-200 ${
+                      expandedFolders.has(item.id) ? "rotate-90 text-primary" : ""
+                    }`} 
+                  />
+                  <Folder className={`h-4 w-4 shrink-0 ${expandedFolders.has(item.id) ? "text-primary" : "text-muted-foreground"}`} />
+                  <span className="font-medium truncate flex-1 leading-tight py-0.5">{item.name}</span>
+                  {item.children && (
+                    <span className="text-xs text-muted-foreground ml-auto pr-1">{item.children.length}</span>
+                  )}
+                </div>
+                {expandedFolders.has(item.id) && item.children && (
+                  <FileTree items={item.children} depth={depth + 1} onPreview={onPreview} />
+                )}
+              </>
+            ) : (
+              <FileRow item={item} onPreview={onPreview} navigate={navigate} />
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

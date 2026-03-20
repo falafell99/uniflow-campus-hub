@@ -1,18 +1,16 @@
 import { useState, useEffect, useRef } from "react";
-import { Rss, MessageSquare, HelpCircle, BookOpen, UserSearch, CalendarDays, Mic } from "lucide-react";
+import { Rss, MessageSquare, UserSearch, CalendarDays, Mic } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 // ─── Tab Types ────────────────────────────────────────────────────────────────
-type TabId = "feed" | "forums" | "qa" | "groups" | "partners" | "meetups" | "voice";
+type TabId = "feed" | "discuss" | "people" | "meetups" | "voice";
 
 const tabs: { id: TabId; label: string; icon: React.ReactNode }[] = [
-  { id: "feed",     label: "Feed",           icon: <Rss className="h-4 w-4 shrink-0" /> },
-  { id: "forums",   label: "Forums",         icon: <MessageSquare className="h-4 w-4 shrink-0" /> },
-  { id: "qa",       label: "Q&A",            icon: <HelpCircle className="h-4 w-4 shrink-0" /> },
-  { id: "groups",   label: "Study Groups",   icon: <BookOpen className="h-4 w-4 shrink-0" /> },
-  { id: "partners", label: "Study Partners", icon: <UserSearch className="h-4 w-4 shrink-0" /> },
-  { id: "meetups",  label: "Meetups",        icon: <CalendarDays className="h-4 w-4 shrink-0" /> },
-  { id: "voice",    label: "Voice Lounges",  icon: <Mic className="h-4 w-4 shrink-0" /> },
+  { id: "feed",     label: "Feed",         icon: <Rss className="h-4 w-4 shrink-0" /> },
+  { id: "discuss",  label: "Discuss",      icon: <MessageSquare className="h-4 w-4 shrink-0" /> },
+  { id: "people",   label: "Find People",  icon: <UserSearch className="h-4 w-4 shrink-0" /> },
+  { id: "meetups",  label: "Meetups",      icon: <CalendarDays className="h-4 w-4 shrink-0" /> },
+  { id: "voice",    label: "Voice Lounges",icon: <Mic className="h-4 w-4 shrink-0" /> },
 ];
 
 import FeedTab from "@/pages/community/FeedTab";
@@ -23,10 +21,47 @@ import PartnersTab from "@/pages/community/PartnersTab";
 import MeetupsTab from "@/pages/community/MeetupsTab";
 import VoiceTab from "@/pages/community/VoiceTab";
 
-export default function Community() {
-  const [activeTab, setActiveTab] = useState<TabId>(() =>
-    (localStorage.getItem("community-tab") as TabId) || "feed"
+// ─── Discuss Tab (Forums + Q&A) ──────────────────────────────────────────────
+function DiscussTab() {
+  const [mode, setMode] = useState<"forums" | "qa">("forums");
+
+  return (
+    <div className="p-6">
+      <div className="flex items-center gap-2 mb-6">
+        <button onClick={() => setMode("forums")}
+          className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${mode === "forums" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted/20"}`}>
+          💬 Forums
+        </button>
+        <button onClick={() => setMode("qa")}
+          className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${mode === "qa" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted/20"}`}>
+          ❓ Q&A
+        </button>
+      </div>
+      {mode === "forums" ? <ForumsTab /> : <QATab />}
+    </div>
   );
+}
+
+// ─── People Tab (Groups + Partners) ──────────────────────────────────────────
+function PeopleTab() {
+  return (
+    <div className="p-6 space-y-0">
+      <GroupsTab />
+      <div className="border-t border-border/20 my-6" />
+      <PartnersTab />
+    </div>
+  );
+}
+
+export default function Community() {
+  const [activeTab, setActiveTab] = useState<TabId>(() => {
+    const saved = localStorage.getItem("community-tab") as string;
+    // Map old tab IDs to new ones
+    if (saved === "forums" || saved === "qa") return "discuss";
+    if (saved === "groups" || saved === "partners") return "people";
+    if (saved === "feed" || saved === "discuss" || saved === "people" || saved === "meetups" || saved === "voice") return saved as TabId;
+    return "feed";
+  });
   
   const scrollRef = useRef<HTMLDivElement>(null);
   const scrollPositions = useRef<Record<string, number>>({});
@@ -86,11 +121,9 @@ export default function Community() {
             transition={{ duration: 0.2 }}
             className="min-h-full"
           >
-            {activeTab === "feed"     && <FeedTab onNavigate={handleTabChange} />}
-            {activeTab === "forums"   && <ForumsTab />}
-            {activeTab === "qa"       && <QATab />}
-            {activeTab === "groups"   && <GroupsTab />}
-            {activeTab === "partners" && <PartnersTab />}
+            {activeTab === "feed"     && <FeedTab onNavigate={handleTabChange as any} />}
+            {activeTab === "discuss"  && <DiscussTab />}
+            {activeTab === "people"   && <PeopleTab />}
             {activeTab === "meetups"  && <MeetupsTab />}
             {activeTab === "voice"    && <VoiceTab />}
           </motion.div>
