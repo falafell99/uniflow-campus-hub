@@ -429,7 +429,8 @@ ${text}`;
         <div className="flex items-center justify-between relative">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">🧠 Flashcards</h1>
-            <p className="text-muted-foreground mt-1">Master concepts with spaced repetition — cloud synced</p>
+            <p className="text-muted-foreground mt-1 text-sm hidden md:block">Study with spaced repetition. Generate cards from any PDF in the Vault.</p>
+            <p className="text-muted-foreground mt-1 text-sm md:hidden">Master concepts with spaced repetition</p>
           </div>
           <div className="flex items-center gap-2">
             <Button variant="outline" className="gap-2 border-primary/20 text-primary hover:bg-primary/5" onClick={() => setAiGenOpen(true)}>

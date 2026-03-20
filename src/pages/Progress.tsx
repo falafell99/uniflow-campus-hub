@@ -180,7 +180,10 @@ export default function Progress() {
     <div className="max-w-6xl mx-auto p-4 md:p-8 space-y-8 animate-fade-in pb-24">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-baseline justify-between gap-4">
-        <h1 className="text-3xl font-bold tracking-tight">Your Progress</h1>
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Your Progress</h1>
+          <p className="text-muted-foreground text-sm mt-1">Track your study streak, activity, and subject breakdown over time.</p>
+        </div>
         
         <div className="flex items-center gap-3">
           <Button variant="outline" size="sm" className="gap-1.5" onClick={() => {

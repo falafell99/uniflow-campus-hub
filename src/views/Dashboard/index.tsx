@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Clock, Briefcase, TrendingUp, ArrowRight, NotebookPen, Sparkles, Upload, CalendarPlus, CalendarDays, GraduationCap } from "lucide-react";
+import { ArrowRight, NotebookPen, Sparkles, Upload, CalendarPlus, CalendarDays, GraduationCap, Clock, FileText, Globe } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { GlassCard } from "@/components/GlassCard";
@@ -16,6 +16,10 @@ function getFirstName(fullName?: string) {
   return fullName.split(" ")[0];
 }
 
+function getInitials(name: string) {
+  return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
+}
+
 function getGreeting(firstName: string): string {
   const hour = new Date().getHours();
   if (hour >= 5 && hour <= 11) return `Good morning, ${firstName} ☀️`;
@@ -24,37 +28,22 @@ function getGreeting(firstName: string): string {
   return `Still up, ${firstName}? 🦉`;
 }
 
-const ACTION_ICONS: Record<string, string> = {
-  note_saved: "📝",
-  file_uploaded: "📁",
-  task_completed: "✅",
-  oracle_query: "🧠",
-  flashcard_reviewed: "🃏",
-};
-
-const ACTION_LABELS: Record<string, string> = {
-  note_saved: "Saved a note",
-  file_uploaded: "Uploaded a file",
-  task_completed: "Completed a task",
-  oracle_query: "Asked the Oracle",
-  flashcard_reviewed: "Reviewed flashcards",
-};
-
 export default function Dashboard() {
   const { user } = useAuth();
   const { activeCommunity } = useApp();
   const navigate = useNavigate();
   
   const [streak, setStreak] = useState(0);
-  const [recentActivity, setRecentActivity] = useState<any[]>([]);
-  const [activityLoading, setActivityLoading] = useState(true);
-  
   const [quickAsk, setQuickAsk] = useState("");
 
-  const [deadlineTab, setDeadlineTab] = useState<"mine" | "all">("mine");
   const [mineEvents, setMineEvents] = useState<any[]>([]);
-  const [allEvents, setAllEvents] = useState<any[]>([]);
   const [eventsLoading, setEventsLoading] = useState(true);
+
+  const [recentFiles, setRecentFiles] = useState<any[]>([]);
+  const [filesLoading, setFilesLoading] = useState(true);
+
+  const [communityPulse, setCommunityPulse] = useState<any[]>([]);
+  const [pulseLoading, setPulseLoading] = useState(true);
 
   const displayName = user?.user_metadata?.display_name || user?.email?.split("@")[0] || "Student";
   const firstName = getFirstName(displayName);
@@ -97,48 +86,57 @@ export default function Dashboard() {
     loadProgressStats();
   }, [user]);
 
-  // Load recent activity (last 4)
-  useEffect(() => {
-    if (!user) return;
-    const loadRecentActivity = async () => {
-      setActivityLoading(true);
-      const { data } = await supabase
-        .from("activity_log")
-        .select("id, action, created_at")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(4);
-      setRecentActivity(data || []);
-      setActivityLoading(false);
-    };
-    loadRecentActivity();
-  }, [user]);
-
-  // Load Events
+  // Load Events (mine only, max 3)
   useEffect(() => {
     if (!user) return;
     const loadEvents = async () => {
       setEventsLoading(true);
-      const { data: mine } = await supabase
+      const { data } = await supabase
         .from("campus_events")
         .select("*")
         .eq("user_id", user.id)
         .gte("start_time", new Date().toISOString())
         .order("start_time", { ascending: true })
         .limit(3);
-        
-      const { data: all } = await supabase
-        .from("campus_events")
-        .select("*, profiles!user_id(display_name)")
-        .gte("start_time", new Date().toISOString())
-        .order("start_time", { ascending: true })
-        .limit(3);
-
-      setMineEvents(mine || []);
-      setAllEvents(all || []);
+      setMineEvents(data || []);
       setEventsLoading(false);
     };
     loadEvents();
+  }, [user]);
+
+  // Load Recent Files (max 3)
+  useEffect(() => {
+    if (!user) return;
+    const loadFiles = async () => {
+      setFilesLoading(true);
+      const { data } = await supabase
+        .from("vault_files")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(3);
+      setRecentFiles(data || []);
+      setFilesLoading(false);
+    };
+    loadFiles();
+  }, [user]);
+
+  // Load Community Pulse (activity_feed, max 3)
+  useEffect(() => {
+    if (!user) return;
+    const loadPulse = async () => {
+      setPulseLoading(true);
+      // We assume profiles relation exists. Use raw user lookup or rely on display_name if activity_feed has it.
+      // Assuming activity_feed doesn't join easily without profiles, we fetch data and join client-side if needed,
+      // but if we look at `feed.ts` it might not have display_name. Wait, `profiles(display_name)` works in supabase.
+      const { data } = await supabase
+        .from("activity_feed")
+        .select("*, profiles(display_name)")
+        .order("created_at", { ascending: false })
+        .limit(3);
+      setCommunityPulse(data || []);
+      setPulseLoading(false);
+    };
+    loadPulse();
   }, [user]);
 
   const quickActions = [
@@ -148,8 +146,6 @@ export default function Dashboard() {
     { label: "GPA Calc", icon: <GraduationCap className="h-5 w-5" />, path: "/gpa" },
     { label: "Add Deadline", icon: <CalendarPlus className="h-5 w-5" />, path: "/calendar" },
   ];
-
-  const displayedEvents = deadlineTab === "mine" ? mineEvents : allEvents;
 
   return (
     <div className="space-y-6 animate-fade-in max-w-5xl mx-auto">
@@ -169,7 +165,7 @@ export default function Dashboard() {
 
       {/* 2. QUICK ACTIONS */}
       <motion.div
-        className="grid grid-cols-2 md:grid-cols-5 gap-3"
+        className="grid grid-cols-2 lg:grid-cols-5 gap-3"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.1 }}
@@ -192,62 +188,42 @@ export default function Dashboard() {
         <div className="flex-1 space-y-6">
           
           {/* Upcoming Deadlines */}
-          <GlassCard className="p-5">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <CalendarDays className="h-5 w-5 text-primary" />
-                <h2 className="text-lg font-semibold tracking-tight">Upcoming</h2>
-              </div>
-              <div className="flex bg-muted/30 p-1 rounded-lg">
-                <button
-                  onClick={() => setDeadlineTab("mine")}
-                  className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${deadlineTab === "mine" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
-                >
-                  Mine
-                </button>
-                <button
-                  onClick={() => setDeadlineTab("all")}
-                  className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${deadlineTab === "all" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
-                >
-                  All
-                </button>
-              </div>
-            </div>
+          <div className="bg-card border border-border/40 rounded-2xl p-5 shadow-sm">
+            <h2 className="text-lg font-bold tracking-tight mb-4 flex items-center gap-2">
+              <CalendarDays className="h-5 w-5 text-primary" />
+              Upcoming Deadlines
+            </h2>
 
             <div className="space-y-3">
               {eventsLoading ? (
                 [1, 2, 3].map(i => <Skeleton key={i} className="h-14 w-full rounded-xl" />)
-              ) : displayedEvents.length === 0 ? (
-                <div className="py-6 text-center text-muted-foreground bg-muted/10 rounded-xl border border-border/40 border-dashed">
-                  <p className="text-sm">No upcoming deadlines.</p>
-                  <button onClick={() => navigate("/calendar")} className="text-primary text-xs mt-1 hover:underline">Add one →</button>
+              ) : mineEvents.length === 0 ? (
+                <div className="py-6 text-center text-muted-foreground bg-muted/20 rounded-xl border border-border/40 border-dashed">
+                  <p className="text-sm font-medium">No deadlines.</p>
+                  <button onClick={() => navigate("/calendar")} className="text-primary text-xs mt-1 hover:underline font-semibold">Add one in Calendar →</button>
                 </div>
               ) : (
                 <AnimatePresence mode="popLayout">
-                  {displayedEvents.map((evt) => (
+                  {mineEvents.map((evt) => (
                     <motion.div
                       key={evt.id}
                       initial={{ opacity: 0, y: 5 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, scale: 0.95 }}
-                      className="flex items-center justify-between p-3 bg-card border border-border/40 rounded-xl hover:border-primary/30 transition-all cursor-pointer"
+                      className="flex items-center justify-between p-3.5 bg-background border border-border/50 rounded-xl hover:border-primary/40 transition-all cursor-pointer"
                       onClick={() => navigate("/calendar")}
                     >
                       <div>
-                        <p className="text-sm font-semibold">{evt.title}</p>
+                        <p className="text-sm font-bold">{evt.title}</p>
                         <div className="flex items-center gap-2 mt-1">
-                          <p className="text-[10px] text-muted-foreground">
+                          <p className="text-[11px] text-muted-foreground font-medium flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
                             {format(new Date(evt.start_time), "MMM d, h:mm a")}
                           </p>
-                          {deadlineTab === "all" && evt.profiles?.display_name && (
-                            <span className="text-[10px] text-muted-foreground bg-muted/40 px-1.5 rounded-sm">
-                              by {getFirstName(evt.profiles?.display_name)}
-                            </span>
-                          )}
                         </div>
                       </div>
                       <div className="text-right">
-                        <span className="text-xs font-medium bg-primary/10 text-primary px-2 py-1 rounded-md">
+                        <span className="text-[11px] font-bold tracking-wide uppercase bg-primary/10 text-primary px-2 py-1 rounded-md">
                           {differenceInCalendarDays(new Date(evt.start_time), new Date()) === 0 
                             ? "Today" 
                             : `in ${differenceInCalendarDays(new Date(evt.start_time), new Date())}d`}
@@ -258,38 +234,46 @@ export default function Dashboard() {
                 </AnimatePresence>
               )}
             </div>
-          </GlassCard>
+          </div>
 
-          {/* Recent Activity */}
-          <GlassCard className="p-5">
-            <h2 className="text-sm font-semibold text-muted-foreground mb-4 uppercase tracking-wider">Recent Activity</h2>
-            {activityLoading ? (
-              <div className="space-y-3">
-                {[...Array(4)].map((_, i) => (
-                  <div key={i} className="flex items-center gap-3">
-                    <Skeleton className="h-8 w-8 rounded-lg" />
-                    <Skeleton className="h-4 w-48" />
+          {/* Recent Files */}
+          <div className="bg-card border border-border/40 rounded-2xl p-5 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold tracking-tight flex items-center gap-2">
+                <FileText className="h-5 w-5 text-blue-500" />
+                Recently Added to Vault
+              </h2>
+              <button onClick={() => navigate("/vault")} className="text-xs font-semibold text-primary hover:underline">
+                View all →
+              </button>
+            </div>
+            <div className="space-y-3">
+              {filesLoading ? (
+                [1, 2, 3].map(i => <Skeleton key={i} className="h-14 w-full rounded-xl" />)
+              ) : recentFiles.length === 0 ? (
+                <div className="py-6 text-center text-muted-foreground bg-muted/20 rounded-xl border border-border/40 border-dashed">
+                  <p className="text-sm">No files in the vault yet.</p>
+                </div>
+              ) : (
+                recentFiles.map(file => (
+                  <div key={file.id} onClick={() => navigate("/vault")} className="flex items-center justify-between p-3.5 bg-background border border-border/50 rounded-xl hover:border-blue-500/30 transition-all cursor-pointer">
+                     <div className="flex items-center gap-3 overflow-hidden">
+                       <div className="h-10 w-10 shrink-0 bg-blue-500/10 rounded-lg flex items-center justify-center text-blue-500">
+                         {file.file_type === "Lectures" ? "📖" : file.file_type === "Practices" ? "💡" : file.file_type === "Homeworks" ? "📋" : file.file_type === "Exams" ? "📝" : "📄"}
+                       </div>
+                       <div className="min-w-0">
+                         <p className="text-sm font-bold truncate">{file.name}</p>
+                         <p className="text-[11px] text-muted-foreground font-medium truncate">{file.subject}</p>
+                       </div>
+                     </div>
+                     <p className="text-[10px] text-muted-foreground shrink-0 pl-2">
+                        {formatDistanceToNow(new Date(file.created_at))} ago
+                     </p>
                   </div>
-                ))}
-              </div>
-            ) : recentActivity.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-4 text-center">No activity yet.</p>
-            ) : (
-              <div className="space-y-2">
-                {recentActivity.map(item => (
-                  <div key={item.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/10 transition-colors">
-                    <div className="h-8 w-8 rounded-lg bg-muted/30 flex items-center justify-center shrink-0">
-                      <span className="text-base">{ACTION_ICONS[item.action] || "📌"}</span>
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate">{ACTION_LABELS[item.action] || item.action}</p>
-                      <p className="text-[10px] text-muted-foreground">{formatDistanceToNow(new Date(item.created_at))} ago</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </GlassCard>
+                ))
+              )}
+            </div>
+          </div>
 
         </div>
 
@@ -305,9 +289,8 @@ export default function Dashboard() {
               {streak > 0 ? "🔥" : "💤"}
             </div>
             <div>
-              <p className="text-sm text-muted-foreground mb-0.5">Current Streak</p>
-              <p className="text-xl font-black leading-none">{streak > 0 ? `${streak} Days` : "0 Days"}</p>
-              <p className="text-[10px] text-primary mt-1">{streak > 0 ? "You're on fire!" : "Start today!"}</p>
+              <p className="text-sm font-semibold text-muted-foreground mb-0.5">Current Streak</p>
+              <p className="text-2xl font-black leading-none">{streak > 0 ? `${streak} Days` : "0 Days"}</p>
             </div>
           </div>
 
@@ -316,23 +299,62 @@ export default function Dashboard() {
             <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none group-hover:scale-110 transition-transform">
               <Sparkles className="h-16 w-16" />
             </div>
-            <div className="flex items-center gap-2 mb-3 relative z-10">
-              <div className="h-6 w-6 rounded-md bg-indigo-500/10 flex items-center justify-center">
-                <Sparkles className="h-3.5 w-3.5 text-indigo-500" />
+            <div className="flex items-center gap-2 mb-4 relative z-10">
+              <div className="h-7 w-7 rounded-lg bg-indigo-500/10 flex items-center justify-center">
+                <Sparkles className="h-4 w-4 text-indigo-500" />
               </div>
-              <span className="font-semibold text-sm">Quick Ask</span>
+              <span className="font-bold">Ask Oracle</span>
             </div>
             <div className="flex gap-2 relative z-10">
               <Input
-                placeholder="Ask Oracle anything..."
+                placeholder="Ask anything..."
                 value={quickAsk}
                 onChange={e => setQuickAsk(e.target.value)}
                 onKeyDown={e => e.key === "Enter" && navigate("/ai-oracle", { state: { prefillMessage: quickAsk } })}
-                className="h-9 text-sm bg-background/50 border-border/50 focus-visible:ring-indigo-500/30"
+                className="h-10 text-sm bg-background/50 border-border/50 focus-visible:ring-indigo-500/30"
               />
-              <Button size="sm" className="h-9 px-3 bg-indigo-500 hover:bg-indigo-600 text-white" onClick={() => navigate("/ai-oracle", { state: { prefillMessage: quickAsk } })}>
+              <Button className="h-10 px-3 bg-indigo-500 hover:bg-indigo-600 text-white shadow-sm" onClick={() => navigate("/ai-oracle", { state: { prefillMessage: quickAsk } })}>
                 <ArrowRight className="h-4 w-4" />
               </Button>
+            </div>
+          </div>
+
+          {/* Community Pulse */}
+          <div className="bg-card border border-border/40 rounded-2xl p-5 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-base font-bold tracking-tight flex items-center gap-2">
+                <Globe className="h-4 w-4 text-primary" />
+                Community
+              </h2>
+              <button onClick={() => navigate("/community")} className="text-xs font-semibold text-primary hover:underline">
+                View →
+              </button>
+            </div>
+            <div className="space-y-3 relative before:absolute before:inset-0 before:ml-[15px] before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:w-0.5 before:bg-gradient-to-b before:from-border before:via-border/50 before:to-transparent">
+              {pulseLoading ? (
+                [1, 2, 3].map(i => <div key={i} className="flex gap-3 relative z-10"><Skeleton className="h-8 w-8 rounded-full shrink-0"/><Skeleton className="h-10 w-full rounded-md"/></div>)
+              ) : communityPulse.length === 0 ? (
+                <div className="text-sm text-center py-4 text-muted-foreground relative z-10">Quiet today...</div>
+              ) : (
+                communityPulse.map(item => {
+                  const dName = item.profiles?.display_name || "Someone";
+                  return (
+                    <div key={item.id} className="flex items-start gap-3 relative z-10">
+                      <div className="h-8 w-8 shrink-0 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-xs font-bold text-primary">
+                        {getInitials(dName)}
+                      </div>
+                      <div className="flex-1 min-w-0 bg-background border border-border/50 rounded-xl p-2.5">
+                        <p className="text-xs leading-snug">
+                          <span className="font-bold">{dName}</span>
+                          <span className="text-muted-foreground"> {item.action_type === 'file_uploaded' ? "uploaded" : item.action_type === 'note_saved' ? "published" : "shared"} </span>
+                          <span className="font-medium text-foreground">{item.entity_title}</span>
+                        </p>
+                        <p className="text-[9px] text-muted-foreground mt-1 font-medium">{formatDistanceToNow(new Date(item.created_at))} ago</p>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
           </div>
 

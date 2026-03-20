@@ -260,7 +260,8 @@ export default function Vault() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">📚 The Vault</h1>
-          <p className="text-muted-foreground mt-1 text-sm">ELTE CS BSc · Browse, preview & share academic resources</p>
+          <p className="text-muted-foreground mt-1 text-sm hidden md:block">Upload and browse lecture files, past papers, and notes shared by students.</p>
+          <p className="text-muted-foreground mt-1 text-sm md:hidden">ELTE CS BSc · Browse & share resources</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" className="gap-2" onClick={() => setNoteOpen(true)}>

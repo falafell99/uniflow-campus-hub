@@ -1,46 +1,30 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { NavLink } from "@/components/NavLink";
-import { ChevronDown } from "lucide-react";
+import { NavLink as RouterNavLink } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { useApp } from "@/contexts/AppContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { 
+  LayoutDashboard, Sparkles, BookOpen, NotebookPen, 
+  CheckSquare, Layers, CalendarDays, FileCode2,
+  Timer, Calculator, TrendingUp, Globe, Users, 
+  MessageSquare, ChevronRight 
+} from "lucide-react";
 
-type NavItem = { title: string; url: string; emoji: string; tourId?: string };
+type NavItemConfig = { 
+  title: string; 
+  url: string; 
+  icon: React.ReactNode; 
+  tourId?: string;
+  badge?: number;
+};
 
-const categories: { label: string; items: NavItem[] }[] = [
-  {
-    label: "MAIN",
-    items: [
-      { title: "Dashboard", url: "/", emoji: "🏠", tourId: "dashboard" },
-      { title: "Progress", url: "/progress", emoji: "📈" },
-      { title: "Messages", url: "/messages", emoji: "💌" },
-      { title: "Teams Hub", url: "/teams", emoji: "👥" },
-      { title: "GPA Calculator", url: "/gpa", emoji: "🎓" },
-    ],
-  },
-  {
-    label: "STUDY",
-    items: [
-      { title: "Workspace", url: "/knowledge-graph", emoji: "📋" },
-      { title: "Notes", url: "/notes", emoji: "📝" },
-      { title: "Tasks", url: "/tasks", emoji: "📋" },
-      { title: "AI Oracle", url: "/ai-oracle", emoji: "🤖", tourId: "ai-oracle" },
-      { title: "The Vault", url: "/vault", emoji: "📚", tourId: "vault" },
-      { title: "Professor Ratings", url: "/professors", emoji: "⭐" },
-      { title: "Flashcards", url: "/flashcards", emoji: "🗂️" },
-      { title: "Pomodoro", url: "/pomodoro", emoji: "⏱️" },
-      { title: "Campus Calendar", url: "/calendar", emoji: "📅" },
-    ],
-  },
-  {
-    label: "CAMPUS",
-    items: [
-      { title: "Community Hub", url: "/community", emoji: "🌐", tourId: "community" },
-    ],
-  },
-];
+const NAV_ITEMS_WITH_SUBTITLES: Record<string, string> = {
+  "/ai-oracle": "Ask anything",
+  "/vault": "Files & lectures",
+  "/community": "Connect & discuss",
+  "/tasks": "Your to-dos",
+};
 
 function getInitials(name: string) {
   return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
@@ -51,14 +35,13 @@ export function CategorySidebar() {
   const navigate = useNavigate();
   const { voiceRoom, activeCommunity } = useApp();
   const { user } = useAuth();
-  const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({
-    MAIN: true, STUDY: true, CAMPUS: true,
-  });
+  
+  const [toolsExpanded, setToolsExpanded] = useState(false);
+  
   const [profileName, setProfileName] = useState("");
   const [profileStatus, setProfileStatus] = useState("🟢 Online");
   const [unreadMsgs, setUnreadMsgs] = useState(0);
 
-  // Load real name + status from profiles table
   useEffect(() => {
     if (!user) return;
     const fallbackName = user.user_metadata?.display_name || user.email?.split("@")[0] || "Student";
@@ -87,8 +70,6 @@ export function CategorySidebar() {
 
     fetchUnreadCount();
 
-    // Realtime subscription for global unread badge
-    // We refetch the count on any change because Supabase doesn't send payload.old values by default
     const channel = supabase
       .channel("global-unread")
       .on("postgres_changes", { event: "*", schema: "public", table: "direct_messages", filter: `receiver_id=eq.${user.id}` }, () => {
@@ -103,88 +84,124 @@ export function CategorySidebar() {
   const isOnline = !voiceRoom && (profileStatus.includes("Online") || profileStatus.includes("Studying"));
   const dotColor = voiceRoom ? "bg-primary" : isOnline ? "bg-success" : profileStatus.includes("Focusing") ? "bg-destructive" : "bg-warning";
 
+  const studyItems: NavItemConfig[] = [
+    { title: "Dashboard", url: "/", icon: <LayoutDashboard className="h-4 w-4" />, tourId: "dashboard" },
+    { title: "AI Oracle", url: "/ai-oracle", icon: <Sparkles className="h-4 w-4" />, tourId: "ai-oracle" },
+    { title: "The Vault", url: "/vault", icon: <BookOpen className="h-4 w-4" />, tourId: "vault" },
+    { title: "Notes", url: "/notes", icon: <NotebookPen className="h-4 w-4" /> },
+    { title: "Tasks", url: "/tasks", icon: <CheckSquare className="h-4 w-4" /> },
+    { title: "Flashcards", url: "/flashcards", icon: <Layers className="h-4 w-4" /> },
+    { title: "Calendar", url: "/calendar", icon: <CalendarDays className="h-4 w-4" /> },
+  ];
+
+  const toolsItems: NavItemConfig[] = [
+    { title: "Workspace", url: "/workspace", icon: <FileCode2 className="h-4 w-4" /> },
+    { title: "Pomodoro", url: "/pomodoro", icon: <Timer className="h-4 w-4" /> },
+    { title: "GPA Calculator", url: "/gpa", icon: <Calculator className="h-4 w-4" /> },
+    { title: "Progress", url: "/progress", icon: <TrendingUp className="h-4 w-4" /> },
+  ];
+
+  const campusItems: NavItemConfig[] = [
+    { title: "Community", url: "/community", icon: <Globe className="h-4 w-4" />, tourId: "community" },
+    { title: "Teams", url: "/teams", icon: <Users className="h-4 w-4" /> },
+    { title: "Messages", url: "/messages", icon: <MessageSquare className="h-4 w-4" />, badge: unreadMsgs },
+  ];
+
+  const renderNavItem = (item: NavItemConfig) => {
+    const isActive = location.pathname === item.url || (item.url !== "/" && location.pathname.startsWith(item.url));
+    const subtitle = NAV_ITEMS_WITH_SUBTITLES[item.url];
+
+    return (
+      <RouterNavLink 
+        key={item.url} 
+        to={item.url}
+        end={item.url === "/"}
+        className={`flex items-center justify-between px-3 py-2 rounded-xl transition-all duration-200 ${
+          isActive 
+            ? "bg-primary/10 text-primary font-medium shadow-sm shadow-primary/10" 
+            : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+        }`}
+        {...(item.tourId ? { "data-tour": item.tourId } : {})}
+      >
+        <div className="flex items-center gap-3 overflow-hidden">
+          <div className="shrink-0">{item.icon}</div>
+          <div className="flex flex-col">
+            <p className="text-sm font-medium leading-none">{item.title}</p>
+            {subtitle && (
+              <p className="text-[10px] text-muted-foreground mt-1 leading-none">
+                {subtitle}
+              </p>
+            )}
+          </div>
+        </div>
+        {item.badge && item.badge > 0 && (
+          <span className="shrink-0 h-4 min-w-4 px-1 rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground flex items-center justify-center">
+            {item.badge}
+          </span>
+        )}
+      </RouterNavLink>
+    );
+  };
+
   return (
-    <div className="w-[220px] shrink-0 flex flex-col bg-card/80 backdrop-blur-xl border-r border-border/40 overflow-hidden" data-tour="sidebar">
+    <div className="w-[240px] shrink-0 flex flex-col bg-card/80 backdrop-blur-xl border-r border-border/40 overflow-hidden" data-tour="sidebar">
       {/* Server name */}
-      <div className="h-12 flex items-center px-4 border-b border-border/40 shrink-0">
-        <h2 className="font-bold text-sm tracking-tight truncate">
+      <div className="h-16 flex items-center px-4 border-b border-border/40 shrink-0">
+        <h2 className="font-bold text-base tracking-tight truncate">
           {activeCommunity === "informatics" && "The Hub · Core"}
           {activeCommunity === "mathematics" && "Science · Math"}
           {activeCommunity === "personal" && "My Workspace"}
         </h2>
       </div>
 
-      {/* Status */}
-      <div className="px-3 py-2 border-b border-border/30 shrink-0">
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <span className={`h-2 w-2 rounded-full shrink-0 animate-pulse ${voiceRoom ? "bg-primary" : "bg-success"}`} />
-          <span className="truncate">{displayStatus}</span>
+      <nav className="flex-1 px-3 py-4 space-y-6 overflow-y-auto custom-scroll">
+        
+        {/* STUDY SECTION */}
+        <div className="space-y-1">
+          <p className="px-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50 mb-2">Study</p>
+          {studyItems.map(renderNavItem)}
         </div>
-      </div>
 
-      {/* Categories */}
-      <nav className="flex-1 px-2 py-2 space-y-1 overflow-y-auto custom-scroll">
-        {categories.map((cat) => (
-          <Collapsible
-            key={cat.label}
-            open={openCategories[cat.label]}
-            onOpenChange={(open) => setOpenCategories((p) => ({ ...p, [cat.label]: open }))}
+        {/* TOOLS SECTION (Collapsible) */}
+        <div>
+          <button
+            onClick={() => setToolsExpanded(prev => !prev)}
+            className="w-full flex items-center justify-between px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50 hover:text-muted-foreground transition-colors"
           >
-            <CollapsibleTrigger className="flex items-center gap-1 w-full px-1 py-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors">
-              <ChevronDown className={`h-3 w-3 transition-transform ${openCategories[cat.label] ? "" : "-rotate-90"}`} />
-              <span>{cat.label}</span>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <div className="space-y-0.5 mt-0.5">
-                {cat.items.map((item) => {
-                  const isActive = location.pathname === item.url;
-                  return (
-                    <NavLink
-                      key={item.url}
-                      to={item.url}
-                      end={item.url === "/"}
-                      className={`flex items-center justify-between gap-2.5 px-2 py-1.5 rounded-md text-sm transition-all duration-200 ${
-                        isActive
-                          ? "bg-primary/10 text-primary font-medium shadow-sm shadow-primary/10"
-                          : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
-                      }`}
-                      activeClassName=""
-                      {...(item.tourId ? { "data-tour": item.tourId } : {})}
-                    >
-                      <div className="flex items-center gap-2.5 overflow-hidden">
-                        <span className="text-sm leading-none shrink-0">{item.emoji}</span>
-                        <span className="truncate">{item.title}</span>
-                      </div>
-                      {item.title === "Messages" && unreadMsgs > 0 && (
-                        <span className="shrink-0 h-4 min-w-4 px-1 rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground flex items-center justify-center">
-                          {unreadMsgs}
-                        </span>
-                      )}
-                    </NavLink>
-                  );
-                })}
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
-        ))}
+            Tools
+            <ChevronRight className={`h-3 w-3 transition-transform ${toolsExpanded ? "rotate-90" : ""}`} />
+          </button>
+          {toolsExpanded && (
+            <div className="space-y-1 mt-1">
+              {toolsItems.map(renderNavItem)}
+            </div>
+          )}
+        </div>
+
+        {/* CAMPUS SECTION */}
+        <div className="space-y-1">
+          <p className="px-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50 mb-2">Campus</p>
+          {campusItems.map(renderNavItem)}
+        </div>
+
       </nav>
 
       {/* User bar */}
       <button
         onClick={() => navigate("/profile")}
-        className="h-14 flex items-center gap-2.5 px-3 border-t border-border/40 bg-muted/30 shrink-0 hover:bg-muted/50 transition-colors w-full text-left"
+        className="h-16 flex items-center gap-3 px-4 border-t border-border/40 bg-muted/30 shrink-0 hover:bg-muted/50 transition-colors w-full text-left"
       >
         <div className="relative shrink-0">
-          <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-            <span className="text-xs font-semibold text-primary">
+          <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center">
+            <span className="text-xs font-bold text-primary">
               {profileName ? getInitials(profileName) : "…"}
             </span>
           </div>
-          <span className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full ${dotColor} border-2 border-background`} />
+          <span className={`absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full ${dotColor} border-[2.5px] border-background`} />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-xs font-semibold truncate">{profileName || "Loading…"}</p>
-          <p className="text-[10px] text-muted-foreground truncate">{displayStatus}</p>
+          <p className="text-sm font-bold truncate">{profileName || "Loading…"}</p>
+          <p className="text-[11px] text-muted-foreground truncate font-medium">{displayStatus}</p>
         </div>
       </button>
     </div>

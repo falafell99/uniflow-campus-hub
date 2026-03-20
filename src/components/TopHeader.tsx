@@ -1,4 +1,4 @@
-import { Search, Bell, X, Tag, GraduationCap, Sun, Moon, Menu } from "lucide-react";
+import { Search, Bell, X, GraduationCap, Sun, Moon, Menu } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -150,11 +150,7 @@ export function TopHeader() {
         </Badge>
       )}
 
-      {/* Credits */}
-      <div className="hidden sm:flex items-center gap-1.5 glass-subtle px-2.5 py-1 rounded-full shrink-0">
-        <Tag className="h-3.5 w-3.5 text-primary" />
-        <span className="text-xs font-semibold">{credits.toLocaleString()} Credits</span>
-      </div>
+
 
       {/* Theme Toggle & Split Screen */}
       <SplitScreen />

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Rss, MessageSquare, UserSearch, CalendarDays, Mic } from "lucide-react";
+import { Rss, MessageSquare, UserSearch, CalendarDays, Mic, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 // ─── Tab Types ────────────────────────────────────────────────────────────────
@@ -54,6 +54,8 @@ function PeopleTab() {
 }
 
 export default function Community() {
+  const [showWelcome, setShowWelcome] = useState(() => localStorage.getItem("community-visited") !== "true");
+
   const [activeTab, setActiveTab] = useState<TabId>(() => {
     const saved = localStorage.getItem("community-tab") as string;
     // Map old tab IDs to new ones
@@ -85,6 +87,27 @@ export default function Community() {
 
   return (
     <div className="flex flex-col h-[calc(100dvh-10rem)] md:h-[calc(100vh-6rem)] w-[calc(100%+2rem)] md:w-full max-w-[1400px] -mx-4 md:mx-auto md:rounded-xl border-y md:border border-border/40 overflow-hidden bg-background">
+      
+      {showWelcome && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-primary/5 border-b border-primary/20 p-4 md:p-6 flex items-start gap-4 shrink-0"
+        >
+          <div className="text-3xl">👋</div>
+          <div className="flex-1">
+            <p className="font-bold text-sm">Welcome to the Community!</p>
+            <p className="text-xs text-muted-foreground mt-1 leading-relaxed max-w-2xl">
+              This is where students connect. Ask questions in Q&A, join study groups, find a study partner, or just browse the feed to see what's happening.
+            </p>
+          </div>
+          <button onClick={() => { localStorage.setItem("community-visited", "true"); setShowWelcome(false); }}
+            className="text-muted-foreground hover:text-foreground transition-colors shrink-0 p-1 rounded-md hover:bg-muted">
+            <X className="h-4 w-4" />
+          </button>
+        </motion.div>
+      )}
+
       {/* Tab Bar */}
       <div className="border-b border-border/20 bg-background/50 backdrop-blur-sm shrink-0">
         <div className="flex items-center px-2 md:px-6 gap-1 md:gap-2 overflow-x-auto hide-scrollbar scroll-smooth shrink-0">

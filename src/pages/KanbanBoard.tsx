@@ -417,7 +417,10 @@ export default function KanbanBoard() {
       {/* Header */}
       <div className="p-4 border-b border-border/40 space-y-3">
         <div className="flex items-center justify-between flex-wrap gap-2">
-          <h1 className="text-2xl font-bold tracking-tight">📋 Tasks</h1>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">📋 Tasks</h1>
+            <p className="text-muted-foreground mt-1 text-sm hidden md:block">Manage your assignments and projects. Drag cards to update status.</p>
+          </div>
           <div className="flex items-center gap-2">
             {/* Mode toggle */}
             <div className="flex border border-border/40 rounded-lg overflow-hidden">

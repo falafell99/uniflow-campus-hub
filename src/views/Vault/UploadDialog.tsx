@@ -1,11 +1,12 @@
 import { useState, useRef, DragEvent } from "react";
-import { Upload, Loader2, File, X, ChevronRight } from "lucide-react";
+import { Upload, Loader2, File as FileIcon, X, ChevronRight, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { logActivity } from "@/lib/activity";
+import { motion } from "framer-motion";
 
 // ─── ELTE Computer Science BSc Curriculum ─────────────────────────────────────
 export const SEMESTER_COURSES: Record<number, string[]> = {
@@ -99,8 +100,12 @@ export function UploadDialog({ open, onClose, onUploaded }: UploadDialogProps) {
   const [semester, setSemester] = useState<number | "elective">(1);
   const [subject, setSubject] = useState("");
   const [section, setSection] = useState("Lectures");
-  const [file, setFile] = useState<File | null>(null);
-  const [uploading, setUploading] = useState(false);
+  
+  const [files, setFiles] = useState<File[]>([]);
+  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
+  const [uploadStatus, setUploadStatus] = useState<Record<string, "pending" | "uploading" | "done" | "error">>({});
+  
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [dragging, setDragging] = useState(false);
 
   const semesterNum = semester === "elective" ? 0 : semester;
@@ -111,67 +116,132 @@ export function UploadDialog({ open, onClose, onUploaded }: UploadDialogProps) {
     setSemester(1);
     setSubject("");
     setSection("Lectures");
-    setFile(null);
+    setFiles([]);
+    setUploadProgress({});
+    setUploadStatus({});
+    setIsSubmitting(false);
     if (inputRef.current) inputRef.current.value = "";
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selected = Array.from(e.target.files || []);
+    if (files.length + selected.length > 10) {
+      toast.error("Maximum 10 files allowed at once.");
+      return;
+    }
+    const newFiles = [...files, ...selected].slice(0, 10);
+    setFiles(newFiles);
+    
+    const progress: Record<string, number> = { ...uploadProgress };
+    const status: Record<string, "pending" | "uploading" | "done" | "error"> = { ...uploadStatus };
+    newFiles.forEach(f => {
+      if (!status[f.name]) {
+        progress[f.name] = 0;
+        status[f.name] = "pending";
+      }
+    });
+    setUploadProgress(progress);
+    setUploadStatus(status);
   };
 
   const handleDrop = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setDragging(false);
-    const f = e.dataTransfer.files[0];
-    if (f) setFile(f);
+    if (isSubmitting) return;
+    
+    const dropped = Array.from(e.dataTransfer.files);
+    if (files.length + dropped.length > 10) {
+      toast.error("Maximum 10 files allowed at once.");
+      return;
+    }
+    const newFiles = [...files, ...dropped].slice(0, 10);
+    setFiles(newFiles);
+    
+    const progress: Record<string, number> = { ...uploadProgress };
+    const status: Record<string, "pending" | "uploading" | "done" | "error"> = { ...uploadStatus };
+    newFiles.forEach(f => {
+      if (!status[f.name]) {
+        progress[f.name] = 0;
+        status[f.name] = "pending";
+      }
+    });
+    setUploadProgress(progress);
+    setUploadStatus(status);
   };
 
   const handleUpload = async () => {
-    if (!file || !user) return;
-    setUploading(true);
-
+    if (!files.length || !user) return;
+    setIsSubmitting(true);
     const displayName = user.user_metadata?.display_name || user.email?.split("@")[0] || "Anonymous";
-    
-    // Sanitize filename to avoid "Invalid key" errors from Supabase Storage
-    // Remove non-ASCII characters and special symbols, replace spaces with underscores
-    const cleanFileName = file.name
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "") // remove accents
-      .replace(/[^a-zA-Z0-9.-]/g, "_") // replace non-alphanumeric with _
-      .replace(/_{2,}/g, "_"); // collapse multiple underscores
-    
-    const path = `${user.id}/${Date.now()}_${cleanFileName}`;
 
-    const { error: storageErr } = await supabase.storage.from("vault").upload(path, file);
-    if (storageErr) {
-      console.error("Storage upload failed:", storageErr.message);
-      toast.error("Upload to storage failed: " + storageErr.message);
-      setUploading(false);
-      return;
-    }
+    let errors = 0;
 
-    const { error: dbErr } = await supabase.from("vault_files").insert({
-      name: file.name,
-      subject,
-      section,
-      semester: semesterNum,
-      file_type: section, // keep legacy compat
-      storage_path: path,
-      uploader: displayName,
-      uploader_id: user.id,
-      downloads: 0,
-      stars: 0,
-    });
+    const uploadFile = async (file: File) => {
+      try {
+        setUploadStatus(prev => ({ ...prev, [file.name]: "uploading" }));
+        
+        const cleanFileName = file.name
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/[^a-zA-Z0-9.-]/g, "_")
+          .replace(/_{2,}/g, "_");
+          
+        const path = `${user.id}/${Date.now()}_${cleanFileName}`;
+        
+        const progressInterval = setInterval(() => {
+          setUploadProgress(prev => ({
+            ...prev,
+            [file.name]: Math.min((prev[file.name] || 0) + 15, 90)
+          }));
+        }, 200);
 
-    setUploading(false);
-    if (dbErr) {
-      toast.error("Database record failed: " + dbErr.message);
+        const { error: storageError } = await supabase.storage.from("vault").upload(path, file);
+        clearInterval(progressInterval);
+        
+        if (storageError) throw storageError;
+
+        setUploadProgress(prev => ({ ...prev, [file.name]: 100 }));
+
+        const { error: dbErr } = await supabase.from("vault_files").insert({
+          name: file.name,
+          subject,
+          section,
+          semester: semesterNum,
+          file_type: section, // keeping legacy compat
+          storage_path: path,
+          uploader: displayName,
+          uploader_id: user.id,
+          file_size: file.size,
+          downloads: 0,
+          stars: 0,
+        });
+
+        if (dbErr) throw dbErr;
+
+        setUploadStatus(prev => ({ ...prev, [file.name]: "done" }));
+        logActivity("file_uploaded", subject);
+
+      } catch (e: any) {
+        setUploadStatus(prev => ({ ...prev, [file.name]: "error" }));
+        console.error(`Failed to upload ${file.name}:`, e.message);
+        errors++;
+      }
+    };
+
+    await Promise.all(files.map(uploadFile));
+
+    if (errors === 0) {
+      toast.success(`${files.length} file${files.length > 1 ? "s" : ""} uploaded successfully!`);
+      setTimeout(() => {
+        onClose();
+        reset();
+        onUploaded();
+      }, 800);
     } else {
-      const where = semester === "elective" ? `Electives / ${subject}` : `Semester ${semester} / ${subject}`;
-      toast.success(`Uploaded! 📁 ${file.name} → ${where} / ${section}`);
-      
-      logActivity("file_uploaded", subject);
-      
-      reset();
-      onUploaded();
-      onClose();
+      toast.error(`${errors} file(s) failed to upload`);
     }
+    
+    setIsSubmitting(false);
   };
 
   const breadcrumb = [
@@ -180,12 +250,17 @@ export function UploadDialog({ open, onClose, onUploaded }: UploadDialogProps) {
     section !== "Lectures" || step === "section" ? section : null,
   ].filter(Boolean);
 
+  const overallProgress = files.length > 0
+    ? Math.round(Object.values(uploadProgress).reduce((sum, p) => sum + p, 0) / files.length)
+    : 0;
+
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v) { reset(); onClose(); } }}>
+    <Dialog open={open} onOpenChange={(v) => { if (!v && !isSubmitting) { reset(); onClose(); } }}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Upload className="h-5 w-5 text-primary" /> Upload to The Vault
+            <Upload className="h-5 w-5 text-primary" /> 
+            {files.length > 0 ? `Upload Files (${files.length} selected)` : "Upload to The Vault"}
           </DialogTitle>
         </DialogHeader>
 
@@ -282,10 +357,10 @@ export function UploadDialog({ open, onClose, onUploaded }: UploadDialogProps) {
 
           {/* Step 4: File */}
           {step === "file" && (
-            <div className="space-y-3">
+            <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold text-muted-foreground">4. Upload File</p>
-                <button onClick={() => setStep("section")} className="text-xs text-primary hover:underline">← Back</button>
+                <p className="text-xs font-semibold text-muted-foreground">4. Upload Files (Max 10)</p>
+                <button onClick={() => !isSubmitting && setStep("section")} className="text-xs text-primary hover:underline" disabled={isSubmitting}>← Back</button>
               </div>
 
               {/* Drop zone */}
@@ -293,41 +368,82 @@ export function UploadDialog({ open, onClose, onUploaded }: UploadDialogProps) {
                 onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
                 onDragLeave={() => setDragging(false)}
                 onDrop={handleDrop}
-                onClick={() => inputRef.current?.click()}
-                className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all ${
+                onClick={() => !isSubmitting && inputRef.current?.click()}
+                className={`border-2 border-dashed rounded-xl p-6 text-center transition-all ${
+                  isSubmitting ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
+                } ${
                   dragging ? "border-primary bg-primary/5" : "border-border/50 hover:border-primary/50 hover:bg-muted/30"
                 }`}
               >
                 <input
                   ref={inputRef}
                   type="file"
+                  multiple
                   className="hidden"
-                  accept=".pdf,.docx,.pptx,.xlsx,.txt,.md,.jpg,.jpeg,.png,.py,.js,.ts,.csv,.zip"
-                  onChange={(e) => { const f = e.target.files?.[0]; if (f) setFile(f); }}
+                  accept=".pdf,.doc,.docx,.ppt,.pptx,.txt,.png,.jpg,.jpeg,.md,.py,.js,.ts,.zip,.csv"
+                  onChange={handleFileSelect}
+                  disabled={isSubmitting}
                 />
-                {file ? (
-                  <div className="flex items-center gap-3 justify-center">
-                    <File className="h-8 w-8 text-primary shrink-0" />
-                    <div className="text-left min-w-0">
-                      <p className="text-sm font-medium truncate">{file.name}</p>
-                      <p className="text-xs text-muted-foreground">{(file.size / 1024).toFixed(0)} KB</p>
-                    </div>
-                    <button onClick={(e) => { e.stopPropagation(); setFile(null); }} className="text-muted-foreground hover:text-destructive ml-auto shrink-0">
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                ) : (
-                  <>
-                    <Upload className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                    <p className="text-sm font-medium">Drop file here or click to browse</p>
-                    <p className="text-xs text-muted-foreground mt-1">PDF, DOCX, PPTX, TXT, images, .py, .zip…</p>
-                  </>
-                )}
+                <Upload className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                <p className="text-sm font-medium">Drop files here or click to browse</p>
+                <p className="text-xs text-muted-foreground mt-1">PDF, DOCX, PPTX, TXT, images, code...</p>
               </div>
 
-              <Button className="w-full gap-2" onClick={handleUpload} disabled={!file || uploading}>
-                {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                {uploading ? "Uploading…" : `Upload to ${section}`}
+              {/* File list preview */}
+              {files.length > 0 && (
+                <div className="space-y-2 max-h-48 overflow-y-auto custom-scroll pr-1">
+                  {files.map(f => (
+                    <div key={f.name} className="flex items-center gap-3 p-2.5 bg-muted/20 border border-border/30 rounded-xl">
+                      <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary text-sm shrink-0">
+                        📄
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{f.name}</p>
+                        <p className="text-[11px] text-muted-foreground">{(f.size / 1024 / 1024).toFixed(2)} MB</p>
+                      </div>
+                      {uploadStatus[f.name] === "done" && <Check className="h-4 w-4 text-green-400 shrink-0" />}
+                      {uploadStatus[f.name] === "error" && <X className="h-4 w-4 text-red-500 shrink-0" />}
+                      {uploadStatus[f.name] === "uploading" && (
+                        <div className="w-16">
+                          <div className="h-1.5 bg-muted/30 rounded-full overflow-hidden">
+                            <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${uploadProgress[f.name]}%` }} />
+                          </div>
+                        </div>
+                      )}
+                      {uploadStatus[f.name] === "pending" && !isSubmitting && (
+                        <button onClick={(e) => {
+                            e.stopPropagation();
+                            setFiles(prev => prev.filter(file => file.name !== f.name));
+                          }}
+                          className="text-muted-foreground hover:text-destructive transition-colors shrink-0">
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Overall Progress */}
+              {isSubmitting && (
+                <div className="space-y-1.5">
+                  <div className="flex justify-between text-xs text-muted-foreground font-medium">
+                    <span>Uploading {files.length} files...</span>
+                    <span>{overallProgress}%</span>
+                  </div>
+                  <div className="h-2 bg-muted/30 rounded-full overflow-hidden">
+                    <motion.div
+                      className="h-full bg-primary rounded-full"
+                      animate={{ width: `${overallProgress}%` }}
+                      transition={{ duration: 0.3 }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              <Button className="w-full gap-2 font-bold" onClick={handleUpload} disabled={!files.length || isSubmitting}>
+                {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                {isSubmitting ? `Uploading ${files.length} files...` : `Upload ${files.length} file${files.length !== 1 ? "s" : ""}`}
               </Button>
             </div>
           )}
