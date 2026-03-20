@@ -38,14 +38,18 @@ export default function Onboarding() {
     if (!user) return;
     await supabase.from("profiles").update({ onboarding_completed: true }).eq("id", user.id);
     await refreshProfile();
-    navigate(firstAction === "vault" ? "/vault" : firstAction === "calendar" ? "/calendar" : firstAction === "notes" ? "/notes" : "/");
+    // Wait a tick for React state to reconcile before navigating
+    await new Promise(r => setTimeout(r, 100));
+    const dest = firstAction === "vault" ? "/vault" : firstAction === "calendar" ? "/calendar" : firstAction === "notes" ? "/notes" : "/";
+    navigate(dest, { replace: true });
   };
 
   const skip = async () => {
     if (!user) return;
     await supabase.from("profiles").update({ onboarding_completed: true }).eq("id", user.id);
     await refreshProfile();
-    navigate("/");
+    await new Promise(r => setTimeout(r, 100));
+    navigate("/", { replace: true });
   };
 
   const totalSteps = 4;

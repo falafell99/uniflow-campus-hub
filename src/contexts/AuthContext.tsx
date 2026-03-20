@@ -28,8 +28,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (user) {
       const { data } = await supabase.from("profiles").select("*").eq("id", user.id).single();
       setProfile(data);
+      return data;
     } else {
       setProfile(null);
+      return null;
     }
   };
 
@@ -100,6 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email,
         status: "🟢 Online",
         credits: 1250,
+        onboarding_completed: false,
       });
     }
     return { error: null };
