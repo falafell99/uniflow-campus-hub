@@ -10,7 +10,7 @@ import {
   Plus, FileText, Layout, Hash,
   Loader2, User as UserIcon, Calendar, Info, 
   Image as ImageIcon, FileText as FileIcon, 
-  AtSign, Hash as HashIcon, Star
+  AtSign, Hash as HashIcon, Star, Calculator
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
@@ -25,6 +25,7 @@ const staticPages = [
   { label: "Voice Lounges", url: "/voice-lounges", emoji: <MessageSquare className="h-4 w-4" /> },
   { label: "Teams Hub", url: "/teams", emoji: <Users className="h-4 w-4" /> },
   { label: "Studio", url: "/studio", emoji: <Plus className="h-4 w-4" /> },
+  { label: "GPA Calculator", url: "/gpa", emoji: <Calculator className="h-4 w-4" /> },
   { label: "Profile", url: "/profile", emoji: <Settings className="h-4 w-4" /> },
 ];
 

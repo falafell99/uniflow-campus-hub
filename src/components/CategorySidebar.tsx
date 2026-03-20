@@ -17,6 +17,7 @@ const categories: { label: string; items: NavItem[] }[] = [
       { title: "Progress", url: "/progress", emoji: "📈" },
       { title: "Messages", url: "/messages", emoji: "💌" },
       { title: "Teams Hub", url: "/teams", emoji: "👥" },
+      { title: "GPA Calculator", url: "/gpa", emoji: "🎓" },
     ],
   },
   {
