@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Clock, Briefcase, TrendingUp, ArrowRight, NotebookPen, Sparkles, Upload, CalendarPlus, CalendarDays } from "lucide-react";
+import { Clock, Briefcase, TrendingUp, ArrowRight, NotebookPen, Sparkles, Upload, CalendarPlus, CalendarDays, GraduationCap } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { GlassCard } from "@/components/GlassCard";
@@ -145,6 +145,7 @@ export default function Dashboard() {
     { label: "New Note", icon: <NotebookPen className="h-5 w-5" />, path: "/notes" },
     { label: "Ask Oracle", icon: <Sparkles className="h-5 w-5" />, path: "/ai-oracle" },
     { label: "Upload File", icon: <Upload className="h-5 w-5" />, path: "/vault" },
+    { label: "GPA Calc", icon: <GraduationCap className="h-5 w-5" />, path: "/gpa" },
     { label: "Add Deadline", icon: <CalendarPlus className="h-5 w-5" />, path: "/calendar" },
   ];
 
@@ -168,7 +169,7 @@ export default function Dashboard() {
 
       {/* 2. QUICK ACTIONS */}
       <motion.div
-        className="grid grid-cols-2 md:grid-cols-4 gap-3"
+        className="grid grid-cols-2 md:grid-cols-5 gap-3"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.1 }}
