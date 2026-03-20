@@ -41,7 +41,7 @@ export function MobileNav() {
         activeClassName="text-primary !text-primary"
       >
         <Home className="h-5 w-5 mb-1" />
-        <span className="text-[10px] font-medium leading-none">Home</span>
+        <span className="text-[10px] font-medium leading-none hidden min-[360px]:block">Home</span>
       </NavLink>
 
       <NavLink
@@ -50,7 +50,7 @@ export function MobileNav() {
         activeClassName="text-primary !text-primary"
       >
         <Globe className="h-5 w-5 mb-1" />
-        <span className="text-[10px] font-medium leading-none">Campus</span>
+        <span className="text-[10px] font-medium leading-none hidden min-[360px]:block">Campus</span>
       </NavLink>
 
       <NavLink
@@ -66,7 +66,7 @@ export function MobileNav() {
             </span>
           )}
         </div>
-        <span className="text-[10px] font-medium leading-none">Chat</span>
+        <span className="text-[10px] font-medium leading-none hidden min-[360px]:block">Chat</span>
       </NavLink>
 
       <NavLink
@@ -75,7 +75,7 @@ export function MobileNav() {
         activeClassName="text-primary !text-primary"
       >
         <BookOpen className="h-5 w-5 mb-1" />
-        <span className="text-[10px] font-medium leading-none">Vault</span>
+        <span className="text-[10px] font-medium leading-none hidden min-[360px]:block">Vault</span>
       </NavLink>
 
       <NavLink
@@ -84,7 +84,7 @@ export function MobileNav() {
         activeClassName="text-primary !text-primary"
       >
         <User className="h-5 w-5 mb-1" />
-        <span className="text-[10px] font-medium leading-none">Profile</span>
+        <span className="text-[10px] font-medium leading-none hidden min-[360px]:block">Profile</span>
       </NavLink>
     </nav>
   );

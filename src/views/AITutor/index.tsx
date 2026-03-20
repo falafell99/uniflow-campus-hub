@@ -357,7 +357,7 @@ export default function AITutor() {
   };
 
   return (
-    <div className="h-[calc(100vh-5rem)] flex flex-col animate-fade-in relative">
+    <div className="h-[calc(100dvh-10rem)] md:h-[calc(100vh-5rem)] flex flex-col animate-fade-in relative">
       <ChatHistorySidebar 
         open={historyOpen} 
         onClose={() => setHistoryOpen(false)} 
@@ -366,31 +366,31 @@ export default function AITutor() {
       />
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-4 shrink-0">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-            🤖 AI Oracle
-            {API_KEY && <Badge variant="outline" className="text-[10px] gap-1 h-5 bg-success/10 text-success border-success/20"><Zap className="h-2.5 w-2.5" /> Live</Badge>}
+      <div className="flex items-center justify-between mb-2 md:mb-4 shrink-0">
+        <div className="min-w-0">
+          <h1 className="text-xl md:text-2xl font-bold tracking-tight flex items-center gap-2 truncate">
+            🤖 <span className="truncate">AI Oracle</span>
+            {API_KEY && <Badge variant="outline" className="text-[9px] md:text-[10px] gap-1 h-5 bg-success/10 text-success border-success/20 shrink-0"><Zap className="h-2.5 w-2.5" /> <span className="hidden xs:inline">Live</span></Badge>}
           </h1>
-          <p className="text-muted-foreground mt-1">Your personal academic research assistant</p>
+          <p className="text-muted-foreground text-xs md:text-sm mt-0.5 md:mt-1 hidden sm:block">Your personal academic research assistant</p>
         </div>
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="sm" className="gap-1.5 text-xs text-muted-foreground" onClick={() => setHistoryOpen(!historyOpen)}>
-            <HistoryIcon className="h-3.5 w-3.5" />History
+        <div className="flex items-center gap-1.5 md:gap-3 shrink-0">
+          <Button variant="ghost" size="sm" className="h-8 w-8 sm:w-auto p-0 sm:px-3 gap-1.5 text-xs text-muted-foreground" title="History" onClick={() => setHistoryOpen(!historyOpen)}>
+            <HistoryIcon className="h-3.5 w-3.5" /> <span className="hidden sm:inline">History</span>
           </Button>
-          <div className="flex items-center gap-2 glass-subtle px-3 py-1.5 rounded-full">
-            <BookOpen className="h-3.5 w-3.5 text-primary" />
-            <span className="text-xs font-medium">Study Mode</span>
-            <Switch checked={studyMode} onCheckedChange={setStudyMode} />
+          <div className="flex items-center gap-1.5 md:gap-2 glass-subtle px-2 md:px-3 py-1 rounded-full border border-border/20">
+            <BookOpen className="h-3 w-3 md:h-3.5 md:w-3.5 text-primary" />
+            <span className="text-[10px] md:text-xs font-medium hidden xs:inline">Study</span>
+            <Switch checked={studyMode} onCheckedChange={setStudyMode} className="scale-75 md:scale-100" />
           </div>
-          <Button variant="ghost" size="sm" className="gap-1.5 text-xs text-muted-foreground" onClick={clearChat}>
-            <RotateCcw className="h-3.5 w-3.5" />Clear
+          <Button variant="ghost" size="sm" className="h-8 w-8 sm:w-auto p-0 sm:px-3 gap-1.5 text-xs text-muted-foreground" title="Clear Chat" onClick={clearChat}>
+            <RotateCcw className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Clear</span>
           </Button>
         </div>
       </div>
 
       <div className="flex-1 flex flex-col min-h-0 relative">
-        <div ref={chatRef} className="flex-1 glass-card p-5 overflow-y-auto space-y-5 mb-4 custom-scroll min-h-0">
+        <div ref={chatRef} className="flex-1 glass-card p-3 sm:p-5 overflow-y-auto space-y-4 md:space-y-5 mb-3 sm:mb-4 custom-scroll min-h-0">
           {messages.map((msg) => (
             <div key={msg.id} className={`flex gap-3 ${msg.role === "user" ? "justify-end" : ""} animate-fade-in`}>
               {msg.role === "assistant" && <UserAvatar Icon={Sparkles} className="mt-1 shrink-0" />}
@@ -441,12 +441,12 @@ export default function AITutor() {
 
         {/* Quick prompts */}
         {messages.length <= 1 && API_KEY && !pdfContext && (
-          <div className="flex flex-wrap gap-2 mb-3 shrink-0">
+          <div className="flex overflow-x-auto gap-2 mb-3 shrink-0 pb-1 hide-scrollbar -mx-1 px-1">
             {QUICK_PROMPTS.map((p) => (
               <button
                 key={p}
                 onClick={() => sendMessage(p)}
-                className="text-xs px-3 py-1.5 rounded-full border border-border/40 text-muted-foreground hover:border-primary/50 hover:text-primary hover:bg-primary/5 transition-all"
+                className="text-[11px] px-3 py-1.5 rounded-full border border-border/40 text-muted-foreground hover:border-primary/50 hover:text-primary hover:bg-primary/5 transition-all whitespace-nowrap whitespace-nowrap shrink-0"
               >
                 {p}
               </button>
@@ -503,7 +503,7 @@ export default function AITutor() {
               <Send className="h-4 w-4" />
             </Button>
           </GlassCard>
-          <p className="text-center text-[10px] text-muted-foreground">
+          <p className="text-center text-[10px] text-muted-foreground hidden sm:block">
             📎 Attach lecture PDFs from The Vault · Press Enter to send · Powered by Llama 3.3 + PDF.js
           </p>
         </div>
