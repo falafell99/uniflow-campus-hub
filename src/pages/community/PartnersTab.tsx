@@ -83,14 +83,14 @@ export default function PartnersTab() {
       </div>
 
       {loading ? <div className="flex justify-center py-24"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div> : filtered.length === 0 ? (
-        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-24">
-          <div className="h-20 w-20 rounded-full bg-muted/50 flex items-center justify-center mx-auto mb-4 border border-border/30">
-            <UserSearch className="h-8 w-8 text-muted-foreground" />
+        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col items-center justify-center py-16 px-8 text-center space-y-4">
+          <div className="h-16 w-16 rounded-2xl bg-muted/20 flex items-center justify-center text-3xl">🤝</div>
+          <div className="space-y-2">
+            <p className="font-bold text-lg">No one looking yet</p>
+            <p className="text-sm text-muted-foreground max-w-xs leading-relaxed">Post that you're looking for a study partner. Others will see it and can message you directly.</p>
           </div>
-          <h3 className="text-lg font-bold">No one looking for a partner yet</h3>
-          <p className="text-sm text-muted-foreground mt-1 mb-6">Post your request to find a study partner!</p>
-          <Button onClick={() => setPostOpen(true)} className="gap-2">
-            Post your request
+          <Button onClick={() => setPostOpen(true)} className="mt-2 bg-primary hover:bg-primary/90">
+            Post your request →
           </Button>
         </motion.div>
       ) : (

@@ -221,14 +221,14 @@ export default function GroupsTab() {
       <div className="flex-1 flex flex-col min-w-0">
         {!selectedGroup ? (
           <div className="flex-1 flex flex-col items-center justify-center text-center">
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="max-w-xs mx-auto">
-              <div className="h-20 w-20 rounded-full bg-muted/50 flex items-center justify-center mx-auto mb-4 border border-border/30">
-                <BookOpen className="h-8 w-8 text-muted-foreground" />
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col items-center justify-center py-16 px-8 text-center space-y-4 max-w-xs mx-auto">
+              <div className="h-16 w-16 rounded-2xl bg-muted/20 flex items-center justify-center text-3xl">👥</div>
+              <div className="space-y-2">
+                <p className="font-bold text-lg">No study groups yet</p>
+                <p className="text-sm text-muted-foreground max-w-xs leading-relaxed">Create a group for your subject — everyone studying the same thing can join, chat, and share files.</p>
               </div>
-              <h3 className="text-lg font-bold">No study groups yet</h3>
-              <p className="text-sm text-muted-foreground mt-1 mb-6">Create a group or select one from the sidebar to start chatting.</p>
-              <Button onClick={() => setCreateOpen(true)} className="gap-2">
-                Create a group
+              <Button onClick={() => setCreateOpen(true)} className="mt-2 bg-primary hover:bg-primary/90">
+                Create a group →
               </Button>
             </motion.div>
           </div>

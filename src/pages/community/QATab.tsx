@@ -106,14 +106,14 @@ export default function QATab() {
             <div className="relative flex-1"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Search subject or title..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9 bg-card border-border/40" /></div>
           </div>
           {loading ? <div className="flex justify-center py-24"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div> : filtered.length === 0 ? (
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-24">
-              <div className="h-20 w-20 rounded-full bg-muted/50 flex items-center justify-center mx-auto mb-4 border border-border/30">
-                <HelpCircle className="h-8 w-8 text-muted-foreground" />
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col items-center justify-center py-16 px-8 text-center space-y-4">
+              <div className="h-16 w-16 rounded-2xl bg-muted/20 flex items-center justify-center text-3xl">❓</div>
+              <div className="space-y-2">
+                <p className="font-bold text-lg">No questions yet</p>
+                <p className="text-sm text-muted-foreground max-w-xs leading-relaxed">Be the first to ask! Click "Ask Question" and get help from fellow students. Good questions help everyone.</p>
               </div>
-              <h3 className="text-lg font-bold">No questions yet</h3>
-              <p className="text-sm text-muted-foreground mt-1 mb-6">Ask the first question and get help from the community.</p>
-              <Button onClick={() => setAskOpen(true)} className="gap-2">
-                Ask the first question
+              <Button onClick={() => setAskOpen(true)} className="mt-2 bg-primary hover:bg-primary/90">
+                Ask the first question →
               </Button>
             </motion.div>
           ) : (

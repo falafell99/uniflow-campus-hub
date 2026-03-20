@@ -215,14 +215,14 @@ export default function FeedTab({ onNavigate }: { onNavigate?: (tab: string) => 
           <SkeletonCard />
         </div>
       ) : filtered.length === 0 ? (
-        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-24">
-          <div className="h-20 w-20 rounded-full bg-muted/50 flex items-center justify-center mx-auto mb-4 border border-border/30">
-            <Rss className="h-8 w-8 text-muted-foreground" />
+        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col items-center justify-center py-16 px-8 text-center space-y-4">
+          <div className="h-16 w-16 rounded-2xl bg-muted/20 flex items-center justify-center text-3xl">📡</div>
+          <div className="space-y-2">
+            <p className="font-bold text-lg">Feed is empty</p>
+            <p className="text-sm text-muted-foreground max-w-xs leading-relaxed">The feed shows when students upload files, ask questions, or join study groups. Be the first — upload a file to the Vault!</p>
           </div>
-          <h3 className="text-lg font-bold">Nothing here yet</h3>
-          <p className="text-sm text-muted-foreground mt-1 mb-6">Be the first to share something with the community!</p>
-          <Button onClick={() => navigate("/vault")} className="gap-2">
-            Upload a file →
+          <Button onClick={() => navigate("/vault")} className="mt-2 bg-primary hover:bg-primary/90">
+            Go to Vault →
           </Button>
         </motion.div>
       ) : (

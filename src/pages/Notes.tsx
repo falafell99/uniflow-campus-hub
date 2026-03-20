@@ -18,6 +18,7 @@ import { toast } from "@/hooks/use-toast";
 import { useLocation } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import { StudyCoach } from "@/components/StudyCoach";
+import { HintBubble } from "@/components/HintBubble";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type BlockType = "paragraph" | "h1" | "h2" | "bullet" | "code" | "checklist" | "divider";
@@ -679,7 +680,15 @@ export default function Notes() {
         <div className="p-3 border-b border-border/40 space-y-2">
           <div className="flex items-center justify-between">
             <h2 className="font-bold text-sm flex items-center gap-2"><NotebookPen className="h-4 w-4 text-primary" /> Notes</h2>
-            <Button size="icon" className="h-7 w-7" onClick={createNote}><Plus className="h-3.5 w-3.5" /></Button>
+            <div className="relative">
+              <Button size="icon" className="h-7 w-7" onClick={createNote}><Plus className="h-3.5 w-3.5" /></Button>
+              <HintBubble
+                id="notes-slash"
+                message='✍️ Inside notes, type "/" to see all block types'
+                position="left"
+                className="top-0 right-10"
+              />
+            </div>
           </div>
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
@@ -691,10 +700,15 @@ export default function Notes() {
           {loading ? (
             Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-10 rounded-lg glass-subtle animate-pulse" />)
           ) : filteredNotes.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full gap-3 text-center px-4">
-              <NotebookPen className="h-10 w-10 text-muted-foreground opacity-30" strokeWidth={1} />
-              <p className="text-xs text-muted-foreground">No notes yet</p>
-              <Button size="sm" className="gap-1.5 text-xs" onClick={createNote}><Plus className="h-3 w-3" /> Create your first note</Button>
+            <div className="flex flex-col items-center justify-center py-16 px-8 text-center space-y-4">
+              <div className="h-16 w-16 rounded-2xl bg-muted/20 flex items-center justify-center text-3xl">📓</div>
+              <div className="space-y-2">
+                <p className="font-bold text-lg">No notes yet</p>
+                <p className="text-sm text-muted-foreground max-w-xs leading-relaxed">Press the + button to create a note. Inside the editor, type "/" to see all block types — headings, bullets, code blocks, and more.</p>
+              </div>
+              <Button onClick={createNote} className="mt-2 bg-primary hover:bg-primary/90">
+                Create first note →
+              </Button>
             </div>
           ) : (
             Object.entries(groupedNotes).map(([group, groupNotes]) => (

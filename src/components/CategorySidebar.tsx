@@ -7,13 +7,13 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
-type NavItem = { title: string; url: string; emoji: string };
+type NavItem = { title: string; url: string; emoji: string; tourId?: string };
 
 const categories: { label: string; items: NavItem[] }[] = [
   {
     label: "MAIN",
     items: [
-      { title: "Dashboard", url: "/", emoji: "🏠" },
+      { title: "Dashboard", url: "/", emoji: "🏠", tourId: "dashboard" },
       { title: "Progress", url: "/progress", emoji: "📈" },
       { title: "Messages", url: "/messages", emoji: "💌" },
       { title: "Teams Hub", url: "/teams", emoji: "👥" },
@@ -25,8 +25,8 @@ const categories: { label: string; items: NavItem[] }[] = [
       { title: "Workspace", url: "/knowledge-graph", emoji: "📋" },
       { title: "Notes", url: "/notes", emoji: "📝" },
       { title: "Tasks", url: "/tasks", emoji: "📋" },
-      { title: "AI Oracle", url: "/ai-oracle", emoji: "🤖" },
-      { title: "The Vault", url: "/vault", emoji: "📚" },
+      { title: "AI Oracle", url: "/ai-oracle", emoji: "🤖", tourId: "ai-oracle" },
+      { title: "The Vault", url: "/vault", emoji: "📚", tourId: "vault" },
       { title: "Professor Ratings", url: "/professors", emoji: "⭐" },
       { title: "Flashcards", url: "/flashcards", emoji: "🗂️" },
       { title: "Pomodoro", url: "/pomodoro", emoji: "⏱️" },
@@ -36,7 +36,7 @@ const categories: { label: string; items: NavItem[] }[] = [
   {
     label: "CAMPUS",
     items: [
-      { title: "Community Hub", url: "/community", emoji: "🌐" },
+      { title: "Community Hub", url: "/community", emoji: "🌐", tourId: "community" },
     ],
   },
 ];
@@ -103,7 +103,7 @@ export function CategorySidebar() {
   const dotColor = voiceRoom ? "bg-primary" : isOnline ? "bg-success" : profileStatus.includes("Focusing") ? "bg-destructive" : "bg-warning";
 
   return (
-    <div className="w-[220px] shrink-0 flex flex-col bg-card/80 backdrop-blur-xl border-r border-border/40 overflow-hidden">
+    <div className="w-[220px] shrink-0 flex flex-col bg-card/80 backdrop-blur-xl border-r border-border/40 overflow-hidden" data-tour="sidebar">
       {/* Server name */}
       <div className="h-12 flex items-center px-4 border-b border-border/40 shrink-0">
         <h2 className="font-bold text-sm tracking-tight truncate">
@@ -148,6 +148,7 @@ export function CategorySidebar() {
                           : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
                       }`}
                       activeClassName=""
+                      {...(item.tourId ? { "data-tour": item.tourId } : {})}
                     >
                       <div className="flex items-center gap-2.5 overflow-hidden">
                         <span className="text-sm leading-none shrink-0">{item.emoji}</span>

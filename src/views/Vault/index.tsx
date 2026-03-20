@@ -13,6 +13,7 @@ import { LiveNoteEditor } from "./LiveNoteEditor";
 import { formatDistanceToNow } from "date-fns";
 import { FileText as FileTextIcon, History } from "lucide-react";
 import { StudyCoach } from "@/components/StudyCoach";
+import { HintBubble } from "@/components/HintBubble";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type VaultFile = {
@@ -265,9 +266,17 @@ export default function Vault() {
           <Button variant="outline" className="gap-2" onClick={() => setNoteOpen(true)}>
             📝 New Live Note
           </Button>
-          <Button className="gap-2" onClick={() => setUploadOpen(true)}>
-            <Upload className="h-4 w-4" /> Upload File
-          </Button>
+          <div className="relative">
+            <Button className="gap-2" onClick={() => setUploadOpen(true)}>
+              <Upload className="h-4 w-4" /> Upload File
+            </Button>
+            <HintBubble
+              id="vault-upload"
+              message="📄 Upload lecture PDFs — AI can summarize them instantly"
+              position="bottom"
+              className="top-10 right-0"
+            />
+          </div>
         </div>
       </div>
 
@@ -359,8 +368,7 @@ export default function Vault() {
           </div>
           <h2 className="text-2xl font-bold tracking-tight mb-2">The Vault is empty</h2>
           <p className="text-muted-foreground max-w-sm mb-8 text-sm leading-relaxed">
-            Be the first to upload a resource or lecture note for your fellow students! 
-            Helping others is what UniFlow is all about.
+            Upload your first lecture PDF, notes, or past exam. AI can summarize it instantly and create flashcards for you.
           </p>
           <Button 
             size="lg" 

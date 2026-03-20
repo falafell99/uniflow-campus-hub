@@ -17,6 +17,7 @@ import { supabase } from "@/lib/supabase";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ChatHistorySidebar } from "./ChatHistorySidebar";
 import { logActivity } from "@/lib/activity";
+import { HintBubble } from "@/components/HintBubble";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Message = {
@@ -470,16 +471,24 @@ export default function AITutor() {
           )}
 
           <GlassCard padding="p-3" className="flex gap-2 items-end">
-            <Button
-              variant="ghost"
-              size="icon"
-              className={`shrink-0 h-9 w-9 ${pdfContext ? "text-primary" : "text-muted-foreground"}`}
-              onClick={() => setVaultPickerOpen(true)}
-              disabled={loading}
-              title="Attach context from Vault"
-            >
-              <Paperclip className="h-4 w-4" />
-            </Button>
+            <div className="relative">
+              <Button
+                variant="ghost"
+                size="icon"
+                className={`shrink-0 h-9 w-9 ${pdfContext ? "text-primary" : "text-muted-foreground"}`}
+                onClick={() => setVaultPickerOpen(true)}
+                disabled={loading}
+                title="Attach context from Vault"
+              >
+                <Paperclip className="h-4 w-4" />
+              </Button>
+              <HintBubble
+                id="oracle-attach"
+                message="💡 Attach a PDF from your Vault and ask questions about it!"
+                position="top"
+                className="-top-14 left-0"
+              />
+            </div>
 
             <Textarea
               ref={inputRef}

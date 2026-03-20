@@ -14,6 +14,7 @@ import { FacultyBar } from "@/components/FacultyBar";
 import { CategorySidebar } from "@/components/CategorySidebar";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
+import { motion } from "framer-motion";
 
 type Notification = {
   id: string;
@@ -113,11 +114,16 @@ export function TopHeader() {
         </SheetContent>
       </Sheet>
 
-      <div className="relative flex-1 max-w-xl group">
+      <motion.div
+        className="relative flex-1 max-w-xl group"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.5 }}
+      >
         <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" />
         <Input
-          placeholder="Search materials, people, or teams..."
-          className="pl-9 pr-12 h-8 text-sm bg-muted/50 border border-transparent focus-visible:ring-1 focus-visible:ring-primary/30 group-hover:bg-muted/80 transition-all cursor-pointer"
+          placeholder="Search everything..."
+          className="pl-9 pr-20 h-8 text-sm bg-muted/50 border border-transparent focus-visible:ring-1 focus-visible:ring-primary/30 group-hover:bg-muted/80 transition-all cursor-pointer"
           onFocus={(e) => {
             e.target.blur();
             window.dispatchEvent(new CustomEvent("open-command-palette"));
@@ -129,11 +135,12 @@ export function TopHeader() {
           }}
         />
         <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 pointer-events-none">
-          <kbd className="hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100 sm:flex">
-            <span className="text-xs">⌘</span>K
-          </kbd>
+          <div className="hidden sm:flex items-center gap-0.5">
+            <kbd className="bg-background border border-border/40 rounded px-1 text-[10px] font-mono text-muted-foreground">⌘</kbd>
+            <kbd className="bg-background border border-border/40 rounded px-1 text-[10px] font-mono text-muted-foreground">K</kbd>
+          </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* Tutoring badge */}
       {tutoringAvailable && (

@@ -13,6 +13,7 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { format, isToday, isPast, parseISO } from "date-fns";
+import { HintBubble } from "@/components/HintBubble";
 import {
   DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent,
 } from "@dnd-kit/core";
@@ -504,7 +505,13 @@ export default function KanbanBoard() {
       </div>
 
       {/* Board */}
-      <div className="flex-1 overflow-x-auto overflow-y-hidden p-4 pt-0 md:pt-4">
+      <div className="flex-1 overflow-x-auto overflow-y-hidden p-4 pt-0 md:pt-4 relative">
+        <HintBubble
+          id="kanban-drag"
+          message="✋ Drag cards between columns to update their status"
+          position="bottom"
+          className="top-2 left-4"
+        />
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <div className="flex gap-4 h-full md:min-w-max">
             {(Object.keys(COLUMN_STYLES) as Status[]).map(status => {
@@ -536,9 +543,11 @@ export default function KanbanBoard() {
                           <div key={i} className="h-24 rounded-xl glass-subtle animate-pulse" />
                         ))
                       ) : colTasks.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-12 px-4 text-center opacity-40">
-                          <div className="text-3xl mb-2">+</div>
-                          <p className="text-xs text-muted-foreground">Drop tasks here or click +</p>
+                        <div className="flex flex-col items-center justify-center py-8 opacity-60 border-2 border-dashed border-border/30 rounded-xl m-2">
+                          <p className="text-xs text-muted-foreground">Drop tasks here</p>
+                          <button onClick={() => openCreate(status)} className="text-xs text-primary mt-1 hover:underline">
+                            + Add task
+                          </button>
                         </div>
                       ) : (
                         colTasks.map(task => (

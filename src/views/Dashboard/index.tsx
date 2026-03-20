@@ -15,6 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useNavigate } from "react-router-dom";
 import { PublicProfileModal } from "@/components/PublicProfileModal";
 import { StudyCoach } from "@/components/StudyCoach";
+import { GuidedTour } from "@/components/GuidedTour";
 import { format, differenceInCalendarDays, formatDistanceToNow } from "date-fns";
 import { motion } from "framer-motion";
 
@@ -144,6 +145,7 @@ export default function Dashboard() {
   const [subjects, setSubjects] = useState<any[]>([]);
   const [liveResources, setLiveResources] = useState<VaultResource[]>([]);
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
+  const [showTour, setShowTour] = useState(false);
 
   // Stats Integration State
   const [streak, setStreak] = useState(0);
@@ -224,6 +226,11 @@ export default function Dashboard() {
         console.error("Dashboard content load error:", err);
       } finally {
         setLoading(false);
+        // Trigger tour for new users
+        setTimeout(() => {
+          const tourDone = localStorage.getItem("uniflow-tour-completed");
+          if (!tourDone) setShowTour(true);
+        }, 1000);
       }
     };
     if (activeCommunity) loadContent();
@@ -400,6 +407,7 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {showTour && <GuidedTour onComplete={() => setShowTour(false)} />}
       {/* Greeting */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
@@ -426,7 +434,7 @@ export default function Dashboard() {
           <span className="text-xl">{streak > 0 ? "🔥" : "💤"}</span>
           <div>
             <p className="text-sm font-bold leading-none">{streak > 0 ? `${streak} day${streak !== 1 ? "s" : ""} streak` : "Start your streak today"}</p>
-            <p className="text-[11px] text-muted-foreground mt-0.5">{streak > 0 ? "Keep going!" : "Do something to begin"}</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">{streak > 0 ? "Keep going!" : "Do anything — upload a file, write a note, ask Oracle"}</p>
           </div>
         </div>
 

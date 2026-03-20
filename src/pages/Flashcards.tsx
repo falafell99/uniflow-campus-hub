@@ -17,6 +17,7 @@ import { VaultFilePicker } from "@/components/VaultFilePicker";
 import { extractTextFromPDF } from "@/lib/pdfUtils";
 import { useLocation } from "react-router-dom";
 import { logActivity } from "@/lib/activity";
+import { HintBubble } from "@/components/HintBubble";
 
 const API_KEY = import.meta.env.VITE_GROQ_API_KEY as string | undefined;
 const GROQ_MODEL = "llama-3.3-70b-versatile";
@@ -425,7 +426,7 @@ ${text}`;
             <span>Generating flashcards from <strong>{vaultFile.name}</strong>...</span>
           </div>
         )}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between relative">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">🧠 Flashcards</h1>
             <p className="text-muted-foreground mt-1">Master concepts with spaced repetition — cloud synced</p>
@@ -438,6 +439,12 @@ ${text}`;
               <Plus className="h-4 w-4" /> New Deck
             </Button>
           </div>
+          <HintBubble
+            id="flashcards-vault"
+            message="🪄 Go to Vault → open a PDF → click 'Make Flashcards' to generate cards automatically!"
+            position="bottom"
+            className="top-16 left-4"
+          />
         </div>
 
         {loading ? (
