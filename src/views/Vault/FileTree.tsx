@@ -75,13 +75,18 @@ interface FileTreeProps {
 
 export function FileTree({ items, depth = 0, onPreview }: FileTreeProps) {
   const navigate = useNavigate();
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({
-    root: true, "1": true, "2": true, "3": true,
-  });
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(
+    new Set(["root", "1", "2", "3"])
+  );
 
-  function toggle(id: string) {
-    setExpanded((p) => ({ ...p, [id]: !p[id] }));
-  }
+  const toggleFolder = (folderId: string) => {
+    setExpandedFolders(prev => {
+      const next = new Set(prev);
+      if (next.has(folderId)) next.delete(folderId);
+      else next.add(folderId);
+      return next;
+    });
+  };
 
   return (
     <div className="space-y-0.5">
@@ -89,22 +94,23 @@ export function FileTree({ items, depth = 0, onPreview }: FileTreeProps) {
         <div key={item.id}>
           {item.type === "folder" ? (
             <>
-              <button
-                onClick={() => toggle(item.id)}
-                className="flex items-center gap-2 w-full px-2 py-1.5 rounded-md hover:bg-muted/50 transition-colors text-sm"
+              <div
+                onClick={() => toggleFolder(item.id)}
+                className="flex items-center gap-2 w-full px-2 py-1.5 rounded-md hover:bg-muted/50 transition-colors text-sm cursor-pointer select-none"
                 style={{ paddingLeft: `${depth * 20 + 8}px` }}
               >
-                {expanded[item.id]
-                  ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-                  : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-                }
-                <Folder className={`h-4 w-4 shrink-0 ${expanded[item.id] ? "text-primary" : "text-muted-foreground"}`} />
-                <span className="font-medium">{item.name}</span>
+                <ChevronRight 
+                  className={`h-3.5 w-3.5 text-muted-foreground transition-transform duration-200 ${
+                    expandedFolders.has(item.id) ? "rotate-90 text-primary" : ""
+                  }`} 
+                />
+                <Folder className={`h-4 w-4 shrink-0 ${expandedFolders.has(item.id) ? "text-primary" : "text-muted-foreground"}`} />
+                <span className="font-medium truncate flex-1 leading-tight py-0.5">{item.name}</span>
                 {item.children && (
-                  <span className="text-xs text-muted-foreground ml-auto">{item.children.length}</span>
+                  <span className="text-xs text-muted-foreground ml-auto pr-1">{item.children.length}</span>
                 )}
-              </button>
-              {expanded[item.id] && item.children && (
+              </div>
+              {expandedFolders.has(item.id) && item.children && (
                 <FileTree items={item.children} depth={depth + 1} onPreview={onPreview} />
               )}
             </>

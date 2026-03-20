@@ -44,11 +44,10 @@ export function UpcomingEventsSection() {
     
     const fetchEvents = async () => {
       try {
-        const todayStart = startOfDay(new Date()).toISOString();
         const { data, error } = await supabase
           .from('campus_events')
           .select('*')
-          .gte('start_time', todayStart)
+          .gte('start_time', new Date().toISOString())
           .order('start_time', { ascending: true })
           .limit(4);
           

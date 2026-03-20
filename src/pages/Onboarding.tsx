@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,18 @@ export default function Onboarding() {
   const { user, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // If user refreshes on /onboarding after already completing it
+  useEffect(() => {
+    if (!user) return;
+    supabase.from("profiles").select("onboarding_completed").eq("id", user.id).single()
+      .then(({ data }) => {
+        if (data?.onboarding_completed === true) {
+          navigate("/", { replace: true });
+        }
+      });
+  }, [user]);
 
   // Profile fields
   const [name, setName] = useState(user?.user_metadata?.display_name || "");
@@ -36,12 +48,22 @@ export default function Onboarding() {
 
   const handleFinish = async () => {
     if (!user) return;
-    await supabase.from("profiles").update({ onboarding_completed: true }).eq("id", user.id);
-    await refreshProfile();
-    // Wait a tick for React state to reconcile before navigating
-    await new Promise(r => setTimeout(r, 100));
-    const dest = firstAction === "vault" ? "/vault" : firstAction === "calendar" ? "/calendar" : firstAction === "notes" ? "/notes" : "/";
-    navigate(dest, { replace: true });
+    setIsSubmitting(true);
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ onboarding_completed: true })
+        .eq("id", user.id);
+      if (error) console.error("Could not save onboarding status:", error);
+      await refreshProfile();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsSubmitting(false);
+      // Always navigate regardless of error
+      const dest = firstAction === "vault" ? "/vault" : firstAction === "calendar" ? "/calendar" : firstAction === "notes" ? "/notes" : "/";
+      navigate(dest, { replace: true });
+    }
   };
 
   const skip = async () => {
@@ -239,10 +261,11 @@ export default function Onboarding() {
             <h2 className="text-2xl font-black text-white text-center">You're all set!</h2>
             <p className="text-white/40 text-center">UniFlow is ready. Let's go.</p>
             <button
-              className="w-full h-12 rounded-xl bg-[#7b68ee] hover:bg-[#6a5acd] text-white font-bold transition-all active:scale-95"
+              className="w-full h-12 rounded-xl bg-[#7b68ee] hover:bg-[#6a5acd] text-white font-bold transition-all active:scale-95 disabled:opacity-50"
               onClick={handleFinish}
+              disabled={isSubmitting}
             >
-              Open UniFlow →
+              {isSubmitting ? "Loading..." : "Open UniFlow →"}
             </button>
           </motion.div>
         )}

@@ -43,20 +43,24 @@ export function CommandPalette() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const down = (e: KeyboardEvent) => {
-      if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
-        setOpen((o) => !o);
+        e.stopPropagation();
+        setOpen((prev) => !prev);
+      }
+      if (e.key === "Escape") {
+        setOpen(false);
       }
     };
     const handleOpen = (e: any) => {
       setOpen(true);
       if (e.detail?.query) setQuery(e.detail.query);
     };
-    document.addEventListener("keydown", down);
+    document.addEventListener("keydown", handleKeyDown);
     window.addEventListener("open-command-palette", handleOpen);
     return () => {
-      document.removeEventListener("keydown", down);
+      document.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("open-command-palette", handleOpen);
     };
   }, []);
@@ -143,6 +147,33 @@ export function CommandPalette() {
     setOpen(false);
     action();
   };
+
+  type CommandInfo = {
+    label: string;
+    category: string;
+    emoji?: React.ReactNode;
+    url?: string;
+    action?: () => void;
+    badge?: string;
+  };
+
+  const commands: CommandInfo[] = [
+    ...staticPages.map(page => ({ ...page, category: "Global Navigation" })),
+    { label: "Start Pomodoro Timer", url: "/pomodoro?start=true", emoji: <Timer className="h-4 w-4 text-orange-400" />, badge: "25m", category: "Quick Actions" },
+    { label: theme === "dark" ? "Switch to Day Light" : "Enable Dark Mode", action: () => toggleTheme(), emoji: theme === "dark" ? <Sun className="h-4 w-4 text-yellow-400" /> : <Moon className="h-4 w-4 text-indigo-400" />, category: "Quick Actions" }
+  ];
+
+  const uniqueCommands = commands.filter((cmd, index, self) =>
+    index === self.findIndex(c => c.label === cmd.label)
+  );
+
+  const filtered = uniqueCommands.filter(cmd =>
+    cmd.label.toLowerCase().includes(query.toLowerCase()) ||
+    cmd.category?.toLowerCase().includes(query.toLowerCase())
+  );
+
+  const navigationCommands = filtered.filter(cmd => cmd.category === "Global Navigation");
+  const actionCommands = filtered.filter(cmd => cmd.category === "Quick Actions");
 
   return (
     <CommandDialog open={open} onOpenChange={setOpen} shouldFilter={false}>
@@ -309,33 +340,38 @@ export function CommandPalette() {
           </CommandGroup>
         )}
 
-        <CommandSeparator />
+        {actionCommands.length > 0 && (
+          <>
+            <CommandSeparator />
+            <CommandGroup heading="Quick Actions">
+              {actionCommands.map((cmd) => (
+                <CommandItem key={cmd.label} onSelect={() => runCommand(cmd.action ? cmd.action : () => navigate(cmd.url!))} className="gap-2 rounded-md">
+                  {cmd.emoji}
+                  <span>{cmd.label}</span>
+                  {cmd.badge && <Badge variant="secondary" className="ml-auto text-[10px] py-0">{cmd.badge}</Badge>}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </>
+        )}
 
-        <CommandGroup heading="Quick Actions">
-          <CommandItem onSelect={() => runCommand(() => navigate("/pomodoro?start=true"))} className="gap-2 rounded-md">
-            <Timer className="h-4 w-4 text-orange-400" />
-            <span>Start Pomodoro Timer</span>
-            <Badge variant="secondary" className="ml-auto text-[10px] py-0">25m</Badge>
-          </CommandItem>
-          <CommandItem onSelect={() => runCommand(() => toggleTheme())} className="gap-2 rounded-md">
-            {theme === "dark" ? <Sun className="h-4 w-4 text-yellow-400" /> : <Moon className="h-4 w-4 text-indigo-400" />}
-            <span>{theme === "dark" ? "Switch to Day Light" : "Enable Dark Mode"}</span>
-          </CommandItem>
-        </CommandGroup>
-
-        <CommandSeparator />
-        <CommandGroup heading="Global Navigation">
-          {staticPages.map((page) => (
-            <CommandItem 
-              key={page.label} 
-              onSelect={() => runCommand(() => navigate(page.url))}
-              className="gap-2 rounded-md"
-            >
-              <div className="text-muted-foreground opacity-70">{page.emoji}</div>
-              <span>{page.label}</span>
-            </CommandItem>
-          ))}
-        </CommandGroup>
+        {navigationCommands.length > 0 && (
+          <>
+            <CommandSeparator />
+            <CommandGroup heading="Global Navigation">
+              {navigationCommands.map((page) => (
+                <CommandItem 
+                  key={page.label} 
+                  onSelect={() => runCommand(() => navigate(page.url!))}
+                  className="gap-2 rounded-md"
+                >
+                  <div className="text-muted-foreground opacity-70">{page.emoji}</div>
+                  <span>{page.label}</span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </>
+        )}
       </CommandList>
     </CommandDialog>
   );

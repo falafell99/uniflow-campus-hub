@@ -59,16 +59,21 @@ export default function QATab() {
   };
 
   const markResolved = async (qId: string) => {
-    await supabase.from("qa_questions").update({ is_resolved: true }).eq("id", qId);
-    toast.success("Marked as resolved!");
-    if (selectedQuestion?.id === qId) setSelectedQuestion({ ...selectedQuestion!, is_resolved: true });
-    fetchQuestions();
+    const { error } = await supabase.from("qa_questions").update({ is_resolved: true }).eq("id", qId);
+    if (!error) {
+      setQuestions(prev => prev.map(q => q.id === qId ? { ...q, is_resolved: true } : q));
+      if (selectedQuestion?.id === qId) setSelectedQuestion(prev => prev ? { ...prev, is_resolved: true } : null);
+      toast.success("Marked as resolved!");
+    }
   };
 
   const acceptAnswer = async (answerId: string) => {
     if (!selectedQuestion) return;
-    await supabase.from("qa_answers").update({ is_accepted: true }).eq("id", answerId);
-    await markResolved(selectedQuestion.id); fetchAnswers(selectedQuestion.id);
+    const { error } = await supabase.from("qa_answers").update({ is_accepted: true }).eq("id", answerId);
+    if (!error) {
+      setAnswers(prev => prev.map(a => a.id === answerId ? { ...a, is_accepted: true } : a));
+      markResolved(selectedQuestion.id);
+    }
   };
 
   const handleUpvote = async (answerId: string) => {

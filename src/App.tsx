@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { Layout } from "@/components/Layout";
 import { MeetupProvider } from "@/contexts/MeetupContext";
 import { AppProvider } from "@/contexts/AppContext";
@@ -45,9 +45,26 @@ import { supabase } from "@/lib/supabase";
 const queryClient = new QueryClient();
 
 function ProtectedApp() {
-  const { user, profile, loading } = useAuth();
+  const { user, loading } = useAuth();
+  const location = useLocation();
 
-  if (loading) {
+  const [profile, setProfile] = useState<{ onboarding_completed: boolean } | null>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user) { setProfileLoading(false); return; }
+    supabase
+      .from("profiles")
+      .select("onboarding_completed")
+      .eq("id", user.id)
+      .single()
+      .then(({ data }) => {
+        setProfile(data);
+        setProfileLoading(false);
+      });
+  }, [user]);
+
+  if (loading || (user && profileLoading)) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -65,7 +82,9 @@ function ProtectedApp() {
     );
   }
 
-  if (!profile?.onboarding_completed) {
+  // Only redirect when we KNOW onboarding is not completed
+  if (user && profile?.onboarding_completed === false && location.pathname !== "/onboarding") {
+    // Actually wait, if the URL is literally anything else but they haven't finished onboarding, they only see onboarding page
     return (
       <Routes>
         <Route path="/onboarding" element={<Onboarding />} />
@@ -73,6 +92,10 @@ function ProtectedApp() {
       </Routes>
     );
   }
+
+  // Allow them to be on onboarding page if they need it (already covered by above rule if they aren't complete)
+  // Wait, if they ARE complete and try to go to onboarding, the Onboarding component's own useEffect will redirect them back to /.
+
 
   return (
     <MeetupProvider>
