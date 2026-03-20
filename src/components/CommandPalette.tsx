@@ -228,6 +228,35 @@ export function CommandPalette() {
         </Badge>
       </div>
       <CommandList className="max-h-[70vh] custom-scroll p-2">
+        {navigationCommands.length > 0 && query && (
+          <CommandGroup heading="Pages & Tools">
+            {navigationCommands.map((page) => (
+              <CommandItem 
+                key={page.label} 
+                onSelect={() => runCommand(() => navigate(page.url!))}
+                className="gap-2 rounded-md"
+              >
+                <div className="text-muted-foreground opacity-70">{page.emoji}</div>
+                <span>{page.label}</span>
+              </CommandItem>
+            ))}
+            <CommandSeparator className="my-2" />
+          </CommandGroup>
+        )}
+
+        {actionCommands.length > 0 && query && (
+          <CommandGroup heading="Quick Actions">
+            {actionCommands.map((cmd) => (
+              <CommandItem key={cmd.label} onSelect={() => runCommand(cmd.action ? cmd.action : () => navigate(cmd.url!))} className="gap-2 rounded-md">
+                {cmd.emoji}
+                <span>{cmd.label}</span>
+                {cmd.badge && <Badge variant="secondary" className="ml-auto text-[10px] py-0">{cmd.badge}</Badge>}
+              </CommandItem>
+            ))}
+            <CommandSeparator className="my-2" />
+          </CommandGroup>
+        )}
+
         {status === "loading" && (
           <div className="flex items-center justify-center py-10">
             <Loader2 className="h-6 w-6 animate-spin text-primary opacity-50" />
@@ -256,7 +285,8 @@ export function CommandPalette() {
          results.people.length === 0 && 
          results.files.length === 0 && 
          results.teams.length === 0 && 
-         results.discussions.length === 0 && (
+         results.discussions.length === 0 && 
+         navigationCommands.length === 0 && (
           <div className="py-6 text-center text-sm text-muted-foreground flex flex-col items-center gap-2">
             <Search className="h-8 w-8 opacity-20" />
             <p>No results found for "{query}"</p>
@@ -339,39 +369,6 @@ export function CommandPalette() {
               </CommandItem>
             ))}
           </CommandGroup>
-        )}
-
-        {actionCommands.length > 0 && (
-          <>
-            <CommandSeparator />
-            <CommandGroup heading="Quick Actions">
-              {actionCommands.map((cmd) => (
-                <CommandItem key={cmd.label} onSelect={() => runCommand(cmd.action ? cmd.action : () => navigate(cmd.url!))} className="gap-2 rounded-md">
-                  {cmd.emoji}
-                  <span>{cmd.label}</span>
-                  {cmd.badge && <Badge variant="secondary" className="ml-auto text-[10px] py-0">{cmd.badge}</Badge>}
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </>
-        )}
-
-        {navigationCommands.length > 0 && (
-          <>
-            <CommandSeparator />
-            <CommandGroup heading="Global Navigation">
-              {navigationCommands.map((page) => (
-                <CommandItem 
-                  key={page.label} 
-                  onSelect={() => runCommand(() => navigate(page.url!))}
-                  className="gap-2 rounded-md"
-                >
-                  <div className="text-muted-foreground opacity-70">{page.emoji}</div>
-                  <span>{page.label}</span>
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </>
         )}
       </CommandList>
     </CommandDialog>
