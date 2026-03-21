@@ -10,6 +10,7 @@ import { AppProvider } from "@/contexts/AppContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import Login from "@/pages/Login";
+import Today from "@/pages/Today";
 import Dashboard from "@/pages/Dashboard";
 import Vault from "@/pages/Vault";
 import AIOracle from "@/pages/AIOracle";
@@ -103,7 +104,8 @@ function ProtectedApp() {
       <AppProvider>
         <Layout>
           <Routes>
-            <Route path="/" element={<Dashboard />} />
+            <Route path="/" element={<Today />} />
+            <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/vault" element={<Vault />} />
             <Route path="/ai-oracle" element={<AIOracle />} />
             <Route path="/meetups" element={<Meetups />} />

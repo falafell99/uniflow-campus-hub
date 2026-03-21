@@ -1,16 +1,19 @@
 import { useState, useEffect, useRef } from "react";
-import { Rss, MessageSquare, UserSearch, CalendarDays, Mic, X } from "lucide-react";
+import { Rss, MessageSquare, UserSearch, CalendarDays, Mic, X, GraduationCap, Briefcase } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useLocation, useNavigate } from "react-router-dom";
 
 // ─── Tab Types ────────────────────────────────────────────────────────────────
-type TabId = "feed" | "discuss" | "people" | "meetups" | "voice";
+type TabId = "feed" | "discuss" | "people" | "meetups" | "voice" | "professors" | "career";
 
 const tabs: { id: TabId; label: string; icon: React.ReactNode }[] = [
-  { id: "feed",     label: "Feed",         icon: <Rss className="h-4 w-4 shrink-0" /> },
-  { id: "discuss",  label: "Discuss",      icon: <MessageSquare className="h-4 w-4 shrink-0" /> },
-  { id: "people",   label: "Find People",  icon: <UserSearch className="h-4 w-4 shrink-0" /> },
-  { id: "meetups",  label: "Meetups",      icon: <CalendarDays className="h-4 w-4 shrink-0" /> },
-  { id: "voice",    label: "Voice Lounges",icon: <Mic className="h-4 w-4 shrink-0" /> },
+  { id: "feed",       label: "Feed",          icon: <Rss className="h-4 w-4 shrink-0" /> },
+  { id: "discuss",    label: "Discuss",       icon: <MessageSquare className="h-4 w-4 shrink-0" /> },
+  { id: "people",     label: "Find People",   icon: <UserSearch className="h-4 w-4 shrink-0" /> },
+  { id: "meetups",    label: "Meetups",       icon: <CalendarDays className="h-4 w-4 shrink-0" /> },
+  { id: "voice",      label: "Voice Lounges", icon: <Mic className="h-4 w-4 shrink-0" /> },
+  { id: "professors", label: "Professors",    icon: <GraduationCap className="h-4 w-4 shrink-0" /> },
+  { id: "career",     label: "Career",        icon: <Briefcase className="h-4 w-4 shrink-0" /> },
 ];
 
 import FeedTab from "@/pages/community/FeedTab";
@@ -20,6 +23,8 @@ import GroupsTab from "@/pages/community/GroupsTab";
 import PartnersTab from "@/pages/community/PartnersTab";
 import MeetupsTab from "@/pages/community/MeetupsTab";
 import VoiceTab from "@/pages/community/VoiceTab";
+import ProfessorsTab from "@/pages/Professors";
+import CareerTab from "@/pages/Internships";
 
 // ─── Discuss Tab (Forums + Q&A) ──────────────────────────────────────────────
 function DiscussTab() {
@@ -54,14 +59,21 @@ function PeopleTab() {
 }
 
 export default function Community() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [showWelcome, setShowWelcome] = useState(() => localStorage.getItem("community-visited") !== "true");
 
   const [activeTab, setActiveTab] = useState<TabId>(() => {
+    const params = new URLSearchParams(location.search);
+    const tabParam = params.get("tab");
+    if (tabParam && ["feed", "discuss", "people", "meetups", "voice", "professors", "career"].includes(tabParam)) {
+      return tabParam as TabId;
+    }
     const saved = localStorage.getItem("community-tab") as string;
     // Map old tab IDs to new ones
     if (saved === "forums" || saved === "qa") return "discuss";
     if (saved === "groups" || saved === "partners") return "people";
-    if (saved === "feed" || saved === "discuss" || saved === "people" || saved === "meetups" || saved === "voice") return saved as TabId;
+    if (["feed", "discuss", "people", "meetups", "voice", "professors", "career"].includes(saved)) return saved as TabId;
     return "feed";
   });
   
@@ -72,11 +84,20 @@ export default function Community() {
     localStorage.setItem("community-tab", activeTab);
   }, [activeTab]);
 
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const tab = params.get("tab") as TabId;
+    if (tab && tab !== activeTab && ["feed", "discuss", "people", "meetups", "voice", "professors", "career"].includes(tab)) {
+      setActiveTab(tab);
+    }
+  }, [location.search]);
+
   const handleTabChange = (newTab: TabId) => {
     if (scrollRef.current) {
       scrollPositions.current[activeTab] = scrollRef.current.scrollTop;
     }
     setActiveTab(newTab);
+    navigate(`/community?tab=${newTab}`, { replace: true });
   };
 
   useEffect(() => {
@@ -144,11 +165,13 @@ export default function Community() {
             transition={{ duration: 0.2 }}
             className="min-h-full"
           >
-            {activeTab === "feed"     && <FeedTab onNavigate={handleTabChange as any} />}
-            {activeTab === "discuss"  && <DiscussTab />}
-            {activeTab === "people"   && <PeopleTab />}
-            {activeTab === "meetups"  && <MeetupsTab />}
-            {activeTab === "voice"    && <VoiceTab />}
+            {activeTab === "feed"       && <FeedTab onNavigate={handleTabChange as any} />}
+            {activeTab === "discuss"    && <DiscussTab />}
+            {activeTab === "people"     && <PeopleTab />}
+            {activeTab === "meetups"    && <MeetupsTab />}
+            {activeTab === "voice"      && <VoiceTab />}
+            {activeTab === "professors" && <ProfessorsTab />}
+            {activeTab === "career"     && <CareerTab />}
           </motion.div>
         </AnimatePresence>
       </div>

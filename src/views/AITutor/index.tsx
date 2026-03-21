@@ -373,7 +373,7 @@ export default function AITutor() {
             🤖 <span className="truncate">AI Oracle</span>
             {API_KEY && <Badge variant="outline" className="text-[9px] md:text-[10px] gap-1 h-5 bg-success/10 text-success border-success/20 shrink-0"><Zap className="h-2.5 w-2.5" /> <span className="hidden xs:inline">Live</span></Badge>}
           </h1>
-          <p className="text-muted-foreground text-xs md:text-sm mt-0.5 md:mt-1 hidden sm:block">Ask anything — math, code, theory. Attach a PDF to ask questions about it.</p>
+          <p className="text-muted-foreground text-xs md:text-sm mt-0.5 md:mt-1 hidden sm:block">Your 24/7 intelligent study companion.</p>
         </div>
         <div className="flex items-center gap-1.5 md:gap-3 shrink-0">
           <Button variant="ghost" size="sm" className="h-8 w-8 sm:w-auto p-0 sm:px-3 gap-1.5 text-xs text-muted-foreground" title="History" onClick={() => setHistoryOpen(!historyOpen)}>

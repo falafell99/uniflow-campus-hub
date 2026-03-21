@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   Bold, Heading1, Heading2, List, Code, Plus, Trash2, GripVertical,
   Cloud, Check, Search, Tag, X, Edit2, CheckSquare, Minus,
-  FileText, Users, LayoutTemplate, ChevronRight
+  FileText, Users, LayoutTemplate, ChevronRight, Info
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -786,7 +786,12 @@ export default function Workspace() {
   }
 
   return (
-    <div className="animate-fade-in h-[calc(100vh-5rem)] flex gap-4">
+    <div className="animate-fade-in h-[calc(100vh-5rem)] flex flex-col gap-4">
+      <div className="flex items-center gap-3 px-6 py-3 bg-amber-500/5 border border-amber-500/20 text-xs text-amber-500 rounded-xl shrink-0">
+        <Info className="h-4 w-4 shrink-0" />
+        <span>Workspace is being migrated to Notes. <button onClick={() => navigate("/notes")} className="underline font-bold hover:text-amber-400">Go to Notes →</button></span>
+      </div>
+      <div className="flex-1 min-h-0 flex gap-4">
       {/* ── Sidebar ─────────────────────────────────────────── */}
       <div className="w-60 shrink-0 flex flex-col gap-2">
         <Button size="sm" className="w-full gap-2 text-xs" onClick={createNote}>
@@ -1048,6 +1053,7 @@ export default function Workspace() {
             )}
           </div>
         )}
+      </div>
       </div>
     </div>
   );

@@ -285,7 +285,7 @@ export default function GPACalculator() {
             GPA Calculator
           </h1>
           <p className="text-muted-foreground mt-1">
-            ELTE Computer Science BSc Curriculum
+            Plan your grades and track credits.
           </p>
         </div>
       </div>

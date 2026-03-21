@@ -34,16 +34,13 @@ export default function Dashboard() {
   const navigate = useNavigate();
   
   const [streak, setStreak] = useState(0);
-  const [quickAsk, setQuickAsk] = useState("");
-
   const [mineEvents, setMineEvents] = useState<any[]>([]);
   const [eventsLoading, setEventsLoading] = useState(true);
 
   const [recentFiles, setRecentFiles] = useState<any[]>([]);
   const [filesLoading, setFilesLoading] = useState(true);
 
-  const [communityPulse, setCommunityPulse] = useState<any[]>([]);
-  const [pulseLoading, setPulseLoading] = useState(true);
+  const [unreadMessages, setUnreadMessages] = useState(0);
 
   const displayName = user?.user_metadata?.display_name || user?.email?.split("@")[0] || "Student";
   const firstName = getFirstName(displayName);
@@ -120,23 +117,18 @@ export default function Dashboard() {
     loadFiles();
   }, [user]);
 
-  // Load Community Pulse (activity_feed, max 3)
+  // Load Unread Messages Count
   useEffect(() => {
     if (!user) return;
-    const loadPulse = async () => {
-      setPulseLoading(true);
-      // We assume profiles relation exists. Use raw user lookup or rely on display_name if activity_feed has it.
-      // Assuming activity_feed doesn't join easily without profiles, we fetch data and join client-side if needed,
-      // but if we look at `feed.ts` it might not have display_name. Wait, `profiles(display_name)` works in supabase.
-      const { data } = await supabase
-        .from("activity_feed")
-        .select("*, profiles(display_name)")
-        .order("created_at", { ascending: false })
-        .limit(3);
-      setCommunityPulse(data || []);
-      setPulseLoading(false);
+    const loadUnread = async () => {
+      const { count } = await supabase
+        .from("campus_messages")
+        .select("*", { count: "exact", head: true })
+        .neq("sender_id", user.id)
+        .eq("read", false);
+      setUnreadMessages(count || 0);
     };
-    loadPulse();
+    loadUnread();
   }, [user]);
 
   const quickActions = [
@@ -294,67 +286,17 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* AI Oracle Quick-Ask */}
-          <div className="bg-card border border-border/40 rounded-2xl p-5 shadow-sm relative overflow-hidden group">
-            <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none group-hover:scale-110 transition-transform">
-              <Sparkles className="h-16 w-16" />
+          {/* Messages Card */}
+          <div 
+            className="flex items-center gap-4 bg-card border border-border/40 rounded-2xl p-5 hover:border-primary/40 transition-all cursor-pointer shadow-sm"
+            onClick={() => navigate("/messages")}
+          >
+            <div className={`h-12 w-12 rounded-full flex items-center justify-center text-2xl ${unreadMessages > 0 ? "bg-primary/10" : "bg-muted/30"}`}>
+              📬
             </div>
-            <div className="flex items-center gap-2 mb-4 relative z-10">
-              <div className="h-7 w-7 rounded-lg bg-indigo-500/10 flex items-center justify-center">
-                <Sparkles className="h-4 w-4 text-indigo-500" />
-              </div>
-              <span className="font-bold">Ask Oracle</span>
-            </div>
-            <div className="flex gap-2 relative z-10">
-              <Input
-                placeholder="Ask anything..."
-                value={quickAsk}
-                onChange={e => setQuickAsk(e.target.value)}
-                onKeyDown={e => e.key === "Enter" && navigate("/ai-oracle", { state: { prefillMessage: quickAsk } })}
-                className="h-10 text-sm bg-background/50 border-border/50 focus-visible:ring-indigo-500/30"
-              />
-              <Button className="h-10 px-3 bg-indigo-500 hover:bg-indigo-600 text-white shadow-sm" onClick={() => navigate("/ai-oracle", { state: { prefillMessage: quickAsk } })}>
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-
-          {/* Community Pulse */}
-          <div className="bg-card border border-border/40 rounded-2xl p-5 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base font-bold tracking-tight flex items-center gap-2">
-                <Globe className="h-4 w-4 text-primary" />
-                Community
-              </h2>
-              <button onClick={() => navigate("/community")} className="text-xs font-semibold text-primary hover:underline">
-                View →
-              </button>
-            </div>
-            <div className="space-y-3 relative before:absolute before:inset-0 before:ml-[15px] before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:w-0.5 before:bg-gradient-to-b before:from-border before:via-border/50 before:to-transparent">
-              {pulseLoading ? (
-                [1, 2, 3].map(i => <div key={i} className="flex gap-3 relative z-10"><Skeleton className="h-8 w-8 rounded-full shrink-0"/><Skeleton className="h-10 w-full rounded-md"/></div>)
-              ) : communityPulse.length === 0 ? (
-                <div className="text-sm text-center py-4 text-muted-foreground relative z-10">Quiet today...</div>
-              ) : (
-                communityPulse.map(item => {
-                  const dName = item.profiles?.display_name || "Someone";
-                  return (
-                    <div key={item.id} className="flex items-start gap-3 relative z-10">
-                      <div className="h-8 w-8 shrink-0 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-xs font-bold text-primary">
-                        {getInitials(dName)}
-                      </div>
-                      <div className="flex-1 min-w-0 bg-background border border-border/50 rounded-xl p-2.5">
-                        <p className="text-xs leading-snug">
-                          <span className="font-bold">{dName}</span>
-                          <span className="text-muted-foreground"> {item.action_type === 'file_uploaded' ? "uploaded" : item.action_type === 'note_saved' ? "published" : "shared"} </span>
-                          <span className="font-medium text-foreground">{item.entity_title}</span>
-                        </p>
-                        <p className="text-[9px] text-muted-foreground mt-1 font-medium">{formatDistanceToNow(new Date(item.created_at))} ago</p>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
+            <div>
+              <p className="text-sm font-semibold text-muted-foreground mb-0.5">Unread Messages</p>
+              <p className="text-2xl font-black leading-none">{unreadMessages}</p>
             </div>
           </div>
 

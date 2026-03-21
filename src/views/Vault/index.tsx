@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { Search, Upload, LayoutGrid, List } from "lucide-react";
+import { useLocation } from "react-router-dom";
+import { Search, Upload, LayoutGrid, List, Lock, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -12,6 +13,7 @@ import { supabase } from "@/lib/supabase";
 import { LiveNoteEditor } from "./LiveNoteEditor";
 import { formatDistanceToNow } from "date-fns";
 import { FileText as FileTextIcon, History } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 import { StudyCoach } from "@/components/StudyCoach";
 import { HintBubble } from "@/components/HintBubble";
 
@@ -170,6 +172,11 @@ function filterTree(items: FileItem[], query: string, typeFilter: string): FileI
 
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function Vault() {
+  const { user } = useAuth();
+  const location = useLocation();
+  const [vaultMode, setVaultMode] = useState<"my" | "community">(
+    () => new URLSearchParams(location.search).get("mode") === "community" ? "community" : "my"
+  );
   const [searchQuery, setSearchQuery] = useState("");
   const [vaultTree, setVaultTree] = useState<FileItem[]>(buildStaticTree());
   const [loading, setLoading] = useState(true);
@@ -182,11 +189,16 @@ export default function Vault() {
   const [selectedNote, setSelectedNote] = useState<any | null>(null);
 
   const loadFiles = async () => {
+    if (!user) return;
     setLoading(true);
-    const { data, error } = await supabase
-      .from("vault_files")
-      .select("*")
-      .order("created_at", { ascending: false });
+
+    let query = supabase.from("vault_files").select("*");
+    if (vaultMode === "my") {
+      query = query.eq("uploader_id", user.id).order("created_at", { ascending: false });
+    } else {
+      query = query.eq("is_public", true).order("downloads", { ascending: false });
+    }
+    const { data, error } = await query;
 
     const baseTree = buildStaticTree();
 
@@ -241,7 +253,7 @@ export default function Vault() {
     setLoading(false);
   };
 
-  useEffect(() => { loadFiles(); }, []);
+  useEffect(() => { loadFiles(); }, [vaultMode, user]);
 
   const treeToShow = (searchQuery || typeFilter !== "All")
     ? filterTree(vaultTree, searchQuery, typeFilter)
@@ -281,13 +293,29 @@ export default function Vault() {
         </div>
       </div>
 
+      {/* Mode Toggle */}
+      <div className="flex items-center gap-2 mb-2 p-1 bg-muted/20 rounded-xl w-fit">
+        <button onClick={() => setVaultMode("my")}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+            vaultMode === "my" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+          }`}>
+          <Lock className="h-3.5 w-3.5" /> My Files
+        </button>
+        <button onClick={() => setVaultMode("community")}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+            vaultMode === "community" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+          }`}>
+          <Globe className="h-3.5 w-3.5" /> Community Files
+        </button>
+      </div>
+
       {/* Search + Filters + View toggle */}
       <div className="flex flex-col gap-2">
         <div className="flex gap-2">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Search files by name or author…"
+              placeholder={vaultMode === "my" ? "Search your private files..." : "Search community resources..."}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9"
@@ -364,19 +392,22 @@ export default function Vault() {
         </GlassCard>
       ) : allFiles.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 px-4 text-center glass-card border-primary/20 bg-primary/5 rounded-3xl shadow-2xl animate-in fade-in zoom-in duration-500">
-          <div className="h-24 w-24 bg-primary/10 rounded-3xl flex items-center justify-center mb-6 scale-110">
-            <Upload className="h-12 w-12 text-primary" strokeWidth={1.5} />
+          <div className="h-16 w-16 bg-muted/20 rounded-2xl flex items-center justify-center mb-4">
+            <span className="text-3xl">📂</span>
           </div>
-          <h2 className="text-2xl font-bold tracking-tight mb-2">The Vault is empty</h2>
-          <p className="text-muted-foreground max-w-sm mb-8 text-sm leading-relaxed">
-            Upload your first lecture PDF, notes, or past exam. AI can summarize it instantly and create flashcards for you.
+          <h2 className="text-xl font-bold tracking-tight mb-2">
+            {vaultMode === "my" ? "No files yet" : "No community files yet"}
+          </h2>
+          <p className="text-muted-foreground mb-6 text-sm">
+            {vaultMode === "my" 
+              ? "Upload your first lecture PDF, notes, or past exam. AI can summarize it and create flashcards automatically."
+              : "Be the first to share a resource with the ELTE community!"}
           </p>
           <Button 
-            size="lg" 
             onClick={() => setUploadOpen(true)}
-            className="bg-primary hover:bg-primary/90 text-white font-bold h-12 px-8 rounded-xl shadow-lg shadow-primary/20"
+            className="font-bold rounded-xl"
           >
-            <Upload className="h-5 w-5 mr-2" /> Upload First Resource
+            Upload your first file →
           </Button>
         </div>
       ) : viewMode === "list" ? (
@@ -396,7 +427,6 @@ export default function Vault() {
           )}
         </GlassCard>
       ) : (
-        /* Grid view — show only files */
         <div className="space-y-4">
           {filteredFiles.length === 0 ? (
             <p className="text-xs text-muted-foreground text-center py-8 italic">No files match your filters.</p>

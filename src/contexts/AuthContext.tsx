@@ -58,30 +58,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
 
-  // Handle Global Presence
+  // Handle Global Presence and Window Unload
   useEffect(() => {
     if (!user) {
       setOnlineUsers(new Set());
       return;
     }
 
-    const presenceChannel = supabase.channel('global_presence', {
-      config: { presence: { key: user.id } }
-    });
-
-    presenceChannel
-      .on('presence', { event: 'sync' }, () => {
+    const presenceChannel = supabase.channel("online-users")
+      .on("presence", { event: "sync" }, () => {
         const state = presenceChannel.presenceState();
-        setOnlineUsers(new Set(Object.keys(state)));
+        const onlineIds = new Set(
+          Object.values(state)
+            .flat()
+            .map((presence: any) => presence.user_id)
+        );
+        setOnlineUsers(onlineIds);
       })
       .subscribe(async (status) => {
-        if (status === 'SUBSCRIBED') {
-          await presenceChannel.track({ online_at: new Date().toISOString() });
+        if (status === "SUBSCRIBED") {
+          await presenceChannel.track({ user_id: user.id });
         }
       });
 
+    const handleUnload = () => {
+      supabase.from("profiles").update({ status: "Offline" }).eq("id", user.id).then();
+    };
+    window.addEventListener("beforeunload", handleUnload);
+
     return () => {
-      presenceChannel.unsubscribe();
+      supabase.removeChannel(presenceChannel);
+      window.removeEventListener("beforeunload", handleUnload);
     };
   }, [user]);
 
@@ -109,12 +116,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) return { error: error.message };
+    if (data.user) {
+      await supabase.from("profiles").update({ status: "Online" }).eq("id", data.user.id);
+    }
     return { error: null };
   };
 
   const signOut = async () => {
+    if (user) {
+      await supabase.from("profiles").update({ status: "Offline" }).eq("id", user.id);
+    }
     await supabase.auth.signOut();
   };
 

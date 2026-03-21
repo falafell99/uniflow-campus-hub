@@ -182,6 +182,7 @@ export default function Progress() {
       <div className="flex flex-col sm:flex-row items-baseline justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Your Progress</h1>
+          <p className="text-muted-foreground mt-1 text-sm hidden md:block">Track your learning journey.</p>
           <p className="text-muted-foreground text-sm mt-1">Track your study streak, activity, and subject breakdown over time.</p>
         </div>
         

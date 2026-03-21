@@ -2,6 +2,7 @@ import { useState, useRef, DragEvent } from "react";
 import { Upload, Loader2, File as FileIcon, X, ChevronRight, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -107,6 +108,7 @@ export function UploadDialog({ open, onClose, onUploaded }: UploadDialogProps) {
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [dragging, setDragging] = useState(false);
+  const [isPublic, setIsPublic] = useState(true);
 
   const semesterNum = semester === "elective" ? 0 : semester;
   const subjectList = semester === "elective" ? ELECTIVE_COURSES : (SEMESTER_COURSES[semester] ?? []);
@@ -214,6 +216,7 @@ export function UploadDialog({ open, onClose, onUploaded }: UploadDialogProps) {
           file_size: file.size,
           downloads: 0,
           stars: 0,
+          is_public: isPublic,
         });
 
         if (dbErr) throw dbErr;
@@ -440,6 +443,14 @@ export function UploadDialog({ open, onClose, onUploaded }: UploadDialogProps) {
                   </div>
                 </div>
               )}
+
+              <div className="flex items-center justify-between p-3 bg-muted/10 border border-border/30 rounded-xl">
+                <div>
+                  <p className="text-sm font-medium">Share with community</p>
+                  <p className="text-xs text-muted-foreground">Other students can see and download this file</p>
+                </div>
+                <Switch checked={isPublic} onCheckedChange={setIsPublic} />
+              </div>
 
               <Button className="w-full gap-2 font-bold" onClick={handleUpload} disabled={!files.length || isSubmitting}>
                 {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
