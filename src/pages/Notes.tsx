@@ -80,8 +80,22 @@ function SlashMenu({
   onClose: () => void;
 }) {
   const [idx, setIdx] = useState(0);
+  const menuRef = useRef<HTMLDivElement>(null);
   const filtered = SLASH_COMMANDS.filter(c => c.label.toLowerCase().includes(search.toLowerCase()));
   useEffect(() => { setIdx(0); }, [search]);
+  useEffect(() => {
+    if (menuRef.current) {
+      const rect = menuRef.current.getBoundingClientRect();
+      if (rect.right > window.innerWidth) {
+        menuRef.current.style.left = "auto";
+        menuRef.current.style.right = "0";
+      }
+      if (rect.bottom > window.innerHeight) {
+        menuRef.current.style.top = "auto";
+        menuRef.current.style.bottom = "100%";
+      }
+    }
+  }, [position, filtered.length]);
   useEffect(() => {
     const handler = (e: globalThis.KeyboardEvent) => {
       if (e.key === "ArrowDown") { e.preventDefault(); setIdx(p => Math.min(p + 1, filtered.length - 1)); }
@@ -95,10 +109,11 @@ function SlashMenu({
 
   return (
     <motion.div
+      ref={menuRef}
       initial={{ opacity: 0, y: -8, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: -8, scale: 0.96 }} transition={{ duration: 0.12 }}
       style={{ position: "fixed", top: position.top, left: position.left, zIndex: 9999 }}
-      className="bg-card border border-border/40 rounded-xl shadow-xl overflow-hidden w-64"
+      className="bg-card border border-border/40 rounded-xl shadow-xl overflow-hidden w-64 md:w-64 w-[calc(100vw-2rem)] max-w-[280px]"
     >
       <div className="px-3 py-2 border-b border-border/20">
         <p className="text-xs text-muted-foreground font-medium">Block type</p>
@@ -106,7 +121,7 @@ function SlashMenu({
       {filtered.length === 0 && <p className="text-xs text-muted-foreground px-3 py-2">No matching block type</p>}
       {filtered.map((cmd, i) => (
         <button key={cmd.type} onClick={() => onSelect(cmd.type)} onMouseEnter={() => setIdx(i)}
-          className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors ${i === idx ? "bg-primary/10" : "hover:bg-primary/5"}`}>
+          className={`w-full flex items-center gap-3 px-4 py-3 min-h-[48px] text-left transition-colors ${i === idx ? "bg-primary/10" : "hover:bg-primary/5"}`}>
           <div className="h-8 w-8 rounded-lg bg-muted/30 flex items-center justify-center text-muted-foreground shrink-0">
             {cmd.icon}
           </div>
@@ -266,7 +281,8 @@ function NoteBlockRow({
               {linkOpen && <LinkMenu notes={allNotes} search={linkSearch} position={linkPos} onSelect={applyLink} onClose={() => setLinkOpen(false)} />}
             </AnimatePresence>
             <Textarea ref={textareaRef} autoFocus value={block.content} onChange={handleChange} onBlur={onBlur} onKeyDown={handleKeyDown}
-              className={`border-0 bg-transparent resize-none p-0 focus-visible:ring-0 min-h-0 text-sm ${block.checked ? "line-through text-muted-foreground" : ""}`} rows={1} />
+              style={{ fontSize: "16px", minHeight: "44px", padding: "12px" }}
+              className={`border-0 bg-transparent resize-none p-0 focus-visible:ring-0 min-h-0 text-base md:text-sm ${block.checked ? "line-through text-muted-foreground" : ""}`} rows={1} />
           </div>
         ) : (
           <div onClick={onFocus}
@@ -307,7 +323,8 @@ function NoteBlockRow({
               <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={onRemove}><Trash2 className="h-3 w-3" /></Button>
             </div>
             <Textarea ref={textareaRef} autoFocus value={block.content} onChange={handleChange} onBlur={onBlur} onKeyDown={handleKeyDown}
-              className={`border-0 bg-transparent resize-none p-0 focus-visible:ring-0 min-h-0 ${typeStyles[block.type]} ${block.type === "bullet" ? "pl-4" : ""}`}
+              style={{ fontSize: "16px", minHeight: "44px", padding: "12px" }}
+              className={`border-0 bg-transparent resize-none focus-visible:ring-0 min-h-0 ${typeStyles[block.type]} ${block.type === "bullet" ? "pl-4" : ""} ${block.type === "code" ? "overflow-x-auto text-[13px] md:text-sm" : ""}`}
               rows={block.type === "code" ? 4 : 1} />
           </div>
         ) : (
@@ -480,6 +497,8 @@ export default function Notes() {
   const location = useLocation();
   const prefill = location.state as { prefillTitle?: string; prefillSubject?: string; prefillContent?: string } | null;
 
+  const [mobileView, setMobileView] = useState<"list" | "editor">("list");
+
   const [notes, setNotes] = useState<StudentNote[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -600,6 +619,7 @@ export default function Notes() {
     blocks.splice(afterIdx + 1, 0, newBlock);
     updateSelected({ blocks });
     setEditingBlockId(newBlock.id);
+    setMobileView("editor");
   };
   const removeBlock = (idx: number) => {
     if (!selectedNote || selectedNote.blocks.length <= 1) return;
@@ -674,9 +694,9 @@ export default function Notes() {
   const toggleGroup = (key: string) => setCollapsedGroups(prev => ({ ...prev, [key]: !prev[key] }));
 
   return (
-    <div className="flex h-[calc(100vh-5rem)] md:h-[calc(100vh-6rem)] overflow-hidden animate-fade-in relative">
+    <div className="flex h-[calc(100vh-4rem)] md:h-[calc(100vh-6rem)] pb-16 md:pb-0 overflow-hidden animate-fade-in relative">
       {/* ── Left Sidebar ── */}
-      <div className={`${selectedId ? "hidden md:flex" : "flex w-full"} md:w-64 shrink-0 md:border-r border-border/40 flex-col bg-card/30 absolute inset-0 md:relative z-20`}>
+      <div className={`${mobileView === "list" ? "flex" : "hidden"} md:flex w-full md:w-64 shrink-0 md:border-r border-border/40 flex-col bg-card/30 absolute inset-0 md:relative z-20`}>
         <div className="p-3 border-b border-border/40 space-y-2">
           <div className="flex items-center justify-between">
             <h2 className="font-bold text-sm flex items-center gap-2"><NotebookPen className="h-4 w-4 text-primary" /> Notes</h2>
@@ -692,7 +712,7 @@ export default function Notes() {
           </div>
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-            <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search notes..." className="pl-8 h-8 text-xs" />
+            <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search notes..." className="pl-8 h-8 text-base md:text-xs" style={{ fontSize: "16px" }} />
           </div>
         </div>
 
@@ -719,8 +739,8 @@ export default function Notes() {
                   {group} <span className="text-muted-foreground/60 ml-auto">{groupNotes.length}</span>
                 </button>
                 {!collapsedGroups[group] && groupNotes.map(note => (
-                  <button key={note.id} onClick={() => setSelectedId(note.id)}
-                    className={`w-full text-left px-3 py-2 rounded-lg transition-all text-xs group ${
+                  <button key={note.id} onClick={() => { setSelectedId(note.id); setMobileView("editor"); }}
+                    className={`w-full text-left px-3 py-3 rounded-lg transition-all text-xs group min-h-[44px] ${
                       selectedId === note.id ? "bg-primary/10 border border-primary/30 text-primary" : "border border-transparent hover:bg-muted/30"
                     }`}>
                     <div className="flex items-start justify-between">
@@ -750,18 +770,26 @@ export default function Notes() {
       </div>
 
       {/* ── Editor ── */}
-      <div className={`${!selectedId ? "hidden md:flex" : "flex"} flex-1 flex-col min-w-0 overflow-hidden relative z-10 bg-background`}>
-        <div className="flex-1 flex flex-col min-w-0">
+      <div className={`${mobileView === "editor" ? "flex" : "hidden"} md:flex flex-1 flex-col min-w-0 overflow-hidden relative z-10 bg-background`}>
+        <div className="flex-1 flex flex-col min-w-0 pb-16 md:pb-0">
           {selectedNote ? (
             <>
+              {/* Mobile back button & header */}
+              <div className="md:hidden flex items-center justify-between p-3 border-b border-border/20 sticky top-0 bg-background/95 backdrop-blur z-30">
+                <Button variant="ghost" size="sm" onClick={() => setMobileView("list")} className="h-8 gap-1.5 -ml-2 text-xs min-h-[44px]">
+                  <ChevronRight className="h-4 w-4 rotate-180" /> Back
+                </Button>
+                <span className="text-sm font-semibold truncate flex-1 mx-2 text-center">{selectedNote.title || "Untitled"}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-muted-foreground">{saveStatus === "saving" ? "Saving..." : saveStatus === "saved" ? "Saved" : ""}</span>
+                </div>
+              </div>
+
               {/* Metadata bar */}
-              <div className="p-4 border-b border-border/40 space-y-3">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1 min-w-0 space-y-2">
-                    <div className="flex items-center gap-2">
-                      <Button variant="ghost" size="icon" className="md:hidden shrink-0 h-8 w-8 -ml-2" onClick={() => setSelectedId(null)}>
-                        <ChevronRight className="h-5 w-5 rotate-180" />
-                      </Button>
+              <div className="p-4 md:p-6 pb-2 border-b border-border/40 space-y-3">
+                <div className="flex flex-col md:flex-row items-start justify-between gap-4">
+                  <div className="flex-1 w-full min-w-0 space-y-3">
+                    <div className="flex items-center gap-2 w-full">
                       {editingTitle ? (
                         <Input ref={titleRef} autoFocus value={selectedNote.title}
                           onChange={e => updateSelected({ title: e.target.value })}
@@ -776,9 +804,9 @@ export default function Notes() {
                       )}
                     </div>
 
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <div className="relative">
-                        <Input value={selectedNote.subject || ""} placeholder="Subject" className="h-7 text-xs w-36"
+                    <div className="flex flex-col md:flex-row items-start md:items-center gap-2 w-full flex-wrap">
+                      <div className="relative w-full md:w-auto">
+                        <Input value={selectedNote.subject || ""} placeholder="Subject" className="h-9 min-h-[44px] md:min-h-0 md:h-7 text-base md:text-xs w-full md:w-36" style={{ fontSize: "16px" }}
                           onChange={e => { updateSelected({ subject: e.target.value || null }); setShowSubjectSuggestions(true); }}
                           onFocus={() => setShowSubjectSuggestions(true)} onBlur={() => setTimeout(() => setShowSubjectSuggestions(false), 150)} />
                         {showSubjectSuggestions && subjectSuggestions.filter(s => s.toLowerCase().includes((selectedNote.subject || "").toLowerCase())).length > 0 && (
@@ -792,7 +820,7 @@ export default function Notes() {
                           </div>
                         )}
                       </div>
-                      <Input value={selectedNote.topic || ""} placeholder="Topic" className="h-7 text-xs w-36"
+                      <Input value={selectedNote.topic || ""} placeholder="Topic" className="h-9 min-h-[44px] md:min-h-0 md:h-7 text-base md:text-xs w-full md:w-36" style={{ fontSize: "16px" }}
                         onChange={e => updateSelected({ topic: e.target.value || null })} />
                     </div>
 
@@ -861,7 +889,7 @@ export default function Notes() {
               </div>
 
               {/* Block editor */}
-              <div className="flex-1 overflow-y-auto custom-scroll p-6 space-y-1">
+              <div className="flex-1 overflow-y-auto custom-scroll p-4 md:p-6 space-y-1">
                 {selectedNote.blocks.map((block, idx) => (
                   <NoteBlockRow
                     key={block.id} block={block}
@@ -880,10 +908,36 @@ export default function Notes() {
 
                 {/* Add block area */}
                 <button onClick={() => addBlock(selectedNote.blocks.length - 1)}
-                  className="w-full text-left px-2 py-4 text-xs text-muted-foreground hover:text-foreground opacity-40 hover:opacity-100 transition-opacity">
-                  Click here or press Enter to add a block...
+                  className="w-full text-left px-2 py-4 mb-16 md:mb-0 text-base md:text-xs min-h-[60px] text-muted-foreground hover:text-foreground opacity-40 hover:opacity-100 transition-opacity flex items-center justify-center gap-2 bg-muted/10 rounded-xl mt-4">
+                  <Plus className="h-4 w-4" /> Add block
                 </button>
               </div>
+
+              {/* Mobile Floating Toolbar */}
+              {mobileView === "editor" && (
+                <div className="md:hidden fixed bottom-16 left-0 right-0 z-40 bg-background/95 backdrop-blur border-t border-border/20 flex items-center gap-1.5 px-3 py-2 overflow-x-auto shadow-lg [-webkit-overflow-scrolling:touch]" style={{ scrollbarWidth: "none" }}>
+                  {[
+                    { label: "H1", action: () => { if(editingBlockId){ changeBlockType(selectedNote.blocks.findIndex(b=>b.id===editingBlockId), "h1") } } },
+                    { label: "H2", action: () => { if(editingBlockId){ changeBlockType(selectedNote.blocks.findIndex(b=>b.id===editingBlockId), "h2") } } },
+                    { label: "•", action: () => { if(editingBlockId){ changeBlockType(selectedNote.blocks.findIndex(b=>b.id===editingBlockId), "bullet") } } },
+                    { label: "☑", action: () => { if(editingBlockId){ changeBlockType(selectedNote.blocks.findIndex(b=>b.id===editingBlockId), "checklist") } } },
+                    { label: "<>", action: () => { if(editingBlockId){ changeBlockType(selectedNote.blocks.findIndex(b=>b.id===editingBlockId), "code") } } },
+                    { label: "—", action: () => { if(editingBlockId){ changeBlockType(selectedNote.blocks.findIndex(b=>b.id===editingBlockId), "divider") } } },
+                  ].map((btn, idx) => idx === 0 ? null : (
+                    <button key={btn.label}
+                      onClick={btn.action}
+                      className="h-[44px] min-w-[44px] px-3 rounded-lg bg-muted/30 text-sm font-mono font-medium text-foreground hover:bg-muted/50 transition-colors shrink-0 flex items-center justify-center"
+                    >
+                      {btn.label}
+                    </button>
+                  ))}
+                  <div className="w-px h-6 bg-border/40 mx-2 shrink-0" />
+                  <button onClick={() => addBlock(selectedNote.blocks.findIndex(b=>b.id===editingBlockId) > -1 ? selectedNote.blocks.findIndex(b=>b.id===editingBlockId) : selectedNote.blocks.length - 1)} 
+                    className="h-[44px] px-4 rounded-lg bg-primary/10 text-primary text-sm font-bold shrink-0 flex items-center gap-1">
+                    <Plus className="h-4 w-4" /> Block
+                  </button>
+                </div>
+              )}
             </>
           ) : (
             <div className="flex-1 flex items-center justify-center">

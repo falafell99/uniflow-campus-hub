@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   Bold, Heading1, Heading2, List, Code, Plus, Trash2, GripVertical,
   Cloud, Check, Search, Tag, X, Edit2, CheckSquare, Minus,
-  FileText, Users, LayoutTemplate, ChevronRight, Info
+  FileText, Users, LayoutTemplate, ChevronRight, Info, ChevronLeft
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -129,11 +129,23 @@ function SlashMenu({
   onClose: () => void;
 }) {
   const [idx, setIdx] = useState(0);
-  const filtered = SLASH_COMMANDS.filter(c =>
-    c.label.toLowerCase().includes(search.toLowerCase())
-  );
+  const menuRef = useRef<HTMLDivElement>(null);
+  const filtered = SLASH_COMMANDS.filter(c => c.label.toLowerCase().includes(search.toLowerCase()));
 
   useEffect(() => { setIdx(0); }, [search]);
+  useEffect(() => {
+    if (menuRef.current) {
+      const rect = menuRef.current.getBoundingClientRect();
+      if (rect.right > window.innerWidth) {
+        menuRef.current.style.left = "auto";
+        menuRef.current.style.right = "0";
+      }
+      if (rect.bottom > window.innerHeight) {
+        menuRef.current.style.top = "auto";
+        menuRef.current.style.bottom = "100%";
+      }
+    }
+  }, [position, filtered.length]);
 
   useEffect(() => {
     const handler = (e: globalThis.KeyboardEvent) => {
@@ -148,14 +160,17 @@ function SlashMenu({
 
   return (
     <motion.div
+      ref={menuRef}
       initial={{ opacity: 0, y: -8, scale: 0.96 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: -8, scale: 0.96 }}
       transition={{ duration: 0.12 }}
       style={{ position: "fixed", top: position.top, left: position.left, zIndex: 9999 }}
-      className="glass-card border border-border/60 rounded-xl shadow-2xl w-64 py-1 overflow-hidden"
+      className="bg-card border border-border/40 rounded-xl shadow-xl overflow-hidden w-64 md:w-64 w-[calc(100vw-2rem)] max-w-[280px]"
     >
-      <p className="text-[10px] text-muted-foreground px-3 py-1">BLOCKS</p>
+      <div className="px-3 py-2 border-b border-border/20">
+        <p className="text-xs text-muted-foreground font-medium">Block type</p>
+      </div>
       {filtered.length === 0 && (
         <p className="text-xs text-muted-foreground px-3 py-2">No matching block type</p>
       )}
@@ -164,9 +179,7 @@ function SlashMenu({
           key={cmd.type}
           onClick={() => onSelect(cmd.type)}
           onMouseEnter={() => setIdx(i)}
-          className={`w-full flex items-center gap-3 px-3 py-2 text-left transition-colors ${
-            i === idx ? "bg-primary/10 text-primary" : "hover:bg-muted/50"
-          }`}
+          className={`w-full flex items-center gap-3 px-4 py-3 min-h-[48px] text-left transition-colors ${i === idx ? "hover:bg-primary/5 bg-primary/10" : "hover:bg-primary/5"}`}
         >
           <div className={`p-1.5 rounded-md ${i === idx ? "bg-primary/20" : "bg-muted/50"}`}>
             {cmd.icon}
@@ -390,7 +403,8 @@ function BlockRow({
               onChange={handleChange}
               onBlur={onBlur}
               onKeyDown={handleKeyDown}
-              className={`border-0 bg-transparent resize-none p-0 focus-visible:ring-0 min-h-0 text-sm ${block.checked ? "line-through text-muted-foreground" : ""}`}
+              style={{ fontSize: "16px", minHeight: "44px", padding: "12px" }}
+              className={`border-0 bg-transparent resize-none p-0 focus-visible:ring-0 min-h-0 text-base md:text-sm ${block.checked ? "line-through text-muted-foreground" : ""}`}
               rows={1}
             />
           </div>
@@ -592,6 +606,7 @@ function PresenceAvatars({ noteId, user }: { noteId: string | null; user: { id: 
 // ─── Main Workspace ───────────────────────────────────────────────────────────
 export default function Workspace() {
   const { user } = useAuth();
+  const [mobileView, setMobileView] = useState<"list" | "editor">("list");
   const [notes, setNotes] = useState<Note[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -786,14 +801,14 @@ export default function Workspace() {
   }
 
   return (
-    <div className="animate-fade-in h-[calc(100vh-5rem)] flex flex-col gap-4">
+    <div className="animate-fade-in h-[calc(100vh-4rem)] md:h-[calc(100vh-6rem)] pb-16 md:pb-0 flex flex-col gap-4 relative overflow-hidden">
       <div className="flex items-center gap-3 px-6 py-3 bg-amber-500/5 border border-amber-500/20 text-xs text-amber-500 rounded-xl shrink-0">
         <Info className="h-4 w-4 shrink-0" />
         <span>Workspace is being migrated to Notes. <button onClick={() => navigate("/notes")} className="underline font-bold hover:text-amber-400">Go to Notes →</button></span>
       </div>
-      <div className="flex-1 min-h-0 flex gap-4">
+      <div className="flex-1 min-h-0 flex gap-4 relative">
       {/* ── Sidebar ─────────────────────────────────────────── */}
-      <div className="w-60 shrink-0 flex flex-col gap-2">
+      <div className={`${mobileView === "list" ? "flex" : "hidden"} md:flex w-full md:w-60 shrink-0 flex-col gap-2 bg-background md:bg-transparent absolute inset-0 md:relative z-20`}>
         <Button size="sm" className="w-full gap-2 text-xs" onClick={createNote}>
           <Plus className="h-3.5 w-3.5" /> New Note
         </Button>
@@ -802,10 +817,9 @@ export default function Workspace() {
           createNoteWithContent(title, blocks);
         }} />
 
-        {/* Search */}
         <div className="relative">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-          <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search notes..." className="pl-8 h-8 text-xs" />
+          <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search notes..." className="pl-8 h-8 text-base md:text-xs" style={{ fontSize: "16px" }} />
         </div>
 
         {/* Tag filter chips */}
@@ -841,8 +855,8 @@ export default function Workspace() {
               : filteredNotes.map(note => (
                 <button
                   key={note.id}
-                  onClick={() => setSelectedId(note.id)}
-                  className={`w-full text-left px-3 py-2.5 rounded-lg transition-all text-xs border group ${
+                  onClick={() => { setSelectedId(note.id); setMobileView("editor"); }}
+                  className={`w-full text-left px-3 py-3 md:py-2.5 rounded-lg transition-all text-xs border group min-h-[44px] ${
                     selectedId === note.id
                       ? "bg-primary/10 border-primary/30 text-foreground"
                       : "border-transparent hover:bg-emerald-500/5 text-muted-foreground hover:text-foreground"
@@ -872,11 +886,22 @@ export default function Workspace() {
       </div>
 
       {/* ── Editor ──────────────────────────────────────────── */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className={`${mobileView === "editor" ? "flex" : "hidden"} md:flex flex-1 flex-col min-w-0 absolute md:relative inset-0 bg-background z-10 overflow-hidden`}>
         {selectedNote ? (
           <>
+            {/* Mobile back button & header */}
+            <div className="md:hidden flex items-center justify-between p-3 border-b border-border/20 sticky top-0 bg-background/95 backdrop-blur z-30 mb-4">
+              <Button variant="ghost" size="sm" onClick={() => setMobileView("list")} className="h-8 gap-1.5 -ml-2 text-xs min-h-[44px]">
+                <ChevronLeft className="h-4 w-4" /> Back
+              </Button>
+              <span className="text-sm font-semibold truncate flex-1 mx-2 text-center">{selectedNote.title || "Untitled"}</span>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-muted-foreground">{saveStatus === "saving" ? "Saving..." : saveStatus === "saved" ? "Saved" : ""}</span>
+              </div>
+            </div>
+
             {/* Note header */}
-            <div className="flex items-start justify-between mb-4 gap-2">
+            <div className="flex items-start justify-between mb-4 gap-2 px-4 md:px-0">
               <div className="flex-1 min-w-0">
                 {editingTitle ? (
                   <Input
@@ -1022,6 +1047,34 @@ export default function Workspace() {
                 )}
               </div>
             </div>
+
+            {/* Mobile Floating Toolbar */}
+            {mobileView === "editor" && (
+              <div className="md:hidden fixed bottom-16 left-0 right-0 z-40 bg-background/95 backdrop-blur border-t border-border/20 flex items-center gap-1.5 px-3 py-2 overflow-x-auto shadow-lg [-webkit-overflow-scrolling:touch]" style={{ scrollbarWidth: "none" }}>
+                {[
+                  { label: "H1", action: () => { if(editingBlockId){ changeBlockType(editingBlockId, "h1") } } },
+                  { label: "H2", action: () => { if(editingBlockId){ changeBlockType(editingBlockId, "h2") } } },
+                  { label: "•", action: () => { if(editingBlockId){ changeBlockType(editingBlockId, "bullet") } } },
+                  { label: "☑", action: () => { if(editingBlockId){ changeBlockType(editingBlockId, "checklist") } } },
+                  { label: "<>", action: () => { if(editingBlockId){ changeBlockType(editingBlockId, "code") } } },
+                  { label: "—", action: () => { if(editingBlockId){ changeBlockType(editingBlockId, "divider") } } },
+                ].map((btn) => (
+                  <button key={btn.label}
+                    onClick={btn.action}
+                    className="h-[44px] min-w-[44px] px-3 rounded-lg bg-muted/30 text-sm font-mono font-medium text-foreground hover:bg-muted/50 transition-colors shrink-0 flex items-center justify-center"
+                  >
+                    {btn.label}
+                  </button>
+                ))}
+                <div className="w-px h-6 bg-border/40 mx-2 shrink-0" />
+                <button onClick={() => {
+                  const targetIdx = selectedNote.blocks.findIndex(b=>b.id===editingBlockId);
+                  addBlock(targetIdx > -1 ? editingBlockId! : selectedNote.blocks[selectedNote.blocks.length - 1].id)
+                }} className="h-[44px] px-4 rounded-lg bg-primary/10 text-primary text-sm font-bold shrink-0 flex items-center gap-1">
+                  <Plus className="h-4 w-4" /> Block
+                </button>
+              </div>
+            )}
           </>
         ) : (
           <div className="flex items-center justify-center h-full text-center p-8">

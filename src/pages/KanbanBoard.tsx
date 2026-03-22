@@ -75,7 +75,7 @@ function SortableTaskCard({ task, onClick, onComplete }: { task: Task; onClick: 
 
   return (
     <div ref={setNodeRef} style={style}
-      className="relative bg-card border border-border/40 rounded-xl p-3 space-y-2 cursor-pointer transition-all hover:-translate-y-0.5 hover:shadow-md hover:shadow-black/20 hover:border-primary/30 group"
+      className="relative bg-card border border-border/40 rounded-xl p-4 md:p-3 space-y-2 cursor-pointer transition-all hover:-translate-y-0.5 hover:shadow-md hover:shadow-black/20 hover:border-primary/30 group"
       onClick={onClick}>
       
       {task.status !== "done" && onComplete && (
@@ -90,10 +90,10 @@ function SortableTaskCard({ task, onClick, onComplete }: { task: Task; onClick: 
 
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-start gap-1.5 flex-1 min-w-0">
-          <div {...attributes} {...listeners} className="pt-1 cursor-grab opacity-0 group-hover:opacity-60 transition-opacity">
-            <GripVertical className="h-3 w-3 text-muted-foreground" />
+          <div {...attributes} {...listeners} className="pt-1 cursor-grab opacity-0 group-hover:opacity-60 transition-opacity p-1 -ml-1">
+            <GripVertical className="h-4 w-4 md:h-3 md:w-3 text-muted-foreground" />
           </div>
-          <p className="text-sm font-medium leading-snug">{task.title}</p>
+          <p className="text-base md:text-sm font-medium leading-snug">{task.title}</p>
         </div>
         <div className={`h-2 w-2 rounded-full shrink-0 mt-1 ${PRIORITY_COLORS[task.priority]}`} title={task.priority} />
       </div>
@@ -105,11 +105,11 @@ function SortableTaskCard({ task, onClick, onComplete }: { task: Task; onClick: 
         </div>
       )}
       {task.assignee_profile?.display_name && (
-        <div className="flex items-center gap-1.5">
-          <div className="h-5 w-5 rounded-full bg-primary/10 text-primary text-[9px] font-bold flex items-center justify-center">
+        <div className="flex items-center gap-1.5 mt-2">
+          <div className="h-6 w-6 md:h-5 md:w-5 rounded-full bg-primary/10 text-primary text-[10px] md:text-[9px] font-bold flex items-center justify-center">
             {task.assignee_profile.display_name.charAt(0).toUpperCase()}
           </div>
-          <span className="text-[11px] text-muted-foreground">{task.assignee_profile.display_name}</span>
+          <span className="text-xs md:text-[11px] text-muted-foreground">{task.assignee_profile.display_name}</span>
         </div>
       )}
     </div>
@@ -413,7 +413,7 @@ export default function KanbanBoard() {
 
   // ── Render ──
   return (
-    <div className="flex flex-col h-[calc(100vh-5rem)] md:h-[calc(100vh-6rem)] overflow-hidden animate-fade-in">
+    <div className="flex flex-col h-[calc(100vh-4rem)] md:h-[calc(100vh-6rem)] pb-16 md:pb-0 overflow-hidden animate-fade-in relative">
       {/* Header */}
       <div className="p-4 border-b border-border/40 space-y-3">
         <div className="flex items-center justify-between flex-wrap gap-2">
@@ -579,13 +579,13 @@ export default function KanbanBoard() {
             {/* Title */}
             <div className="space-y-1">
               <label className="text-xs font-medium text-muted-foreground">Title *</label>
-              <Input value={formTitle} onChange={e => setFormTitle(e.target.value)} placeholder="Task title..." autoFocus />
+              <Input value={formTitle} onChange={e => setFormTitle(e.target.value)} placeholder="Task title..." autoFocus className="text-base md:text-sm h-10" style={{ fontSize: "16px" }} />
             </div>
 
             {/* Description */}
             <div className="space-y-1">
               <label className="text-xs font-medium text-muted-foreground">Description</label>
-              <Textarea value={formDesc} onChange={e => setFormDesc(e.target.value)} placeholder="Optional description..." rows={2} />
+              <Textarea value={formDesc} onChange={e => setFormDesc(e.target.value)} placeholder="Optional description..." rows={2} className="text-base md:text-sm" style={{ fontSize: "16px" }} />
             </div>
 
             {/* Status */}
@@ -623,13 +623,14 @@ export default function KanbanBoard() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <label className="text-xs font-medium text-muted-foreground">Subject</label>
-                <Input value={formSubject} onChange={e => setFormSubject(e.target.value)} placeholder="e.g. Algorithms" list="task-subjects" />
+                <Input value={formSubject} onChange={e => setFormSubject(e.target.value)} placeholder="e.g. Algorithms" list="task-subjects" className="text-base md:text-sm h-10" style={{ fontSize: "16px" }} />
                 <datalist id="task-subjects">{subjects.map(s => <option key={s} value={s} />)}</datalist>
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-medium text-muted-foreground">Due date</label>
                 <input type="date" value={formDueDate} onChange={e => setFormDueDate(e.target.value)}
-                  className="w-full bg-transparent border border-border/40 rounded-lg px-3 py-2 text-sm outline-none focus:border-primary transition-colors" />
+                  style={{ fontSize: "16px" }}
+                  className="w-full bg-transparent border border-border/40 rounded-lg px-3 h-10 text-base md:text-sm outline-none focus:border-primary transition-colors" />
               </div>
             </div>
 
@@ -638,7 +639,7 @@ export default function KanbanBoard() {
               <div className="space-y-1">
                 <label className="text-xs font-medium text-muted-foreground">Assignee</label>
                 <div className="relative">
-                  <Input value={assigneeSearch} onChange={e => setAssigneeSearch(e.target.value)} placeholder="Search to assign..." />
+                  <Input value={assigneeSearch} onChange={e => setAssigneeSearch(e.target.value)} placeholder="Search to assign..." className="text-base md:text-sm h-10" style={{ fontSize: "16px" }} />
                   {assigneeResults.length > 0 && (
                     <div className="absolute top-full left-0 mt-1 w-full z-50 glass-card border border-border/60 rounded-lg shadow-xl py-1 max-h-40 overflow-y-auto">
                       {assigneeResults.map(p => (
@@ -656,7 +657,7 @@ export default function KanbanBoard() {
             {/* Notes */}
             <div className="space-y-1">
               <label className="text-xs font-medium text-muted-foreground">Notes</label>
-              <Textarea value={formNotes} onChange={e => setFormNotes(e.target.value)} placeholder="Task-specific notes..." rows={2} />
+              <Textarea value={formNotes} onChange={e => setFormNotes(e.target.value)} placeholder="Task-specific notes..." rows={2} className="text-base md:text-sm" style={{ fontSize: "16px" }} />
             </div>
 
             {/* Actions */}
