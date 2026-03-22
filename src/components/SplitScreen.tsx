@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Columns2 } from "lucide-react";
+import { Columns2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 
@@ -34,15 +34,19 @@ export function SplitScreen() {
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-[95vw] w-[95vw] h-[90vh] p-0 gap-0 [&>button]:hidden">
-          <div className="flex h-full">
+          <div className="flex h-full flex-col md:flex-row">
             {/* Left panel */}
-            <div className="flex-1 flex flex-col border-r border-border/20">
+            <div className="flex-1 flex flex-col border-b md:border-b-0 md:border-r border-border/20">
               <div className="flex items-center gap-2 px-4 py-3 border-b border-border/20 bg-card/50">
-                <span className="text-xs text-muted-foreground font-medium">Left Panel</span>
+                <span className="text-xs text-muted-foreground font-medium hidden md:inline">Left Panel</span>
                 <select value={leftPanel} onChange={e => setLeftPanel(e.target.value)}
-                  className="ml-auto text-xs bg-background border border-border/30 rounded-md px-2 py-1 outline-none">
+                  className="text-xs bg-background border border-border/30 rounded-md px-2 py-1 outline-none">
                   {PANEL_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                 </select>
+                <div className="flex-1" />
+                <Button variant="ghost" size="icon" className="h-6 w-6 md:hidden" onClick={() => setOpen(false)}>
+                  <X className="h-4 w-4" />
+                </Button>
               </div>
               <div className="flex-1 overflow-hidden">
                 <iframe src={panelRoutes[leftPanel]} className="w-full h-full border-0" title={leftPanel} />
@@ -50,16 +54,20 @@ export function SplitScreen() {
             </div>
 
             {/* Resize handle */}
-            <div className="w-1 bg-border/20 hover:bg-primary/30 cursor-col-resize transition-colors shrink-0" />
+            <div className="h-2 md:h-full w-full md:w-1 bg-border/20 hover:bg-primary/30 cursor-row-resize md:cursor-col-resize transition-colors shrink-0" />
 
             {/* Right panel */}
             <div className="flex-1 flex flex-col">
               <div className="flex items-center gap-2 px-4 py-3 border-b border-border/20 bg-card/50">
-                <span className="text-xs text-muted-foreground font-medium">Right Panel</span>
+                <span className="text-xs text-muted-foreground font-medium hidden md:inline">Right Panel</span>
                 <select value={rightPanel} onChange={e => setRightPanel(e.target.value)}
-                  className="ml-auto text-xs bg-background border border-border/30 rounded-md px-2 py-1 outline-none">
+                  className="text-xs bg-background border border-border/30 rounded-md px-2 py-1 outline-none">
                   {PANEL_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                 </select>
+                <div className="flex-1" />
+                <Button variant="ghost" size="icon" className="h-6 w-6 hidden md:flex" onClick={() => setOpen(false)}>
+                  <X className="h-4 w-4" />
+                </Button>
               </div>
               <div className="flex-1 overflow-hidden">
                 <iframe src={panelRoutes[rightPanel]} className="w-full h-full border-0" title={rightPanel} />

@@ -62,7 +62,10 @@ export default function QATab() {
     const { error } = await supabase.from("qa_questions").update({ is_resolved: true }).eq("id", qId);
     if (!error) {
       setQuestions(prev => prev.map(q => q.id === qId ? { ...q, is_resolved: true } : q));
-      if (selectedQuestion?.id === qId) setSelectedQuestion(prev => prev ? { ...prev, is_resolved: true } : null);
+      if (selectedQuestion?.id === qId) {
+        setSelectedQuestion(null);
+        setFilter("Resolved");
+      }
       toast.success("Marked as resolved!");
     }
   };
