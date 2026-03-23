@@ -89,6 +89,10 @@ export default function Teams() {
   const [allPeople, setAllPeople] = useState<TeamMember[]>([]);
   const [isLoadingMembers, setIsLoadingMembers] = useState(false);
 
+  // Analytics state
+  const [analyticsData, setAnalyticsData] = useState<any[]>([]);
+  const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(false);
+
   // Create team modal
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [newTeamName, setNewTeamName] = useState("");
@@ -122,29 +126,44 @@ export default function Teams() {
   const currentUserId = user?.id;
 
   // Search for users to invite
-  useEffect(() => {
-    if (!inviteSearch.trim() || inviteSearch.length < 2) {
+  const searchUsers = async (query: string) => {
+    if (!query.trim() || query.length < 2) {
       setSearchResults([]);
       return;
     }
 
-    const searchUsers = async () => {
-      setIsSearching(true);
-      const { data } = await supabase
+    setIsSearching(true);
+    try {
+      const { data, error } = await supabase
         .from("profiles")
-        .select("id, display_name, avatar_color")
-        .ilike("display_name", `%${inviteSearch}%`)
-        .limit(5);
-      
-      // Filter out users who are already in the team or already invited
-      const existingIds = new Set(teamMembers.map(m => m.user_id));
-      setSearchResults((data || []).filter(u => !existingIds.has(u.id)));
-      setIsSearching(false);
-    };
+        .select("id, display_name, avatar_color, avatar_emoji")
+        .ilike("display_name", `%${query}%`)
+        .neq("id", currentUserId)
+        .limit(8);
 
-    const timer = setTimeout(searchUsers, 300);
+      if (error) throw error;
+
+      const existingIds = new Set(teamMembers.map(m => m.user_id));
+      const filtered = (data || []).filter(u => !existingIds.has(u.id));
+      setSearchResults(filtered);
+    } catch (e) {
+      console.error("User search error:", e);
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (inviteSearch.trim().length >= 2) {
+        searchUsers(inviteSearch);
+      } else {
+        setSearchResults([]);
+      }
+    }, 300);
     return () => clearTimeout(timer);
-  }, [inviteSearch, teamMembers, isLoadingMembers]);
+  }, [inviteSearch, teamMembers]);
 
   // Fetch all teams (where I am a member)
   const fetchTeams = useCallback(async () => {
@@ -248,31 +267,65 @@ export default function Teams() {
   // Fetch members of selected team
   const fetchTeamMembers = useCallback(async (teamId: string) => {
     setIsLoadingMembers(true);
-    const { data, error } = await supabase
-      .from("team_members")
-      .select("role, user_id, status, profiles!user_id (display_name, avatar_color, status)")
-      .eq("team_id", teamId);
+    try {
+      const { data, error } = await supabase
+        .from("team_members")
+        .select(`
+          user_id,
+          role,
+          status,
+          profiles!team_members_user_id_fkey (
+            display_name,
+            avatar_color,
+            avatar_emoji,
+            status
+          )
+        `)
+        .eq("team_id", teamId);
 
-    if (error) {
-      console.error("Error fetching team members:", error);
-      toast.error(`Could not load members: ${error.message}`);
-    }
-    
-    if (!error && data) {
-      const formattedMembers = data.map((m: any) => ({
-        ...m,
-        team_id: teamId,
-        profiles: Array.isArray(m.profiles) ? m.profiles[0] : m.profiles
-      }));
-      setTeamMembers(formattedMembers);
-      
-      // Update the selected team's member count for the header
-      if (selectedTeam && selectedTeam.id === teamId) {
-        const activeCount = formattedMembers.filter(m => m.status === 'accepted').length;
-        setSelectedTeam(prev => prev ? { ...prev, member_count: activeCount } : null);
+      if (error) {
+        console.error("fetchTeamMembers error:", error);
+        // Try fallback query without the join
+        const { data: fallbackData } = await supabase
+          .from("team_members")
+          .select("user_id, role, status")
+          .eq("team_id", teamId);
+
+        if (fallbackData) {
+          // Fetch profiles separately
+          const userIds = fallbackData.map(m => m.user_id);
+          const { data: profiles } = await supabase
+            .from("profiles")
+            .select("id, display_name, avatar_color, status")
+            .in("id", userIds);
+
+          const merged = fallbackData.map(m => ({
+            ...m,
+            team_id: teamId,
+            profiles: profiles?.find(p => p.id === m.user_id) || null
+          }));
+          setTeamMembers(merged);
+        }
+      } else if (data) {
+        const formatted = data.map((m: any) => ({
+          ...m,
+          team_id: teamId,
+          profiles: Array.isArray(m.profiles) ? m.profiles[0] : m.profiles
+        }));
+        setTeamMembers(formatted);
+        
+        // Update the selected team's member count for the header
+        if (selectedTeam && selectedTeam.id === teamId) {
+          const activeCount = formatted.filter((m: any) => m.status === 'accepted').length;
+          setSelectedTeam(prev => prev ? { ...prev, member_count: activeCount } : null);
+        }
       }
+    } catch (e) {
+      console.error("fetchTeamMembers exception:", e);
+      toast.error("Could not load members");
+    } finally {
+      setIsLoadingMembers(false);
     }
-    setIsLoadingMembers(false);
   }, [selectedTeam]);
 
   useEffect(() => {
@@ -301,6 +354,27 @@ export default function Teams() {
     }
   }, []);
 
+  // Fetch Team Analytics
+  const fetchTeamAnalytics = useCallback(async (teamId: string) => {
+    setIsLoadingAnalytics(true);
+    try {
+      // Simple query — just member count and basic info
+      const { data, error } = await supabase
+        .from("team_members")
+        .select("user_id, role, status")
+        .eq("team_id", teamId);
+
+      if (error) throw error;
+      setAnalyticsData(data || []);
+    } catch (e) {
+      console.error("Analytics error:", e);
+      // Show empty state instead of infinite spinner
+      setAnalyticsData([]);
+    } finally {
+      setIsLoadingAnalytics(false); // ALWAYS stop loading
+    }
+  }, []);
+
   // Fetch team activity
   const fetchTeamActivity = useCallback(async (teamId: string) => {
     try {
@@ -319,6 +393,7 @@ export default function Teams() {
   useEffect(() => {
     if (selectedTeam) {
       fetchTeamMembers(selectedTeam.id);
+      fetchTeamAnalytics(selectedTeam.id);
       fetchKanbanTasks(selectedTeam.id);
       fetchTeamActivity(selectedTeam.id);
       
@@ -877,23 +952,35 @@ export default function Teams() {
                     </div>
                   </div>
 
-                  {/* Stat cards */}
-                  <div className="grid grid-cols-3 gap-4">
-                    {[
-                      { label: "Total Members", value: teamMembers.length, icon: <Users className="h-5 w-5 text-blue-400" />, color: "bg-blue-500/10 border-blue-500/20" },
-                      { label: "Active Now", value: teamMembers.filter(m => m.profiles?.status?.includes("Online")).length, icon: <Activity className="h-5 w-5 text-green-400" />, color: "bg-green-500/10 border-green-500/20" },
-                      { label: "Owners", value: teamMembers.filter(m => m.role === "owner").length, icon: <Crown className="h-5 w-5 text-yellow-400" />, color: "bg-yellow-500/10 border-yellow-500/20" },
-                    ].map((stat, i) => (
-                      <div key={i} className={`border rounded-2xl p-5 ${stat.color}`}>
-                        <div className="flex items-center justify-between mb-3">
-                          {stat.icon}
-                          <TrendingUp className="h-4 w-4 text-muted-foreground/40" />
-                        </div>
-                        <p className="text-3xl font-black">{stat.value}</p>
-                        <p className="text-xs text-muted-foreground mt-1 font-medium">{stat.label}</p>
+                  {isLoadingAnalytics ? (
+                    <div className="flex justify-center py-8">
+                      <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                    </div>
+                  ) : analyticsData.length === 0 ? (
+                    <div className="text-center py-12 opacity-40">
+                      <BarChart3 className="h-10 w-10 mx-auto mb-3" strokeWidth={1} />
+                      <p className="text-sm">Not enough data yet</p>
+                      <p className="text-xs text-muted-foreground mt-1">Add members and start collaborating</p>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Stat cards */}
+                      <div className="grid grid-cols-3 gap-4">
+                        {[
+                          { label: "Total Members", value: analyticsData.length, icon: <Users className="h-5 w-5 text-blue-400" />, color: "bg-blue-500/10 border-blue-500/20" },
+                          { label: "Active Now", value: teamMembers.filter(m => m.profiles?.status?.includes("Online")).length, icon: <Activity className="h-5 w-5 text-green-400" />, color: "bg-green-500/10 border-green-500/20" },
+                          { label: "Owners", value: analyticsData.filter(m => m.role === "owner").length, icon: <Crown className="h-5 w-5 text-yellow-400" />, color: "bg-yellow-500/10 border-yellow-500/20" },
+                        ].map((stat, i) => (
+                          <div key={i} className={`border rounded-2xl p-5 ${stat.color}`}>
+                            <div className="flex items-center justify-between mb-3">
+                              {stat.icon}
+                              <TrendingUp className="h-4 w-4 text-muted-foreground/40" />
+                            </div>
+                            <p className="text-3xl font-black">{stat.value}</p>
+                            <p className="text-xs text-muted-foreground mt-1 font-medium">{stat.label}</p>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
 
                   {/* Activity chart placeholder */}
                   <div className="border border-border/40 rounded-2xl p-6 space-y-3">
@@ -913,6 +1000,8 @@ export default function Teams() {
                       </span>
                     </div>
                   </div>
+                </>
+              )}
                 </div>
               )}
 

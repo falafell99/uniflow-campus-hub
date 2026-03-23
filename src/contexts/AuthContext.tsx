@@ -26,8 +26,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refreshProfile = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      const { data } = await supabase.from("profiles").select("*").eq("id", user.id).single();
-      setProfile(data);
+      const fetchPromise = supabase.from("profiles").select("*").eq("id", user.id).single();
+      const timeoutPromise = new Promise<{data: any, error: any}>((resolve) => 
+        setTimeout(() => resolve({ data: null, error: new Error("Profile fetch timed out") }), 5000)
+      );
+      
+      const { data, error } = await Promise.race([fetchPromise, timeoutPromise]);
+      
+      if (error) {
+        console.error("Profile fetch error:", error);
+      }
+      setProfile(data || null);
       return data;
     } else {
       setProfile(null);
@@ -43,11 +52,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       else setLoading(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
-      if (session?.user) refreshProfile().then(() => setLoading(false));
-      else {
+
+      if (event === "SIGNED_IN" && session?.user) {
+        // Check if profile exists
+        const { data: existingProfile } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("id", session.user.id)
+          .single();
+
+        // Create profile if it doesn't exist
+        if (!existingProfile) {
+          await supabase.from("profiles").insert({
+            id: session.user.id,
+            display_name: session.user.email?.split("@")[0] || "Student",
+            status: "Online",
+            onboarding_completed: false,
+          });
+        } else {
+          // Update status to Online
+          await supabase.from("profiles").update({ status: "Online" }).eq("id", session.user.id);
+        }
+      }
+
+      if (session?.user) {
+        refreshProfile().then(() => setLoading(false));
+      } else {
         setProfile(null);
         setLoading(false);
       }

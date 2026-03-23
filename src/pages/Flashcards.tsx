@@ -221,7 +221,18 @@ export default function Flashcards() {
       .order("created_at", { ascending: true });
 
     if (data && data.length > 0) {
-      setDecks(data as Deck[]);
+      // Dynamic count fetch
+      const { data: allCards } = await supabase.from("flashcard_cards").select("deck_id");
+      const counts: Record<number, number> = {};
+      (allCards || []).forEach(c => {
+        counts[c.deck_id] = (counts[c.deck_id] || 0) + 1;
+      });
+      
+      const decksWithCounts = data.map(d => ({
+        ...d,
+        card_count: counts[d.id] || 0
+      }));
+      setDecks(decksWithCounts as Deck[]);
     } else {
       // Seed starter decks
       for (const d of starterDecks) {
@@ -469,7 +480,7 @@ ${text}`;
                 </button>
                 <div className="flex items-start justify-between mb-3">
                   <Layers className="h-5 w-5 text-primary" />
-                  <Badge variant="outline" className="text-[10px]">{deck.card_count} cards</Badge>
+                  <Badge variant="outline" className="text-[10px]">{deck.card_count} card{deck.card_count !== 1 ? "s" : ""}</Badge>
                 </div>
                 <h3 className="font-semibold text-sm mb-1 pr-6">{deck.title}</h3>
                 <p className="text-xs text-muted-foreground">{deck.subject}</p>

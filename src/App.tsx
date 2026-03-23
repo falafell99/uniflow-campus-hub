@@ -69,13 +69,14 @@ function ProtectedApp() {
   }
 
   // Redirect to onboarding if they haven't finished it
-  if (user && profile?.onboarding_completed === false) {
-    return (
-      <Routes>
-        <Route path="/onboarding" element={<Onboarding />} />
-        <Route path="*" element={<Navigate to="/onboarding" replace />} />
-      </Routes>
-    );
+  if (
+    !loading &&
+    user &&
+    profile !== null &&
+    profile.onboarding_completed === false &&
+    location.pathname !== "/onboarding"
+  ) {
+    return <Navigate to="/onboarding" replace />;
   }
 
   // Allow them to be on onboarding page if they need it (already covered by above rule if they aren't complete)
