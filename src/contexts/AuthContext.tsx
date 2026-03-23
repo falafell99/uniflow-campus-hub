@@ -48,7 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
-      if (session?.user) refreshProfile().then(() => setLoading(false));
+      if (session?.user) refreshProfile().finally(() => setLoading(false));
       else setLoading(false);
     });
 
@@ -79,7 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (session?.user) {
-        refreshProfile().then(() => setLoading(false));
+        refreshProfile().finally(() => setLoading(false));
       } else {
         setProfile(null);
         setLoading(false);
