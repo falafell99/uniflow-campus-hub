@@ -8,7 +8,7 @@ type AuthContextType = {
   session: Session | null;
   profile: any | null;
   loading: boolean;
-  refreshProfile: () => Promise<void>;
+  refreshProfile: (userId?: string) => Promise<any>;
   onlineUsers: Set<string>;
   signUp: (email: string, password: string, displayName: string) => Promise<{ error: string | null }>;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
@@ -23,10 +23,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const refreshProfile = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const fetchPromise = supabase.from("profiles").select("*").eq("id", user.id).single();
+  const refreshProfile = async (userId?: string) => {
+    let idToUse = userId;
+    if (!idToUse) {
+      const { data: { user } } = await supabase.auth.getUser();
+      idToUse = user?.id;
+    }
+
+    if (idToUse) {
+      const fetchPromise = supabase.from("profiles").select("*").eq("id", idToUse).single();
       const timeoutPromise = new Promise<{data: any, error: any}>((resolve) => 
         setTimeout(() => resolve({ data: null, error: new Error("Profile fetch timed out") }), 5000)
       );
@@ -52,40 +57,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const session = result?.data?.session;
       setSession(session ?? null);
       setUser(session?.user ?? null);
-      if (session?.user) refreshProfile().finally(() => setLoading(false));
+      if (session?.user) refreshProfile(session.user.id).finally(() => setLoading(false));
       else setLoading(false);
     }).catch(() => {
       setLoading(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "INITIAL_SESSION") return;
+      
       setSession(session);
       setUser(session?.user ?? null);
 
-      if (event === "SIGNED_IN" && session?.user) {
-        // Check if profile exists
-        const { data: existingProfile } = await supabase
-          .from("profiles")
-          .select("id")
-          .eq("id", session.user.id)
-          .single();
-
-        // Create profile if it doesn't exist
-        if (!existingProfile) {
-          await supabase.from("profiles").insert({
-            id: session.user.id,
-            display_name: session.user.email?.split("@")[0] || "Student",
-            status: "Online",
-            onboarding_completed: false,
-          });
-        } else {
-          // Update status to Online
-          await supabase.from("profiles").update({ status: "Online" }).eq("id", session.user.id);
-        }
-      }
-
       if (session?.user) {
-        refreshProfile().finally(() => setLoading(false));
+        // Start profile fetch immediately to unblock UI
+        refreshProfile(session.user.id).finally(() => setLoading(false));
+
+        if (event === "SIGNED_IN") {
+          // Run profile initialization in the background
+          (async () => {
+            try {
+              const { data: existingProfile } = await supabase
+                .from("profiles")
+                .select("id")
+                .eq("id", session.user.id)
+                .single();
+
+              if (!existingProfile) {
+                await supabase.from("profiles").insert({
+                  id: session.user.id,
+                  display_name: session.user.email?.split("@")[0] || "Student",
+                  status: "Online",
+                  onboarding_completed: false,
+                });
+                // Refresh again if we just created it
+                refreshProfile(session.user.id);
+              } else {
+                await supabase.from("profiles").update({ status: "Online" }).eq("id", session.user.id);
+              }
+            } catch (err) {
+              console.error(err);
+            }
+          })();
+        }
       } else {
         setProfile(null);
         setLoading(false);
