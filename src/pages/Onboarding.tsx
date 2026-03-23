@@ -108,7 +108,7 @@ export default function Onboarding() {
         </div>
         <div className="h-1 bg-white/10 rounded-full overflow-hidden">
           <motion.div
-            className="h-full bg-[#7b68ee] rounded-full"
+            className="h-full bg-[#3b82f6] rounded-full"
             initial={{ width: 0 }}
             animate={{ width: `${(currentStep / totalSteps) * 100}%` }}
             transition={{ duration: 0.5, ease: "easeInOut" }}
@@ -132,7 +132,7 @@ export default function Onboarding() {
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ duration: 0.5, ease: "backOut" }}
-              className="h-20 w-20 rounded-3xl bg-[#7b68ee] flex items-center justify-center text-white font-black text-4xl mb-2 shadow-2xl shadow-[#7b68ee]/30 mx-auto"
+              className="h-20 w-20 rounded-3xl bg-[#3b82f6] flex items-center justify-center text-white font-black text-4xl mb-2 shadow-2xl shadow-[#3b82f6]/30 mx-auto"
             >
               U
             </motion.div>
@@ -142,7 +142,7 @@ export default function Onboarding() {
             </p>
             <button
               onClick={() => setStep(1)}
-              className="w-full h-12 rounded-xl bg-[#7b68ee] hover:bg-[#6a5acd] text-white font-bold transition-all active:scale-95"
+              className="w-full h-12 rounded-xl bg-[#3b82f6] hover:bg-[#2563eb] text-white font-bold transition-all active:scale-95"
             >
               Get Started →
             </button>
@@ -165,17 +165,17 @@ export default function Onboarding() {
                 <div>
                   <label className="text-xs text-white/40 font-medium">Display name *</label>
                   <Input value={name} onChange={e => setName(e.target.value)} placeholder="Your name"
-                    className="mt-1 bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:border-[#7b68ee]/60" />
+                    className="mt-1 bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:border-[#3b82f6]/60" />
                 </div>
                 <div>
                   <label className="text-xs text-white/40 font-medium">University</label>
                   <Input value={university} onChange={e => setUniversity(e.target.value)} placeholder="e.g. ELTE, BME, Corvinus"
-                    className="mt-1 bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:border-[#7b68ee]/60" />
+                    className="mt-1 bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:border-[#3b82f6]/60" />
                 </div>
                 <div>
                   <label className="text-xs text-white/40 font-medium">Faculty / Department</label>
                   <select value={faculty} onChange={e => setFaculty(e.target.value)}
-                    className="mt-1 w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-[#7b68ee]/60">
+                    className="mt-1 w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-[#3b82f6]/60">
                     <option value="" className="bg-[#0a0a0a]">Select faculty...</option>
                     {FACULTIES.map(f => <option key={f} value={f} className="bg-[#0a0a0a]">{f}</option>)}
                   </select>
@@ -183,7 +183,7 @@ export default function Onboarding() {
                 <div>
                   <label className="text-xs text-white/40 font-medium">Year of study</label>
                   <select value={yearOfStudy} onChange={e => setYearOfStudy(e.target.value)}
-                    className="mt-1 w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-[#7b68ee]/60">
+                    className="mt-1 w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-[#3b82f6]/60">
                     <option value="" className="bg-[#0a0a0a]">Select year...</option>
                     {YEARS.map(y => <option key={y} value={y} className="bg-[#0a0a0a]">{y}</option>)}
                   </select>
@@ -191,12 +191,12 @@ export default function Onboarding() {
                 <div>
                   <label className="text-xs text-white/40 font-medium">Major</label>
                   <Input value={major} onChange={e => setMajor(e.target.value)} placeholder="e.g. Computer Science"
-                    className="mt-1 bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:border-[#7b68ee]/60" />
+                    className="mt-1 bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:border-[#3b82f6]/60" />
                 </div>
               </div>
             </div>
             <button
-              className="w-full h-12 rounded-xl bg-[#7b68ee] hover:bg-[#6a5acd] text-white font-bold transition-all active:scale-95 mt-5"
+              className="w-full h-12 rounded-xl bg-[#3b82f6] hover:bg-[#2563eb] text-white font-bold transition-all active:scale-95 mt-5"
               onClick={async () => { if (await saveProfile()) setStep(2); }}
             >
               Next →
@@ -231,7 +231,7 @@ export default function Onboarding() {
                   onClick={() => setFirstAction(card.key)}
                   className={`w-full p-4 rounded-2xl border-2 text-left transition-all ${
                     firstAction === card.key
-                      ? "border-[#7b68ee] bg-[#7b68ee]/10"
+                      ? "border-[#3b82f6] bg-[#3b82f6]/10"
                       : "border-white/10 hover:border-white/20 bg-white/[0.02]"
                   }`}
                 >
@@ -242,7 +242,7 @@ export default function Onboarding() {
               ))}
             </div>
             <button
-              className="w-full h-12 rounded-xl bg-[#7b68ee] hover:bg-[#6a5acd] text-white font-bold transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="w-full h-12 rounded-xl bg-[#3b82f6] hover:bg-[#2563eb] text-white font-bold transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
               disabled={!firstAction}
               onClick={() => setStep(3)}
             >
@@ -268,14 +268,14 @@ export default function Onboarding() {
               initial={{ scale: 0, rotate: -180 }}
               animate={{ scale: 1, rotate: 0 }}
               transition={{ duration: 0.6, ease: "backOut" }}
-              className="h-24 w-24 rounded-full bg-[#7b68ee]/20 border-2 border-[#7b68ee] flex items-center justify-center text-5xl mx-auto"
+              className="h-24 w-24 rounded-full bg-[#3b82f6]/20 border-2 border-[#3b82f6] flex items-center justify-center text-5xl mx-auto"
             >
               ✓
             </motion.div>
             <h2 className="text-2xl font-black text-white text-center">You're all set!</h2>
             <p className="text-white/40 text-center">UniFlow is ready. Let's go.</p>
             <button
-              className="w-full h-12 rounded-xl bg-[#7b68ee] hover:bg-[#6a5acd] text-white font-bold transition-all active:scale-95 disabled:opacity-50"
+              className="w-full h-12 rounded-xl bg-[#3b82f6] hover:bg-[#2563eb] text-white font-bold transition-all active:scale-95 disabled:opacity-50"
               onClick={handleFinish}
               disabled={isSubmitting}
             >

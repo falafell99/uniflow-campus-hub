@@ -508,7 +508,7 @@ export default function Whiteboard({ roomId, teamId, embedded = false }: Whitebo
                   >
                     <div 
                        className={`w-full h-full p-4 shadow-xl flex flex-col transition-all border-l-[3px]
-                         ${isSelected ? "ring-2 ring-[#7b68ee] scale-[1.02]" : "ring-0 ring-transparent"}`}
+                         ${isSelected ? "ring-2 ring-[#3b82f6] scale-[1.02]" : "ring-0 ring-transparent"}`}
                        style={{ 
                          backgroundColor: el.color,
                          color: "#333",

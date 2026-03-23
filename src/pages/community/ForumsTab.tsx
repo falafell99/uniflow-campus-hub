@@ -35,7 +35,7 @@ function ReplyItem({ r }: { r: Reply }) {
         <span className="text-xs font-medium">{r.author}</span>
         <span className="text-[10px] text-muted-foreground">{timeAgo(r.created_at)}</span>
       </div>
-      <p className="text-sm text-foreground/90 pl-8">{r.content}</p>
+      <p className="text-sm text-foreground/90 pl-8 break-words whitespace-pre-wrap overflow-hidden">{r.content}</p>
     </div>
   );
 }
@@ -94,10 +94,13 @@ function ThreadCard({ t, onUpvote, upvotedIds }: { t: Thread; onUpvote: (id: num
             <p className="text-xs text-muted-foreground italic">No replies yet — be the first!</p>
           ) : replies.map(r => <ReplyItem key={r.id} r={r} />)}
           <div className="space-y-2">
-            <Textarea placeholder="Write a reply... (Ctrl+Enter to post)" className="text-sm resize-none" rows={2} value={replyText} onChange={e => setReplyText(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) postReply(); }} />
-            <Button size="sm" className="text-xs gap-1.5" onClick={postReply} disabled={posting || !replyText.trim()}>
-              {posting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />} Post Reply
-            </Button>
+            <Textarea maxLength={500} placeholder="Write a reply... (Ctrl+Enter to post)" className="text-sm resize-none" rows={2} value={replyText} onChange={e => setReplyText(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) postReply(); }} />
+            <div className="flex items-center justify-between">
+              <span className={`text-[10px] font-medium ${replyText.length >= 500 ? "text-destructive" : "text-muted-foreground"}`}>{replyText.length}/500</span>
+              <Button size="sm" className="text-xs gap-1.5" onClick={postReply} disabled={posting || !replyText.trim()}>
+                {posting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />} Post Reply
+              </Button>
+            </div>
           </div>
         </div>
       )}
@@ -127,15 +130,15 @@ function NewThreadDialog({ open, onClose, onCreate }: { open: boolean; onClose: 
       <DialogContent className="max-w-lg">
         <DialogHeader><DialogTitle className="flex items-center gap-2"><MessageSquare className="h-5 w-5 text-primary" /> New Thread</DialogTitle></DialogHeader>
         <div className="space-y-4 pt-1">
-          <div className="space-y-1.5"><label className="text-sm font-medium">Title *</label><Input placeholder="What's on your mind?" value={title} onChange={e => setTitle(e.target.value)} /></div>
+          <div className="space-y-1.5"><label className="text-sm font-medium">Title *</label><Input maxLength={100} placeholder="What's on your mind?" value={title} onChange={e => setTitle(e.target.value)} /></div>
           <div className="space-y-1.5"><label className="text-sm font-medium">Category</label>
             <div className="flex gap-2">{CATEGORIES.map(c => <button key={c} onClick={() => setCategory(c)} className={`flex-1 py-1.5 rounded-lg text-xs border capitalize transition-all ${category === c ? "bg-primary text-primary-foreground border-primary" : "border-border/50 text-muted-foreground hover:border-primary/50"}`}>{c === "general" ? "💬 General" : c === "technical" ? "⚙️ Technical" : "💼 Career"}</button>)}</div>
           </div>
           <div className="space-y-1.5"><label className="text-sm font-medium">Tags</label>
             <div className="flex flex-wrap gap-1.5">{TAG_OPTIONS.map(tag => <button key={tag} onClick={() => toggleTag(tag)} className={`px-2 py-0.5 rounded-full text-xs border transition-all ${selectedTags.includes(tag) ? "bg-primary text-primary-foreground border-primary" : "border-border/50 text-muted-foreground hover:border-primary/50"}`}>{tag}</button>)}</div>
           </div>
-          <div className="space-y-1.5"><label className="text-sm font-medium">Content *</label><Textarea placeholder="Describe your question or topic..." value={content} onChange={e => setContent(e.target.value)} rows={4} /></div>
-          <Button className="w-full gap-2" onClick={submit} disabled={posting}>{posting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}{posting ? "Posting..." : "Post Thread"}</Button>
+          <div className="space-y-1.5"><label className="text-sm font-medium flex justify-between"><span>Content *</span><span className={`text-[10px] ${content.length >= 2000 ? "text-destructive" : "text-muted-foreground"}`}>{content.length}/2000</span></label><Textarea maxLength={2000} placeholder="Describe your question or topic..." value={content} onChange={e => setContent(e.target.value)} rows={4} /></div>
+          <Button className="w-full gap-2" onClick={submit} disabled={posting || !title.trim() || !content.trim()}>{posting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}{posting ? "Posting..." : "Post Thread"}</Button>
         </div>
       </DialogContent>
     </Dialog>

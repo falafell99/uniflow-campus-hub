@@ -143,7 +143,7 @@ export function CategorySidebar() {
     <div className="w-[240px] shrink-0 flex flex-col bg-card/80 backdrop-blur-xl border-r border-border/40 overflow-hidden h-full">
       {/* Logo */}
       <div className="flex items-center gap-2.5 px-4 py-4 border-b border-border/20">
-        <div className="h-8 w-8 rounded-xl bg-[#7b68ee] flex items-center justify-center text-white font-black text-sm">U</div>
+        <div className="h-8 w-8 rounded-xl bg-[#3b82f6] flex items-center justify-center text-white font-black text-sm">U</div>
         <div>
           <p className="font-bold text-sm leading-none">UniFlow</p>
           <p className="text-[10px] text-muted-foreground mt-0.5">Student OS</p>

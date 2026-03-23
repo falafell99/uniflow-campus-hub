@@ -137,7 +137,7 @@ export function AppSidebar() {
       {/* App Header with Logo Mark */}
       <SidebarHeader className="p-0">
         <div className="flex items-center gap-2.5 px-4 py-4 border-b border-border/20">
-          <div className="h-8 w-8 rounded-xl bg-[#7b68ee] flex items-center justify-center text-white font-black text-sm shadow-lg shadow-[#7b68ee]/20 shrink-0">
+          <div className="h-8 w-8 rounded-xl bg-[#3b82f6] flex items-center justify-center text-white font-black text-sm shadow-lg shadow-[#3b82f6]/20 shrink-0">
             U
           </div>
           {!collapsed && (

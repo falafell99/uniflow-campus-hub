@@ -43,7 +43,7 @@ const BADGES = [
 
 const STATUS_OPTIONS = ["🟢 Online", "🔴 Focusing", "☕ Taking a break", "📚 Studying", "🌙 Away"];
 
-export const AVATAR_COLORS = ["#7b68ee", "#10b981", "#f59e0b", "#ef4444", "#3b82f6", "#ec4899", "#8b5cf6", "#14b8a6"];
+export const AVATAR_COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#3b82f6", "#ec4899", "#8b5cf6", "#14b8a6"];
 
 const AVATAR_EMOJIS = ["🎓", "📚", "🧠", "💻", "⚡", "🔥", "🌟", "🎯", "🚀", "🦊", "🐺", "🦁", "🐉", "👾", "🤖"];
 
@@ -64,7 +64,7 @@ export function AvatarDisplay({
   size?: "sm" | "md" | "lg";
 }) {
   const sizeMap = { sm: "h-8 w-8 text-sm rounded-xl", md: "h-10 w-10 text-base rounded-xl", lg: "h-20 w-20 text-2xl rounded-2xl" };
-  const bg = avatarColor || "#7b68ee";
+  const bg = avatarColor || "#3b82f6";
   return (
     <div
       className={`${sizeMap[size]} flex items-center justify-center shrink-0 font-bold text-white`}
@@ -217,13 +217,13 @@ export default function Profile() {
       <div className="glass-card overflow-hidden">
         <div className="relative">
           {/* Cover/banner */}
-          <div className="h-32 bg-gradient-to-br from-[#7b68ee]/30 via-[#7b68ee]/10 to-transparent rounded-t-2xl" />
+          <div className="h-32 bg-gradient-to-br from-[#3b82f6]/30 via-[#3b82f6]/10 to-transparent rounded-t-2xl" />
           
           {/* Avatar overlapping the banner */}
           <div className="absolute -bottom-6 left-6">
             <div
               className="h-20 w-20 rounded-2xl border-4 border-background flex items-center justify-center text-3xl font-black text-white shadow-xl cursor-pointer hover:opacity-90 transition-opacity"
-              style={{ background: avatarColor || "#7b68ee" }}
+              style={{ background: avatarColor || "#3b82f6" }}
               onClick={() => setShowAvatarPicker((v) => !v)}
             >
               {avatarEmoji || displayName?.charAt(0)?.toUpperCase() || "?"}

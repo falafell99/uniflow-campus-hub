@@ -730,7 +730,7 @@ export default function Teams() {
                 )}
               </>
             ) : (
-              <Button size="sm" className="h-8 text-xs bg-[#7b68ee] hover:bg-[#6a5acd] font-semibold" onClick={() => setIsCreateModalOpen(true)}>
+              <Button size="sm" className="h-8 text-xs bg-[#3b82f6] hover:bg-[#2563eb] font-semibold" onClick={() => setIsCreateModalOpen(true)}>
                 Create Team
               </Button>
             )}
@@ -751,7 +751,7 @@ export default function Teams() {
                 <ChevronLeft className="h-4 w-4 mr-1" /> Back to Teams
               </Button>
               <div className="flex items-center gap-5 mb-4">
-                <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-[#7b68ee]/20 to-[#6a5acd]/10 flex items-center justify-center text-[#7b68ee] font-black text-2xl border border-[#7b68ee]/20">
+                <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-[#3b82f6]/20 to-[#2563eb]/10 flex items-center justify-center text-[#3b82f6] font-black text-2xl border border-[#3b82f6]/20">
                   {selectedTeam.name.charAt(0).toUpperCase()}
                 </div>
                 <div>
@@ -1013,7 +1013,7 @@ export default function Teams() {
                 <div className="p-8 space-y-6 max-w-4xl">
                   <div className="flex items-center justify-between">
                     <h2 className="text-lg font-bold">{teamMembers.length} Members</h2>
-                    <Button size="sm" className="h-8 text-xs gap-1.5 bg-[#7b68ee] hover:bg-[#6a5acd]" onClick={() => setIsInviteModalOpen(true)}>
+                    <Button size="sm" className="h-8 text-xs gap-1.5 bg-[#3b82f6] hover:bg-[#2563eb]" onClick={() => setIsInviteModalOpen(true)}>
                       <UserPlus className="h-3.5 w-3.5" /> Add Member
                     </Button>
                   </div>
@@ -1096,7 +1096,7 @@ export default function Teams() {
                   {/* Header */}
                   <div className="flex items-center justify-between">
                     <h2 className="text-lg font-bold">Team Priorities</h2>
-                    <Button size="sm" className="h-8 text-xs gap-1.5 bg-[#7b68ee] hover:bg-[#6a5acd]"
+                    <Button size="sm" className="h-8 text-xs gap-1.5 bg-[#3b82f6] hover:bg-[#2563eb]"
                       onClick={() => navigate("/tasks", { state: { teamId: selectedTeam.id, openCreate: true } })}>
                       <Plus className="h-3.5 w-3.5" /> New Task
                     </Button>
@@ -1179,13 +1179,13 @@ export default function Teams() {
                 {/* Hero */}
                 <div className="space-y-5">
                   <h1 className="text-5xl font-extrabold tracking-tight leading-[1.1]">
-                    Align teams and <span className="text-[#7b68ee] italic">visualize</span><br />their work!
+                    Align teams and <span className="text-[#3b82f6] italic">visualize</span><br />their work!
                   </h1>
                   <p className="text-lg text-muted-foreground leading-relaxed max-w-xl">
                     Use Teams Hub to coordinate teams, organize priorities, and understand the details of their work.
                   </p>
                   <div className="flex gap-3 pt-2">
-                    <Button size="lg" className="h-12 px-8 rounded-xl bg-[#7b68ee] hover:bg-[#6a5acd] font-bold shadow-lg shadow-[#7b68ee]/20" onClick={() => setIsCreateModalOpen(true)}>
+                    <Button size="lg" className="h-12 px-8 rounded-xl bg-[#3b82f6] hover:bg-[#2563eb] font-bold shadow-lg shadow-[#3b82f6]/20" onClick={() => setIsCreateModalOpen(true)}>
                       Create Team
                     </Button>
                     <Button variant="outline" size="lg" className="h-12 px-8 rounded-xl font-semibold border-border/60" onClick={() => setSidebarTab("all-people")}>
@@ -1200,8 +1200,8 @@ export default function Teams() {
                     {
                       title: "Member & team management",
                       desc: "Easily browse, find, and manage all teams and members in one area. Add, remove, or update roles with ease.",
-                      icon: <Users className="h-8 w-8 text-[#7b68ee]" />,
-                      color: "from-[#7b68ee]/10 to-[#7b68ee]/5"
+                      icon: <Users className="h-8 w-8 text-[#3b82f6]" />,
+                      color: "from-[#3b82f6]/10 to-[#3b82f6]/5"
                     },
                     {
                       title: "Detailed Team Insights",
@@ -1253,10 +1253,10 @@ export default function Teams() {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                       {filteredTeams.map(team => (
                         <div key={team.id} className="group border border-border/40 rounded-2xl overflow-hidden hover:shadow-xl hover:border-primary/20 transition-all">
-                          <div className="h-1.5 bg-gradient-to-r from-[#7b68ee] to-[#9c8fff]" />
+                          <div className="h-1.5 bg-gradient-to-r from-[#3b82f6] to-[#9c8fff]" />
                           <div className="p-6 space-y-4">
                             <div className="flex items-start justify-between">
-                              <div className="h-12 w-12 rounded-xl bg-[#7b68ee]/10 flex items-center justify-center text-[#7b68ee] font-black text-xl">
+                              <div className="h-12 w-12 rounded-xl bg-[#3b82f6]/10 flex items-center justify-center text-[#3b82f6] font-black text-xl">
                                 {team.name.charAt(0).toUpperCase()}
                               </div>
                               <DropdownMenu>
@@ -1362,7 +1362,7 @@ export default function Teams() {
               <div className="p-8 space-y-6 max-w-4xl mx-auto">
                 <div className="flex items-center justify-between">
                   <h2 className="text-2xl font-bold">All People</h2>
-                  <Button size="sm" className="h-8 text-xs bg-[#7b68ee] hover:bg-[#6a5acd]" onClick={() => setIsInviteModalOpen(true)}>
+                  <Button size="sm" className="h-8 text-xs bg-[#3b82f6] hover:bg-[#2563eb]" onClick={() => setIsInviteModalOpen(true)}>
                     <UserPlus className="h-3.5 w-3.5 mr-1.5" /> Invite to Team
                   </Button>
                 </div>
@@ -1410,7 +1410,7 @@ export default function Teams() {
                 <h2 className="text-2xl font-bold">Analytics</h2>
                 <div className="grid grid-cols-3 gap-4">
                   {[
-                    { label: "Total Teams", value: teams.length, icon: <Users className="h-5 w-5 text-[#7b68ee]" />, color: "bg-[#7b68ee]/10 border-[#7b68ee]/20" },
+                    { label: "Total Teams", value: teams.length, icon: <Users className="h-5 w-5 text-[#3b82f6]" />, color: "bg-[#3b82f6]/10 border-[#3b82f6]/20" },
                     { label: "Total Members", value: allPeople.length, icon: <User className="h-5 w-5 text-blue-400" />, color: "bg-blue-500/10 border-blue-500/20" },
                     { label: "Active Teams", value: teams.length, icon: <Activity className="h-5 w-5 text-green-400" />, color: "bg-green-500/10 border-green-500/20" },
                   ].map((s, i) => (
@@ -1434,7 +1434,7 @@ export default function Teams() {
               <div className="md:hidden p-4 space-y-6">
                 <div className="flex items-center justify-between">
                   <h2 className="text-xl font-bold tracking-tight">Teams</h2>
-                  <Button size="sm" className="h-8 w-8 p-0 bg-[#7b68ee] hover:bg-[#6a5acd]" onClick={() => setIsCreateModalOpen(true)}>
+                  <Button size="sm" className="h-8 w-8 p-0 bg-[#3b82f6] hover:bg-[#2563eb]" onClick={() => setIsCreateModalOpen(true)}>
                     <Plus className="h-4 w-4" />
                   </Button>
                 </div>
@@ -1475,7 +1475,7 @@ export default function Teams() {
                           className="flex items-center gap-3 p-4 rounded-2xl border border-border/40 bg-card/20 shadow-sm transition-all active:scale-[0.98]"
                           onClick={() => { setSelectedTeam(team); setTeamTab("overview"); }}
                         >
-                          <div className="h-10 w-10 rounded-xl bg-[#7b68ee]/10 flex items-center justify-center text-[#7b68ee] font-black text-lg">
+                          <div className="h-10 w-10 rounded-xl bg-[#3b82f6]/10 flex items-center justify-center text-[#3b82f6] font-black text-lg">
                             {team.name.charAt(0).toUpperCase()}
                           </div>
                           <div className="flex-1 min-w-0">
@@ -1527,7 +1527,7 @@ export default function Teams() {
                   <div className="pt-2 space-y-4">
                     <div className="grid grid-cols-2 gap-3">
                       {[
-                        { label: "Teams", value: teams.length, color: "bg-[#7b68ee]/10 text-[#7b68ee]" },
+                        { label: "Teams", value: teams.length, color: "bg-[#3b82f6]/10 text-[#3b82f6]" },
                         { label: "Members", value: allPeople.length, color: "bg-blue-500/10 text-blue-400" },
                       ].map((s, i) => (
                         <div key={i} className={`p-4 rounded-2xl border border-border/20 ${s.color}`}>
@@ -1573,7 +1573,7 @@ export default function Teams() {
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setIsCreateModalOpen(false)}>Cancel</Button>
-            <Button onClick={handleCreateTeam} disabled={isSubmitting || !newTeamName.trim()} className="bg-[#7b68ee] hover:bg-[#6a5acd] px-8">
+            <Button onClick={handleCreateTeam} disabled={isSubmitting || !newTeamName.trim()} className="bg-[#3b82f6] hover:bg-[#2563eb] px-8">
               {isSubmitting && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Create Team
             </Button>
           </DialogFooter>
@@ -1685,7 +1685,7 @@ export default function Teams() {
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => { setIsInviteModalOpen(false); setSearchResults([]); setInviteSearch(""); }}>Cancel</Button>
-            <Button onClick={() => searchResults[0] && handleInviteMember(searchResults[0].id)} disabled={isSubmitting || searchResults.length === 0 || !selectedTeam || searchResults[0]?.isSelf || searchResults[0]?.isExistingMember} className="bg-[#7b68ee] hover:bg-[#6a5acd] px-8">
+            <Button onClick={() => searchResults[0] && handleInviteMember(searchResults[0].id)} disabled={isSubmitting || searchResults.length === 0 || !selectedTeam || searchResults[0]?.isSelf || searchResults[0]?.isExistingMember} className="bg-[#3b82f6] hover:bg-[#2563eb] px-8">
               {isSubmitting && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Invite Selected
             </Button>
           </DialogFooter>

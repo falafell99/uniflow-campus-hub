@@ -312,7 +312,7 @@ export default function Progress() {
                         itemStyle={{ color: '#fff' }}
                         cursor={{ fill: 'rgba(255,255,255,0.05)' }}
                       />
-                      <Bar dataKey="count" fill="#7b68ee" radius={[4,4,0,0]} maxBarSize={40} />
+                      <Bar dataKey="count" fill="#3b82f6" radius={[4,4,0,0]} maxBarSize={40} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
