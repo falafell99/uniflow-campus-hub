@@ -508,6 +508,7 @@ export default function Notes() {
   const [showTagPicker, setShowTagPicker] = useState(false);
   const [editingBlockId, setEditingBlockId] = useState<string | null>(null);
   const [studyMode, setStudyMode] = useState(false);
+  const [focusedBlockId, setFocusedBlockId] = useState<string | null>(null);
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   const [subjectSuggestions, setSubjectSuggestions] = useState<string[]>([]);
   const [showSubjectSuggestions, setShowSubjectSuggestions] = useState(false);
@@ -887,6 +888,87 @@ export default function Notes() {
                   </div>
                 </div>
               </div>
+
+              {/* Formatting Toolbar */}
+              {editingBlockId && selectedNote && (() => {
+                const block = selectedNote.blocks.find(b => b.id === editingBlockId);
+                if (!block || block.type === "divider" || block.type === "code") return null;
+                return (
+                  <div className="sticky top-0 z-20 flex items-center gap-1 px-4 py-2 bg-background/95 backdrop-blur-sm border-b border-border/20">
+                    {/* Block type quick switch */}
+                    {[
+                      { type: "h1" as BlockType, label: "H1" },
+                      { type: "h2" as BlockType, label: "H2" },
+                      { type: "paragraph" as BlockType, label: "¶" },
+                      { type: "bullet" as BlockType, label: "•" },
+                      { type: "checklist" as BlockType, label: "☑" },
+                      { type: "code" as BlockType, label: "<>" },
+                    ].map(btn => (
+                      <button key={btn.type}
+                        onMouseDown={e => {
+                          e.preventDefault();
+                          const idx = selectedNote.blocks.findIndex(b => b.id === editingBlockId);
+                          if (idx >= 0) changeBlockType(idx, btn.type);
+                        }}
+                        className={`h-7 px-2 rounded-lg text-xs font-mono transition-all ${
+                          block.type === btn.type
+                            ? "bg-primary/20 text-primary font-bold"
+                            : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
+                        }`}
+                      >
+                        {btn.label}
+                      </button>
+                    ))}
+
+                    <div className="w-px h-4 bg-border/40 mx-1" />
+
+                    {/* Format buttons - wrap with text markers */}
+                    {[
+                      { format: "bold", label: "B", style: "font-bold", marker: "**" },
+                      { format: "italic", label: "I", style: "italic", marker: "*" },
+                      { format: "underline", label: "U", style: "underline", marker: "__" },
+                      { format: "strikethrough", label: "S", style: "line-through", marker: "~~" },
+                    ].map(btn => (
+                      <button key={btn.format}
+                        onMouseDown={e => {
+                          e.preventDefault();
+                          const idx = selectedNote.blocks.findIndex(b => b.id === editingBlockId);
+                          if (idx < 0) return;
+                          const currentContent = selectedNote.blocks[idx].content;
+                          if (currentContent.startsWith(btn.marker) && currentContent.endsWith(btn.marker)) {
+                            updateBlock(idx, currentContent.slice(btn.marker.length, -btn.marker.length));
+                          } else {
+                            updateBlock(idx, `${btn.marker}${currentContent}${btn.marker}`);
+                          }
+                        }}
+                        className={`h-7 w-7 rounded-lg flex items-center justify-center text-sm transition-all text-muted-foreground hover:bg-muted/30 hover:text-foreground ${btn.style}`}
+                      >
+                        {btn.label}
+                      </button>
+                    ))}
+
+                    <div className="w-px h-4 bg-border/40 mx-1" />
+
+                    {/* Text color */}
+                    <div className="flex items-center gap-1">
+                      {["#ffffff", "#7b68ee", "#10b981", "#f59e0b", "#ef4444", "#3b82f6"].map(color => (
+                        <button key={color}
+                          onMouseDown={e => {
+                            e.preventDefault();
+                            const idx = selectedNote.blocks.findIndex(b => b.id === editingBlockId);
+                            if (idx < 0) return;
+                            // Wrap content in color markup
+                            const currentContent = selectedNote.blocks[idx].content;
+                            updateBlock(idx, `<span style="color:${color}">${currentContent}</span>`);
+                          }}
+                          className="h-5 w-5 rounded-full border-2 border-transparent hover:border-white/60 transition-all"
+                          style={{ background: color }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Block editor */}
               <div className="flex-1 overflow-y-auto custom-scroll p-4 md:p-6 space-y-1">

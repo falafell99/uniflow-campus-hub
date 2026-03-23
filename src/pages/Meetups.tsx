@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Calendar, Clock, MapPin, Users, Plus, Loader2, Wifi, Building2, Search, CalendarDays } from "lucide-react";
+import { Calendar, Clock, MapPin, Users, Plus, Loader2, Wifi, Building2, Search, CalendarDays, Video } from "lucide-react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -41,8 +41,18 @@ function MeetupCard({ m }: { m: Meetup }) {
       </div>
 
       <div className="space-y-1.5 text-xs text-muted-foreground">
-        <div className="flex items-center gap-1.5"><Clock className="h-3 w-3 shrink-0" />{m.time}</div>
-        <div className="flex items-center gap-1.5"><MapPin className="h-3 w-3 shrink-0" />{m.location}</div>
+        {m.date_time && (
+          <div className="flex items-center gap-1.5"><Clock className="h-3 w-3 shrink-0" />{new Date(m.date_time).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })} at {new Date(m.date_time).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}</div>
+        )}
+        {!m.date_time && <div className="flex items-center gap-1.5"><Clock className="h-3 w-3 shrink-0" />{m.time}</div>}
+        <div className="flex items-center gap-1.5">
+          {m.locationType === "online" ? <Video className="h-3 w-3 shrink-0" /> : <MapPin className="h-3 w-3 shrink-0" />}
+          {m.locationType === "online" && m.meeting_link ? (
+            <a href={m.meeting_link} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Join online</a>
+          ) : (
+            <span>{m.location}</span>
+          )}
+        </div>
         <div className="flex items-center gap-1.5">
           <Users className="h-3 w-3 shrink-0" />
           <span>
@@ -109,33 +119,47 @@ function CreateMeetupDialog({ open, onClose }: { open: boolean; onClose: () => v
 
   const [topic, setTopic] = useState("");
   const [subject, setSubject] = useState(SUBJECTS[0]);
-  const [time, setTime] = useState(TIME_SLOTS[0]);
-  const [customTime, setCustomTime] = useState("");
-  const [location, setLocation] = useState("");
+  const [meetupDate, setMeetupDate] = useState("");
+  const [meetupTime, setMeetupTime] = useState("");
   const [locationType, setLocationType] = useState<"in-person" | "online">("in-person");
+  const [meetingLink, setMeetingLink] = useState("");
+  const [libraryRoom, setLibraryRoom] = useState("");
+  const [customLocation, setCustomLocation] = useState("");
   const [maxStr, setMaxStr] = useState("10");
   const [submitting, setSubmitting] = useState(false);
 
   const displayName = user?.user_metadata?.display_name || user?.email?.split("@")[0] || "Anonymous";
 
+  const locationValue = locationType === "online"
+    ? meetingLink || "Online"
+    : locationType === "in-person" && libraryRoom
+      ? libraryRoom
+      : customLocation || "TBD";
+
   const handleSubmit = async () => {
-    if (!topic.trim() || !location.trim()) {
-      toast({ title: "Please fill all required fields", variant: "destructive" });
+    if (!topic.trim()) {
+      toast({ title: "Please fill topic", variant: "destructive" });
       return;
     }
     setSubmitting(true);
     await createMeetup({
       topic: topic.trim(),
       subject,
-      time: customTime.trim() || time,
-      location: location.trim(),
+      time: meetupDate && meetupTime
+        ? `${meetupDate} ${meetupTime}`
+        : "Flexible",
+      location: locationValue,
       locationType,
       max: Math.max(2, Math.min(50, parseInt(maxStr) || 10)),
       host: displayName,
-    });
+      date_time: meetupDate && meetupTime
+        ? new Date(`${meetupDate}T${meetupTime}`).toISOString()
+        : undefined,
+      meeting_link: locationType === "online" ? meetingLink : undefined,
+    } as any);
     toast({ title: "Meetup created! 🎉", description: "Other students can now join your session." });
     setSubmitting(false);
-    setTopic(""); setLocation(""); setCustomTime("");
+    setTopic(""); setMeetupDate(""); setMeetupTime(""); setMeetingLink(""); setLibraryRoom(""); setCustomLocation("");
     onClose();
   };
 
@@ -170,47 +194,87 @@ function CreateMeetupDialog({ open, onClose }: { open: boolean; onClose: () => v
             </div>
           </div>
 
+          {/* Date & Time */}
+          <div className="space-y-2">
+            <label className="text-sm font-semibold">Date & Time</label>
+            <div className="grid grid-cols-2 gap-2">
+              <Input
+                type="date"
+                value={meetupDate}
+                onChange={e => setMeetupDate(e.target.value)}
+                className="h-10 text-sm"
+                min={new Date().toISOString().split("T")[0]}
+              />
+              <Input
+                type="time"
+                value={meetupTime}
+                onChange={e => setMeetupTime(e.target.value)}
+                className="h-10 text-sm"
+              />
+            </div>
+            {meetupDate && meetupTime && (
+              <p className="text-xs text-muted-foreground">
+                {new Date(`${meetupDate}T${meetupTime}`).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })} at {new Date(`${meetupDate}T${meetupTime}`).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+              </p>
+            )}
+          </div>
+
           {/* Location type */}
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium">Format</label>
-            <div className="flex gap-2">
-              {(["in-person", "online"] as const).map((t) => (
-                <button
-                  key={t}
-                  onClick={() => setLocationType(t)}
-                  className={`flex-1 py-2 rounded-lg text-xs border flex items-center justify-center gap-1.5 transition-all ${locationType === t ? "bg-primary/10 border-primary text-primary" : "border-border/50 text-muted-foreground hover:border-primary/30"}`}
-                >
-                  {t === "online" ? <><Wifi className="h-3.5 w-3.5" /> Online</> : <><Building2 className="h-3.5 w-3.5" /> In-person</>}
+          <div className="space-y-2">
+            <label className="text-sm font-semibold">Location</label>
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { value: "online" as const, label: "Online", icon: "💻" },
+                { value: "in-person" as const, label: "Library", icon: "📚" },
+                { value: "custom" as const, label: "Custom", icon: "📍" },
+              ].map(type => (
+                <button key={type.value}
+                  onClick={() => setLocationType(type.value as any)}
+                  className={`flex items-center justify-center gap-2 p-2.5 rounded-xl border text-sm transition-all ${
+                    locationType === type.value
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border/40 text-muted-foreground hover:border-border"
+                  }`}>
+                  <span>{type.icon}</span>
+                  {type.label}
                 </button>
               ))}
             </div>
-          </div>
 
-          {/* Location */}
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium">{locationType === "online" ? "Meeting Link / Platform *" : "Location *"}</label>
-            <Input
-              placeholder={locationType === "online" ? "e.g. Zoom, Discord #study, Google Meet link" : "e.g. Library Room 4, Northern Building"}
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-            />
-          </div>
+            {locationType === "online" && (
+              <Input
+                placeholder="Meeting link (Zoom, Google Meet, etc.)"
+                value={meetingLink}
+                onChange={e => setMeetingLink(e.target.value)}
+                className="h-10 text-sm"
+              />
+            )}
 
-          {/* Time */}
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium">Time *</label>
-            <div className="flex flex-wrap gap-1.5 mb-2">
-              {TIME_SLOTS.map((t) => (
-                <button
-                  key={t}
-                  onClick={() => { setTime(t); setCustomTime(""); }}
-                  className={`px-2.5 py-1 rounded-full text-xs border transition-all ${time === t && !customTime ? "bg-primary text-primary-foreground border-primary" : "border-border/50 text-muted-foreground hover:border-primary/50"}`}
-                >
-                  {t}
-                </button>
-              ))}
-            </div>
-            <Input type="time" value={customTime} onChange={(e) => { setCustomTime(e.target.value); setTime(""); }} className="w-full" />
+            {locationType === "in-person" && (
+              <select
+                value={libraryRoom}
+                onChange={e => setLibraryRoom(e.target.value)}
+                className="w-full h-10 text-sm bg-background border border-border/40 rounded-lg px-3 outline-none"
+              >
+                <option value="">Select a room...</option>
+                <option value="ELTE Library - Ground Floor">ELTE Library - Ground Floor</option>
+                <option value="ELTE Library - 1st Floor">ELTE Library - 1st Floor</option>
+                <option value="ELTE Library - Study Room 1">ELTE Library - Study Room 1</option>
+                <option value="ELTE Library - Study Room 2">ELTE Library - Study Room 2</option>
+                <option value="Irinyi Building - Room 00">Irinyi Building - Room 00</option>
+                <option value="Irinyi Building - Lobby">Irinyi Building - Lobby</option>
+                <option value="Northern Building - Canteen">Northern Building - Canteen</option>
+              </select>
+            )}
+
+            {locationType !== "online" && locationType !== "in-person" && (
+              <Input
+                placeholder="e.g. Coffee shop on Pázmány Péter sétány..."
+                value={customLocation}
+                onChange={e => setCustomLocation(e.target.value)}
+                className="h-10 text-sm"
+              />
+            )}
           </div>
 
           {/* Max attendees */}

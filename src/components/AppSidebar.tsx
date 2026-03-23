@@ -35,7 +35,7 @@ const campusItems = [
   { title: "Messages",   url: "/messages",  icon: MessageSquare, emoji: "💬" },
 ];
 
-type ProfileSnap = { display_name: string; status: string; avatar_color?: string; avatar_emoji?: string };
+type ProfileSnap = { display_name: string; status: string; avatar_color?: string; avatar_emoji?: string; avatar_url?: string };
 
 export function AppSidebar() {
   const { state } = useSidebar();
@@ -55,7 +55,7 @@ export function AppSidebar() {
     const loadProfile = async () => {
       const { data } = await supabase
         .from("profiles")
-        .select("display_name, status, avatar_color, avatar_emoji")
+        .select("display_name, status, avatar_color, avatar_emoji, avatar_url")
         .eq("id", user.id)
         .single();
       if (data) setProfile(data as ProfileSnap);
@@ -123,10 +123,17 @@ export function AppSidebar() {
       })
       .subscribe();
 
+    const handleAvatarUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      setProfile((prev) => prev ? { ...prev, avatar_url: customEvent.detail.avatar_url } : null);
+    };
+    window.addEventListener("avatar-updated", handleAvatarUpdate);
+
     return () => { 
       profileChannel.unsubscribe(); 
       invitesChannel.unsubscribe();
       messagesChannel.unsubscribe();
+      window.removeEventListener("avatar-updated", handleAvatarUpdate);
     };
   }, [user]);
 
@@ -241,9 +248,13 @@ export function AppSidebar() {
             className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-muted/20 transition-colors cursor-pointer"
             onClick={() => navigate("/profile")}
           >
-            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary text-sm font-bold shrink-0">
-              {displayName.charAt(0).toUpperCase()}
-            </div>
+            <AvatarDisplay
+              name={displayName}
+              avatarColor={profile.avatar_color}
+              avatarEmoji={profile.avatar_emoji}
+              avatarUrl={profile.avatar_url}
+              size="sm"
+            />
             {!collapsed && (
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate">{displayName}</p>

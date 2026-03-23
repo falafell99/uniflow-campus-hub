@@ -57,7 +57,18 @@ function ThreadCard({ t, onUpvote, upvotedIds }: { t: Thread; onUpvote: (id: num
   };
   const toggle = () => { if (!expanded) loadReplies(); setExpanded(v => !v); };
   const postReply = async () => {
-    if (!replyText.trim()) return; setPosting(true);
+    if (!replyText.trim()) return;
+    if (replyText.trim().length < 3) { toast({ title: "Reply must be at least 3 characters", variant: "destructive" }); return; }
+    if (replyText.trim().length > 2000) { toast({ title: "Reply must be under 2000 characters", variant: "destructive" }); return; }
+
+    // Rate limit: max 5 replies per hour
+    if (user) {
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+      const { count } = await supabase.from("forum_replies").select("*", { count: "exact", head: true }).eq("author_id", user.id).gte("created_at", oneHourAgo);
+      if ((count || 0) >= 5) { toast({ title: "Rate limit reached", description: "Max 5 replies per hour. Please wait.", variant: "destructive" }); return; }
+    }
+
+    setPosting(true);
     const author = user?.user_metadata?.display_name || user?.email?.split("@")[0] || "Anonymous";
     const { data, error } = await supabase.from("forum_replies").insert({ thread_id: t.id, author, author_id: user?.id, content: replyText.trim() }).select().single();
     setPosting(false);
@@ -94,10 +105,15 @@ function ThreadCard({ t, onUpvote, upvotedIds }: { t: Thread; onUpvote: (id: num
             <p className="text-xs text-muted-foreground italic">No replies yet — be the first!</p>
           ) : replies.map(r => <ReplyItem key={r.id} r={r} />)}
           <div className="space-y-2">
-            <Textarea maxLength={500} placeholder="Write a reply... (Ctrl+Enter to post)" className="text-sm resize-none" rows={2} value={replyText} onChange={e => setReplyText(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) postReply(); }} />
+            <Textarea maxLength={2000} placeholder="Write a reply... (Ctrl+Enter to post)" className="text-sm resize-none" rows={2} value={replyText} onChange={e => setReplyText(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) postReply(); }} />
             <div className="flex items-center justify-between">
-              <span className={`text-[10px] font-medium ${replyText.length >= 500 ? "text-destructive" : "text-muted-foreground"}`}>{replyText.length}/500</span>
-              <Button size="sm" className="text-xs gap-1.5" onClick={postReply} disabled={posting || !replyText.trim()}>
+              <div className="flex items-center gap-2">
+                <span className={`text-[10px] font-medium ${replyText.length >= 2000 ? "text-destructive" : "text-muted-foreground"}`}>{replyText.length}/2000</span>
+                {replyText.length > 1800 && (
+                  <span className="text-[10px] text-orange-400">{2000 - replyText.length} left</span>
+                )}
+              </div>
+              <Button size="sm" className="text-xs gap-1.5" onClick={postReply} disabled={posting || replyText.trim().length < 3}>
                 {posting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />} Post Reply
               </Button>
             </div>
@@ -117,6 +133,15 @@ function NewThreadDialog({ open, onClose, onCreate }: { open: boolean; onClose: 
   const toggleTag = (tag: string) => setSelectedTags(p => p.includes(tag) ? p.filter(t => t !== tag) : [...p, tag]);
   const submit = async () => {
     if (!title.trim() || !content.trim()) { toast({ title: "Please fill title and content", variant: "destructive" }); return; }
+    if (content.trim().length < 3) { toast({ title: "Content must be at least 3 characters", variant: "destructive" }); return; }
+
+    // Rate limit: max 3 threads per hour
+    if (user) {
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+      const { count } = await supabase.from("forum_posts").select("*", { count: "exact", head: true }).eq("author_id", user.id).gte("created_at", oneHourAgo);
+      if ((count || 0) >= 3) { toast({ title: "Rate limit reached", description: "Max 3 threads per hour. Please wait.", variant: "destructive" }); return; }
+    }
+
     setPosting(true);
     const author = user?.user_metadata?.display_name || user?.email?.split("@")[0] || "Anonymous";
     const { data, error } = await supabase.from("forum_posts").insert({ title: title.trim(), content: content.trim(), category, tags: selectedTags, author, author_id: user?.id, upvotes: 0, pinned: false }).select().single();

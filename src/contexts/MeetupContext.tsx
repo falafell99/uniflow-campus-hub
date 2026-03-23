@@ -14,6 +14,8 @@ export type Meetup = {
   max: number;
   joined: boolean;
   host: string;
+  date_time?: string;
+  meeting_link?: string;
 };
 
 type MeetupContextType = {

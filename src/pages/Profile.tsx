@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import {
   Award, Users, Edit2, Check, X,
   LogOut, Loader2, Shield, Coins, Smile,
-  FileText, NotebookPen, CheckSquare
+  FileText, NotebookPen, CheckSquare, Camera
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -25,6 +25,7 @@ type Profile = {
   bio?: string;
   avatar_color?: string;
   avatar_emoji?: string;
+  avatar_url?: string;
   university?: string;
   faculty?: string;
   year_of_study?: string;
@@ -56,14 +57,28 @@ export function AvatarDisplay({
   name,
   avatarColor,
   avatarEmoji,
+  avatarUrl,
   size = "lg",
 }: {
   name: string;
   avatarColor?: string;
   avatarEmoji?: string;
+  avatarUrl?: string;
   size?: "sm" | "md" | "lg";
 }) {
   const sizeMap = { sm: "h-8 w-8 text-sm rounded-xl", md: "h-10 w-10 text-base rounded-xl", lg: "h-20 w-20 text-2xl rounded-2xl" };
+
+  if (avatarUrl) {
+    return (
+      <img
+        src={avatarUrl}
+        alt={name}
+        className={`${sizeMap[size]} flex items-center justify-center shrink-0 object-cover`}
+        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+      />
+    );
+  }
+
   const bg = avatarColor || "#3b82f6";
   return (
     <div
@@ -86,6 +101,7 @@ export default function Profile() {
   const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState(false);
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
 
   const [displayName, setDisplayName] = useState("");
   const [bio, setBio] = useState("");
@@ -130,6 +146,7 @@ export default function Profile() {
         major: "Computer Science",
         avatar_color: AVATAR_COLORS[0],
         avatar_emoji: "",
+        avatar_url: "",
       };
       const p = data ? { ...fallback, ...data } : fallback;
       setProfile(p);
@@ -146,6 +163,47 @@ export default function Profile() {
     };
     load();
   }, [user]);
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      toast({ title: "Image must be under 2MB", variant: "destructive" });
+      return;
+    }
+
+    setIsUploadingAvatar(true);
+    try {
+      const ext = file.name.split(".").pop();
+      const path = `avatars/${user.id}.${ext}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("avatars")
+        .upload(path, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from("avatars")
+        .getPublicUrl(path);
+
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({ avatar_url: publicUrl })
+        .eq("id", user.id);
+
+      if (updateError) throw updateError;
+
+      setProfile(prev => prev ? { ...prev, avatar_url: publicUrl } : null);
+      window.dispatchEvent(new CustomEvent("avatar-updated", { detail: { avatar_url: publicUrl } }));
+      toast({ title: "Avatar updated! ✓" });
+    } catch (e: any) {
+      toast({ title: "Upload failed", description: e.message, variant: "destructive" });
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
 
   const saveProfile = async () => {
     if (!user) return;
@@ -221,12 +279,32 @@ export default function Profile() {
           
           {/* Avatar overlapping the banner */}
           <div className="absolute -bottom-6 left-6">
-            <div
-              className="h-20 w-20 rounded-2xl border-4 border-background flex items-center justify-center text-3xl font-black text-white shadow-xl cursor-pointer hover:opacity-90 transition-opacity"
-              style={{ background: avatarColor || "#3b82f6" }}
-              onClick={() => setShowAvatarPicker((v) => !v)}
-            >
-              {avatarEmoji || displayName?.charAt(0)?.toUpperCase() || "?"}
+            <div className="relative inline-block">
+              <div className="h-20 w-20 rounded-2xl overflow-hidden border-4 border-background shadow-xl">
+                {profile?.avatar_url ? (
+                  <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-3xl font-black text-white"
+                    style={{ background: avatarColor || "#3b82f6" }}>
+                    {avatarEmoji || displayName?.charAt(0)?.toUpperCase() || "?"}
+                  </div>
+                )}
+              </div>
+              {/* Upload button overlay */}
+              <label className="absolute -bottom-2 -right-2 h-8 w-8 rounded-full bg-primary flex items-center justify-center cursor-pointer hover:bg-primary/90 transition-colors shadow-lg">
+                {isUploadingAvatar ? (
+                  <Loader2 className="h-4 w-4 text-white animate-spin" />
+                ) : (
+                  <Camera className="h-4 w-4 text-white" />
+                )}
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="hidden"
+                  onChange={handleAvatarUpload}
+                  disabled={isUploadingAvatar}
+                />
+              </label>
             </div>
           </div>
         </div>

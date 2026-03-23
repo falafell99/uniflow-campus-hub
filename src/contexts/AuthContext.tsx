@@ -10,7 +10,7 @@ type AuthContextType = {
   loading: boolean;
   refreshProfile: (userId?: string) => Promise<any>;
   onlineUsers: Set<string>;
-  signUp: (email: string, password: string, displayName: string) => Promise<{ error: string | null }>;
+  signUp: (email: string, password: string, displayName: string, extraMeta?: Record<string, string>) => Promise<{ error: string | null }>;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
 };
@@ -95,6 +95,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               } else {
                 await supabase.from("profiles").update({ status: "Online" }).eq("id", session.user.id);
               }
+
+              // Auto-fill faculty from ELTE email metadata
+              const userMeta = session.user.user_metadata;
+              if (userMeta?.faculty || userMeta?.university) {
+                await supabase.from("profiles").update({
+                  faculty: userMeta.faculty,
+                  university: userMeta.university,
+                }).eq("id", session.user.id).is("faculty", null);
+              }
             } catch (err) {
               console.error(err);
             }
@@ -107,6 +116,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     return () => subscription.unsubscribe();
+  }, []);
+
+  // Listen for avatar-updated custom event to sync across components
+  useEffect(() => {
+    const handleAvatarUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      setProfile((prev: any) => prev ? { ...prev, avatar_url: customEvent.detail.avatar_url } : null);
+    };
+    window.addEventListener("avatar-updated", handleAvatarUpdate);
+    return () => window.removeEventListener("avatar-updated", handleAvatarUpdate);
   }, []);
 
   const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
@@ -145,11 +164,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [user]);
 
-  const signUp = async (email: string, password: string, displayName: string) => {
+  const signUp = async (email: string, password: string, displayName: string, extraMeta?: Record<string, string>) => {
     const { error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { display_name: displayName } },
+      options: {
+        data: {
+          display_name: displayName,
+          ...(extraMeta || {}),
+        },
+        emailRedirectTo: `${window.location.origin}/login`,
+      },
     });
     if (error) return { error: error.message };
 
@@ -163,6 +188,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         status: "🟢 Online",
         credits: 1250,
         onboarding_completed: false,
+        ...(extraMeta?.university ? { university: extraMeta.university } : {}),
+        ...(extraMeta?.faculty ? { faculty: extraMeta.faculty } : {}),
       });
     }
     return { error: null };
