@@ -9,6 +9,17 @@ import { toast } from "sonner";
 
 const YEARS = ["1st year", "2nd year", "3rd year", "4th year", "5th year", "PhD", "Other"];
 
+const FACULTIES = [
+  "Faculty of Informatics",
+  "Faculty of Science",
+  "Faculty of Humanities",
+  "Faculty of Economics",
+  "Faculty of Engineering",
+  "Faculty of Medicine",
+  "Faculty of Law",
+  "Other"
+];
+
 export default function Onboarding() {
   const { user, refreshProfile } = useAuth();
   const navigate = useNavigate();
@@ -163,8 +174,11 @@ export default function Onboarding() {
                 </div>
                 <div>
                   <label className="text-xs text-white/40 font-medium">Faculty / Department</label>
-                  <Input value={faculty} onChange={e => setFaculty(e.target.value)} placeholder="e.g. Faculty of Informatics"
-                    className="mt-1 bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:border-[#7b68ee]/60" />
+                  <select value={faculty} onChange={e => setFaculty(e.target.value)}
+                    className="mt-1 w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-[#7b68ee]/60">
+                    <option value="" className="bg-[#0a0a0a]">Select faculty...</option>
+                    {FACULTIES.map(f => <option key={f} value={f} className="bg-[#0a0a0a]">{f}</option>)}
+                  </select>
                 </div>
                 <div>
                   <label className="text-xs text-white/40 font-medium">Year of study</label>

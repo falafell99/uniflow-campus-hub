@@ -47,26 +47,10 @@ import { supabase } from "@/lib/supabase";
 const queryClient = new QueryClient();
 
 function ProtectedApp() {
-  const { user, loading } = useAuth();
+  const { user, profile, loading } = useAuth();
   const location = useLocation();
 
-  const [profile, setProfile] = useState<{ onboarding_completed: boolean } | null>(null);
-  const [profileLoading, setProfileLoading] = useState(true);
-
-  useEffect(() => {
-    if (!user) { setProfileLoading(false); return; }
-    supabase
-      .from("profiles")
-      .select("onboarding_completed")
-      .eq("id", user.id)
-      .single()
-      .then(({ data }) => {
-        setProfile(data);
-        setProfileLoading(false);
-      });
-  }, [user]);
-
-  if (loading || (user && profileLoading)) {
+  if (loading || (user && !profile)) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
