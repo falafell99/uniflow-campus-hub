@@ -84,9 +84,8 @@ function ProtectedApp() {
     );
   }
 
-  // Only redirect when we KNOW onboarding is not completed
-  if (user && profile?.onboarding_completed === false && location.pathname !== "/onboarding") {
-    // Actually wait, if the URL is literally anything else but they haven't finished onboarding, they only see onboarding page
+  // Redirect to onboarding if they haven't finished it
+  if (user && profile?.onboarding_completed === false) {
     return (
       <Routes>
         <Route path="/onboarding" element={<Onboarding />} />
@@ -96,7 +95,7 @@ function ProtectedApp() {
   }
 
   // Allow them to be on onboarding page if they need it (already covered by above rule if they aren't complete)
-  // Wait, if they ARE complete and try to go to onboarding, the Onboarding component's own useEffect will redirect them back to /.
+  // Wait, if they ARE complete and try to go to onboarding, the main Routes block will redirect them back to /.
 
 
   return (
