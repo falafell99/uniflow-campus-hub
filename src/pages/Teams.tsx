@@ -1175,6 +1175,58 @@ export default function Teams() {
                 </div>
               )}
 
+            {/* TASKS TAB */}
+            {teamTab === "tasks" && (
+              <div className="flex-1 p-6 w-full max-w-6xl mx-auto">
+                <div className="flex items-center justify-between mb-8">
+                  <div>
+                    <h2 className="text-xl font-bold tracking-tight">Team Tasks</h2>
+                    <p className="text-sm text-muted-foreground">Mini kanban view. Open full board to drag & drop.</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Button variant="outline" className="gap-2" onClick={() => navigate("/tasks")}>
+                      Open in Tasks <ChevronLeft className="h-4 w-4 rotate-180" />
+                    </Button>
+                    <Button className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => navigate("/tasks", { state: { teamId: selectedTeam.id, openCreate: true } })}>
+                      <Plus className="h-4 w-4" /> New Task
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  {([
+                    { status: "todo", label: "To Do", color: "bg-blue-400" },
+                    { status: "in_progress", label: "In Progress", color: "bg-amber-400" },
+                    { status: "review", label: "In Review", color: "bg-purple-400" },
+                    { status: "done", label: "Done", color: "bg-green-400" }
+                  ]).map(col => {
+                    const colTasks = kanbanTasks.filter(t => t.status === col.status);
+                    return (
+                      <div key={col.status} className="mb-4">
+                        <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground px-2 mb-2 flex items-center justify-between">
+                          {col.label}
+                          <span className="bg-muted px-1.5 py-0.5 rounded text-[10px] text-muted-foreground">{colTasks.length}</span>
+                        </h3>
+                        <div className="space-y-2 mt-3">
+                          {colTasks.length === 0 ? (
+                            <div className="text-center p-4 border border-dashed border-border/40 rounded-xl text-xs text-muted-foreground">Empty</div>
+                          ) : (
+                            colTasks.map((task: any) => (
+                              <div key={task.id} className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-border/20 bg-card/50 shadow-sm hover:border-primary/30 transition-all cursor-default">
+                                <div className={`h-2 w-2 rounded-full shrink-0 ${col.color}`} />
+                                <span className="text-sm flex-1 truncate">{task.title}</span>
+                                {task.due_date && <span className="text-[11px] text-muted-foreground whitespace-nowrap">{format(new Date(task.due_date), "MMM d")}</span>}
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             </div>
           </div>
         ) : (
@@ -1312,58 +1364,6 @@ export default function Teams() {
                 </div>
               </div>
             )}
-            {/* TASKS TAB */}
-            {teamTab === "tasks" && (
-              <div className="flex-1 p-6 w-full max-w-6xl mx-auto">
-                <div className="flex items-center justify-between mb-8">
-                  <div>
-                    <h2 className="text-xl font-bold tracking-tight">Team Tasks</h2>
-                    <p className="text-sm text-muted-foreground">Mini kanban view. Open full board to drag & drop.</p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Button variant="outline" className="gap-2" onClick={() => navigate("/tasks")}>
-                      Open in Tasks <ChevronLeft className="h-4 w-4 rotate-180" />
-                    </Button>
-                    <Button className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => navigate("/tasks", { state: { teamId: selectedTeam.id, openCreate: true } })}>
-                      <Plus className="h-4 w-4" /> New Task
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                  {([
-                    { status: "todo", label: "To Do", color: "bg-blue-400" },
-                    { status: "in_progress", label: "In Progress", color: "bg-amber-400" },
-                    { status: "review", label: "In Review", color: "bg-purple-400" },
-                    { status: "done", label: "Done", color: "bg-green-400" }
-                  ]).map(col => {
-                    const colTasks = kanbanTasks.filter(t => t.status === col.status);
-                    return (
-                      <div key={col.status} className="mb-4">
-                        <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground px-2 mb-2 flex items-center justify-between">
-                          {col.label}
-                          <span className="bg-muted px-1.5 py-0.5 rounded text-[10px] text-muted-foreground">{colTasks.length}</span>
-                        </h3>
-                        <div className="space-y-2 mt-3">
-                          {colTasks.length === 0 ? (
-                            <div className="text-center p-4 border border-dashed border-border/40 rounded-xl text-xs text-muted-foreground">Empty</div>
-                          ) : (
-                            colTasks.map((task: any) => (
-                              <div key={task.id} className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-border/20 bg-card/50 shadow-sm hover:border-primary/30 transition-all cursor-default">
-                                <div className={`h-2 w-2 rounded-full shrink-0 ${col.color}`} />
-                                <span className="text-sm flex-1 truncate">{task.title}</span>
-                                {task.due_date && <span className="text-[11px] text-muted-foreground whitespace-nowrap">{format(new Date(task.due_date), "MMM d")}</span>}
-                              </div>
-                            ))
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
             {/* ALL PEOPLE */}
             {sidebarTab === "all-people" && (
               <div className="p-8 space-y-6 max-w-4xl mx-auto">
