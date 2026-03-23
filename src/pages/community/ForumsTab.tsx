@@ -29,13 +29,13 @@ function getInitials(name: string) { return name.split(" ").map(n => n[0]).join(
 
 function ReplyItem({ r }: { r: Reply }) {
   return (
-    <div className="glass-subtle p-3 rounded-lg space-y-1.5">
+    <div className="glass-subtle p-3 rounded-lg space-y-1.5 w-full overflow-hidden">
       <div className="flex items-center gap-2">
         <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0"><span className="text-[10px] font-bold text-primary">{getInitials(r.author)}</span></div>
         <span className="text-xs font-medium">{r.author}</span>
         <span className="text-[10px] text-muted-foreground">{timeAgo(r.created_at)}</span>
       </div>
-      <p className="text-sm text-foreground/90 pl-8 break-words whitespace-pre-wrap overflow-hidden">{r.content}</p>
+      <p className="text-sm text-foreground/90 pl-8 break-all whitespace-pre-wrap overflow-hidden">{r.content}</p>
     </div>
   );
 }
@@ -66,7 +66,7 @@ function ThreadCard({ t, onUpvote, upvotedIds }: { t: Thread; onUpvote: (id: num
   };
 
   return (
-    <div className={`glass-card p-4 space-y-2 transition-all duration-300 ${t.pinned ? "border-primary/30" : ""}`}>
+    <div className={`glass-card p-4 space-y-2 transition-all duration-300 w-full overflow-hidden ${t.pinned ? "border-primary/30" : ""}`}>
       <div className="flex items-start gap-3 cursor-pointer" onClick={toggle}>
         <button className={`flex flex-col items-center gap-0.5 pt-0.5 transition-colors ${alreadyUpvoted ? "text-primary" : "hover:text-primary"}`} onClick={e => { e.stopPropagation(); if (!alreadyUpvoted) onUpvote(t.id); }}>
           <ArrowUp className="h-3.5 w-3.5" /><span className="text-xs font-semibold">{t.upvotes}</span>
@@ -74,9 +74,9 @@ function ThreadCard({ t, onUpvote, upvotedIds }: { t: Thread; onUpvote: (id: num
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             {t.pinned && <Badge className="text-[10px] bg-primary/10 text-primary border-0">📌 Pinned</Badge>}
-            <h3 className="font-medium text-sm">{t.title}</h3>
+            <h3 className="font-medium text-sm break-all">{t.title}</h3>
           </div>
-          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{t.content}</p>
+          <p className={`text-xs text-muted-foreground mt-1 break-all ${expanded ? "" : "line-clamp-2"}`}>{t.content}</p>
           <div className="flex items-center gap-3 mt-2 text-[11px] text-muted-foreground flex-wrap">
             <span className="flex items-center gap-1"><User className="h-3 w-3" />{t.author}</span>
             <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{timeAgo(t.created_at)}</span>
