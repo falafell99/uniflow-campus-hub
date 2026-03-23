@@ -318,10 +318,15 @@ export default function Teams() {
         setTeamMembers(formatted);
         
         // Update the selected team's member count for the header
-        if (selectedTeam && selectedTeam.id === teamId) {
-          const activeCount = formatted.filter((m: any) => m.status === 'accepted').length;
-          setSelectedTeam(prev => prev ? { ...prev, member_count: activeCount } : null);
-        }
+        setSelectedTeam(prev => {
+          if (prev && prev.id === teamId) {
+            const activeCount = formatted.filter((m: any) => m.status === 'accepted').length;
+            if (prev.member_count !== activeCount) {
+              return { ...prev, member_count: activeCount };
+            }
+          }
+          return prev;
+        });
       }
     } catch (e) {
       console.error("fetchTeamMembers exception:", e);
@@ -329,16 +334,17 @@ export default function Teams() {
     } finally {
       setIsLoadingMembers(false);
     }
-  }, [selectedTeam]);
+  }, []);
 
   useEffect(() => {
-    if (!selectedTeam || teamTab !== "priorities") return;
+    if (!selectedTeam?.id || teamTab !== "priorities") return;
+    const teamId = selectedTeam.id;
     const fetchTasks = async () => {
       setLoadingTasks(true);
       const { data } = await supabase
         .from("tasks")
         .select("*, assignee_profile:assignee_id(display_name, avatar_color)")
-        .eq("team_id", selectedTeam.id)
+        .eq("team_id", teamId)
         .neq("status", "done")
         .order("due_date", { ascending: true, nullsFirst: false });
       setTeamTasks(data || []);
@@ -394,21 +400,22 @@ export default function Teams() {
   }, []);
 
   useEffect(() => {
-    if (selectedTeam) {
-      fetchTeamMembers(selectedTeam.id);
-      fetchTeamAnalytics(selectedTeam.id);
-      fetchKanbanTasks(selectedTeam.id);
-      fetchTeamActivity(selectedTeam.id);
+    if (selectedTeam?.id) {
+      const teamId = selectedTeam.id;
+      fetchTeamMembers(teamId);
+      fetchTeamAnalytics(teamId);
+      fetchKanbanTasks(teamId);
+      fetchTeamActivity(teamId);
       
-      const ch = supabase.channel(`members-${selectedTeam.id}`)
-        .on("postgres_changes", { event: "*", schema: "public", table: "team_members", filter: `team_id=eq.${selectedTeam.id}` }, () => fetchTeamMembers(selectedTeam.id))
+      const ch = supabase.channel(`members-${teamId}`)
+        .on("postgres_changes", { event: "*", schema: "public", table: "team_members", filter: `team_id=eq.${teamId}` }, () => fetchTeamMembers(teamId))
         .subscribe();
       
-      const kanbanCh = supabase.channel(`kanban-${selectedTeam.id}`)
-        .on("postgres_changes", { event: "*", schema: "public", table: "tasks", filter: `team_id=eq.${selectedTeam.id}` }, () => fetchKanbanTasks(selectedTeam.id))
+      const kanbanCh = supabase.channel(`kanban-${teamId}`)
+        .on("postgres_changes", { event: "*", schema: "public", table: "tasks", filter: `team_id=eq.${teamId}` }, () => fetchKanbanTasks(teamId))
         .subscribe();
-      const activityCh = supabase.channel(`activity-${selectedTeam.id}`)
-        .on("postgres_changes", { event: "*", schema: "public", table: "team_activity", filter: `team_id=eq.${selectedTeam.id}` }, () => fetchTeamActivity(selectedTeam.id))
+      const activityCh = supabase.channel(`activity-${teamId}`)
+        .on("postgres_changes", { event: "*", schema: "public", table: "team_activity", filter: `team_id=eq.${teamId}` }, () => fetchTeamActivity(teamId))
         .subscribe();
         
       return () => { 
@@ -417,7 +424,7 @@ export default function Teams() {
         activityCh.unsubscribe();
       };
     }
-  }, [selectedTeam, fetchTeamMembers, fetchKanbanTasks, fetchTeamActivity]);
+  }, [selectedTeam?.id, fetchTeamMembers, fetchKanbanTasks, fetchTeamActivity]);
 
   // Create team
   const handleCreateTeam = async () => {
