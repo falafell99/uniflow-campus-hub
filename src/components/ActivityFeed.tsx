@@ -228,7 +228,7 @@ export function ActivityFeed() {
           {recentUploads.map((u) => (
             <button
               key={u.id}
-              onClick={() => navigate("/vault")}
+              onClick={() => navigate("/vault", { state: { previewFileId: u.id } })}
               className="px-2 py-1.5 rounded-md hover:bg-muted/50 cursor-pointer transition-colors w-full text-left"
             >
               <p className="text-xs font-medium truncate">{u.name}</p>

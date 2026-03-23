@@ -255,6 +255,22 @@ export default function Vault() {
 
   useEffect(() => { loadFiles(); }, [vaultMode, user]);
 
+  useEffect(() => {
+    if (!loading && vaultTree.length > 0) {
+      const state = location.state as { previewFileId?: number | string } | null;
+      if (state?.previewFileId) {
+        const fileIdStr = String(state.previewFileId);
+        const allItems = flattenFiles(vaultTree);
+        const fileToOpen = allItems.find(f => f.id === fileIdStr);
+        if (fileToOpen) {
+          setPreviewFile(fileToOpen);
+          // Clear the state so it doesn't reopen if the user navigates away and clicks back
+          window.history.replaceState({}, document.title);
+        }
+      }
+    }
+  }, [loading, vaultTree, location.state]);
+
   const treeToShow = (searchQuery || typeFilter !== "All")
     ? filterTree(vaultTree, searchQuery, typeFilter)
     : vaultTree;
