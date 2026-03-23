@@ -73,7 +73,7 @@ export default function Today() {
       let urgent = null;
       if (deadlines.length > 0 && tasks.length > 0) {
         const firstDeadlineTime = new Date(deadlines[0].start_time).getTime();
-        const firstTaskTime = new Date(tasks[0].due_date).getTime();
+        const firstTaskTime = tasks[0].due_date ? new Date(tasks[0].due_date).getTime() : Infinity;
         if (firstDeadlineTime < firstTaskTime && differenceInDays(firstDeadlineTime, new Date()) <= 3) {
           urgent = { type: "deadline", title: deadlines[0].title, date: deadlines[0].start_time, link: "/calendar" };
         } else {
@@ -115,7 +115,7 @@ export default function Today() {
           <div>
             <p className="font-bold text-lg leading-snug">{mostUrgent.title}</p>
             <p className="text-sm text-muted-foreground mt-1">
-              {mostUrgent.type === "deadline" ? "⏰" : "📋"} {formatDistanceToNow(new Date(mostUrgent.date), { addSuffix: true })}
+              {mostUrgent.type === "deadline" ? "⏰" : "📋"} {mostUrgent.date ? formatDistanceToNow(new Date(mostUrgent.date), { addSuffix: true }) : "No due date"}
             </p>
             <Button size="sm" className="mt-3 gap-2 shadow-sm font-semibold" onClick={() => navigate(mostUrgent.link)}>
               Work on this <ArrowRight className="h-3.5 w-3.5" />

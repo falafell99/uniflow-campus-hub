@@ -5,6 +5,7 @@ import {
   CalendarPlus, X, GripVertical, Download, CheckCircle2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -214,7 +215,7 @@ export default function KanbanBoard() {
       .order("created_at", { ascending: false });
 
     if (mode === "personal") {
-      query = query.eq("user_id", user.id);
+      query = query.eq("user_id", user.id).is("team_id", null);
     } else if (selectedTeamId) {
       query = query.eq("team_id", selectedTeamId);
     } else {
@@ -433,11 +434,15 @@ export default function KanbanBoard() {
               ))}
             </div>
             {mode === "team" && teams.length > 0 && (
-              <select value={selectedTeamId || ""} onChange={e => setSelectedTeamId(e.target.value || null)}
-                className="bg-transparent border border-border/40 rounded-lg px-2 py-1.5 text-xs outline-none">
-                <option value="" className="bg-[#1a1a1a]">Select team...</option>
-                {teams.map(t => <option key={t.id} value={t.id} className="bg-[#1a1a1a]">{t.name}</option>)}
-              </select>
+              <Select value={selectedTeamId || "unselected"} onValueChange={v => setSelectedTeamId(v === "unselected" ? null : v)}>
+                <SelectTrigger className="h-8 w-[140px] text-xs bg-transparent border-border/40">
+                  <SelectValue placeholder="Select team..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unselected" className="text-muted-foreground">Select team...</SelectItem>
+                  {teams.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
             )}
             <Button variant="outline" size="sm" className="gap-1.5" onClick={() => {
               import("@/lib/exportPDF").then(({ exportToPDF, tasksToHTML }) => {
