@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { FacultyBar } from "@/components/FacultyBar";
+
 import { CategorySidebar } from "@/components/CategorySidebar";
 import { ActivityFeed } from "@/components/ActivityFeed";
 import { TopHeader } from "@/components/TopHeader";
@@ -24,7 +24,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
     <div className="h-full flex w-full overflow-hidden">
       <CommandPalette />
       <div className="hidden md:flex shrink-0 h-full">
-        <FacultyBar />
+
         <CategorySidebar />
       </div>
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
