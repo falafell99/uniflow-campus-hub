@@ -46,10 +46,10 @@ export default function Landing() {
       {/* Sticky Nav */}
       <div className={`fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-8 py-4 transition-all duration-300 ${scrolled ? "bg-[#030303]/80 backdrop-blur-md border-b border-white/[0.06] shadow-sm" : ""}`}>
         <div className="flex items-center gap-2 cursor-pointer" onClick={scrollToTop}>
-          <div className="h-7 w-7 rounded-lg bg-[#7b68ee] flex items-center justify-center text-white font-black text-sm shadow-lg shadow-[#7b68ee]/20">U</div>
+          <div className="h-7 w-7 rounded-lg bg-[#3b82f6] flex items-center justify-center text-white font-black text-sm shadow-lg shadow-[#3b82f6]/20">U</div>
           <span className="font-bold text-white">UniFlow</span>
         </div>
-        <Button onClick={() => navigate("/login")} className="h-9 px-5 text-sm font-semibold bg-[#7b68ee] hover:bg-[#6a5acd] text-white rounded-lg">
+        <Button onClick={() => navigate("/login")} className="h-9 px-5 text-sm font-semibold bg-[#3b82f6] hover:bg-[#2563eb] text-white rounded-lg">
           Sign In
         </Button>
       </div>
@@ -62,14 +62,14 @@ export default function Landing() {
         <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="relative z-10 space-y-6 max-w-3xl pt-10">
           {/* Tagline */}
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-            className="inline-flex items-center gap-2 bg-[#7b68ee]/10 border border-[#7b68ee]/20 rounded-full px-4 py-1.5 text-sm text-[#7b68ee] font-medium">
+            className="inline-flex items-center gap-2 bg-[#3b82f6]/10 border border-[#3b82f6]/20 rounded-full px-4 py-1.5 text-sm text-[#3b82f6] font-medium">
             <Sparkles className="h-3.5 w-3.5" /> Built for students, by students
           </motion.div>
 
           {/* Title */}
           <h1 className="text-5xl md:text-7xl font-black tracking-tight text-white leading-[1.05]">
             Stop switching<br />
-            between <span className="text-[#7b68ee]">7 apps.</span>
+            between <span className="text-[#3b82f6]">7 apps.</span>
           </h1>
 
           <p className="text-xl text-white/40 mt-4 max-w-lg mx-auto leading-relaxed">
@@ -78,11 +78,11 @@ export default function Landing() {
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
             <Button onClick={() => navigate("/login?mode=signup")} size="lg"
-              className="h-12 px-8 font-bold text-base rounded-xl shadow-lg shadow-[#7b68ee]/20 w-full sm:w-auto bg-[#7b68ee] hover:bg-[#6a5acd] text-white active:scale-95 transition-all">
+              className="h-12 px-8 font-bold text-base rounded-xl shadow-lg shadow-[#3b82f6]/20 w-full sm:w-auto bg-[#3b82f6] hover:bg-[#2563eb] text-white active:scale-95 transition-all">
               Get Started Free
             </Button>
-            <Button variant="outline" size="lg"
-              className="h-12 px-8 font-semibold text-base rounded-xl border-white/10 hover:bg-white/5 text-white w-full sm:w-auto"
+            <Button variant="ghost" size="lg"
+              className="h-12 px-8 font-semibold text-base rounded-xl border border-white/20 hover:bg-white/10 text-white w-full sm:w-auto"
               onClick={() => document.getElementById("features")?.scrollIntoView({ behavior: "smooth" })}>
               See Features ↓
             </Button>
@@ -92,7 +92,7 @@ export default function Landing() {
           <div className="flex items-center justify-center gap-6 mt-8 text-sm text-white/30 flex-wrap">
             <div className="flex items-center gap-2">
               <div className="flex -space-x-2">
-                {["#7b68ee","#10b981","#f59e0b","#ef4444"].map((color, i) => (
+                {["#3b82f6","#10b981","#f59e0b","#ef4444"].map((color, i) => (
                   <div key={i} className="h-7 w-7 rounded-full border-2 border-[#030303]" style={{ background: color }} />
                 ))}
               </div>
@@ -115,9 +115,9 @@ export default function Landing() {
           {features.map((f, i) => (
             <motion.div key={i} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.05, duration: 0.4 }} viewport={{ once: true, margin: "-50px" }}
-              className="relative bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6 hover:bg-white/[0.05] hover:border-[#7b68ee]/20 transition-all">
+              className="relative bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6 hover:bg-white/[0.05] hover:border-[#3b82f6]/20 transition-all">
               {"popular" in f && f.popular && (
-                <div className="absolute -top-2 -right-2 bg-[#7b68ee] text-white text-[10px] font-bold px-2 py-0.5 rounded-full">Popular</div>
+                <div className="absolute -top-2 -right-2 bg-[#3b82f6] text-white text-[10px] font-bold px-2 py-0.5 rounded-full">Popular</div>
               )}
               <div className="text-2xl mb-3">{f.emoji}</div>
               <h3 className="font-bold text-sm mb-1 text-white">{f.title}</h3>
@@ -143,7 +143,7 @@ export default function Landing() {
               transition={{ delay: i * 0.1 }} viewport={{ once: true }}
               className="text-center space-y-3">
               <div className="text-4xl">{item.emoji}</div>
-              <div className="text-[#7b68ee] font-mono text-sm font-bold">{item.step}</div>
+              <div className="text-[#3b82f6] font-mono text-sm font-bold">{item.step}</div>
               <h3 className="font-bold text-white">{item.title}</h3>
               <p className="text-white/40 text-sm leading-relaxed">{item.desc}</p>
             </motion.div>
@@ -157,7 +157,7 @@ export default function Landing() {
           <h2 className="text-4xl font-black text-white">Ready to study smarter?</h2>
           <p className="text-white/40 mt-3">Join students who stopped juggling 7 apps.</p>
           <Button onClick={() => navigate("/login?mode=signup")} size="lg"
-            className="mt-8 h-14 px-12 bg-[#7b68ee] hover:bg-[#6a5acd] text-white font-bold text-lg rounded-2xl shadow-2xl shadow-[#7b68ee]/20 active:scale-95 transition-all">
+            className="mt-8 h-14 px-12 bg-[#3b82f6] hover:bg-[#2563eb] text-white font-bold text-lg rounded-2xl shadow-2xl shadow-[#3b82f6]/20 active:scale-95 transition-all">
             Get Started — It's Free →
           </Button>
           <p className="text-white/20 text-xs mt-4">No credit card • No download • Works in your browser</p>
@@ -167,7 +167,7 @@ export default function Landing() {
       {/* Footer */}
       <footer className="border-t border-white/[0.04] py-8 px-6 text-center text-white/30 text-sm">
         <div className="flex items-center justify-center gap-2 mb-2">
-          <div className="h-5 w-5 rounded-md bg-[#7b68ee] flex items-center justify-center text-white font-black text-[10px]">U</div>
+          <div className="h-5 w-5 rounded-md bg-[#3b82f6] flex items-center justify-center text-white font-black text-[10px]">U</div>
           <span className="font-bold opacity-70">UniFlow</span>
         </div>
         <p>The Student Operating System</p>
