@@ -10,6 +10,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useApp } from "@/contexts/AppContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PreviewModal } from "@/views/Vault/PreviewModal";
+import { type FileItem } from "@/views/Vault/FileTree";
 
 function getFirstName(fullName?: string) {
   if (!fullName) return "Student";
@@ -39,6 +41,7 @@ export default function Dashboard() {
 
   const [recentFiles, setRecentFiles] = useState<any[]>([]);
   const [filesLoading, setFilesLoading] = useState(true);
+  const [previewFile, setPreviewFile] = useState<FileItem | null>(null);
 
   const [unreadMessages, setUnreadMessages] = useState(0);
 
@@ -248,7 +251,17 @@ export default function Dashboard() {
                 </div>
               ) : (
                 recentFiles.map(file => (
-                  <div key={file.id} onClick={() => navigate("/vault")} className="flex items-center justify-between p-3.5 bg-background border border-border/50 rounded-xl hover:border-blue-500/30 transition-all cursor-pointer">
+                  <div key={file.id} onClick={() => setPreviewFile({
+                      id: file.id,
+                      name: file.name,
+                      type: "file",
+                      tag: file.file_type,
+                      subject: file.subject,
+                      storage_url: file.storage_url,
+                      storage_path: file.storage_path,
+                      file_size: file.file_size,
+                      date: format(new Date(file.created_at), "MMM d, yyyy")
+                  })} className="flex items-center justify-between p-3.5 bg-background border border-border/50 rounded-xl hover:border-blue-500/30 transition-all cursor-pointer">
                      <div className="flex items-center gap-3 overflow-hidden">
                        <div className="h-10 w-10 shrink-0 bg-blue-500/10 rounded-lg flex items-center justify-center text-blue-500">
                          {file.file_type === "Lectures" ? "📖" : file.file_type === "Practices" ? "💡" : file.file_type === "Homeworks" ? "📋" : file.file_type === "Exams" ? "📝" : "📄"}
@@ -303,6 +316,7 @@ export default function Dashboard() {
         </div>
 
       </div>
+      <PreviewModal file={previewFile} onClose={() => setPreviewFile(null)} />
     </div>
   );
 }

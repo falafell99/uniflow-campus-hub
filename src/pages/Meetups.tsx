@@ -210,7 +210,7 @@ function CreateMeetupDialog({ open, onClose }: { open: boolean; onClose: () => v
                 </button>
               ))}
             </div>
-            <Input placeholder="Or type custom time..." value={customTime} onChange={(e) => setCustomTime(e.target.value)} />
+            <Input type="time" value={customTime} onChange={(e) => { setCustomTime(e.target.value); setTime(""); }} className="w-full" />
           </div>
 
           {/* Max attendees */}

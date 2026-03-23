@@ -6,11 +6,14 @@ import {
   Sparkles,
   Layers,
   NotebookPen,
-  Heart
+  Heart,
+  Trash
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ResourceBadge } from "@/components/ResourceBadge";
+import { supabase } from "@/lib/supabase";
+import { toast } from "@/hooks/use-toast";
 
 export type FileItem = {
   id: string;
@@ -99,6 +102,20 @@ function FileRow({ item, onPreview, navigate }: { item: FileItem; onPreview: (f:
       <div className="hidden group-hover:flex items-center gap-1 shrink-0 ml-2" onClick={(e) => e.stopPropagation()}>
         <Button variant="ghost" size="icon" className="h-7 w-7" title="Preview" onClick={() => onPreview(item)}>
           <Eye className="h-3.5 w-3.5" />
+        </Button>
+        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10" title="Delete" onClick={async (e) => {
+          e.stopPropagation();
+          if (!confirm(`Are you sure you want to delete "${item.name}"?`)) return;
+          try {
+            if (item.storage_path) await supabase.storage.from("vault").remove([item.storage_path]);
+            await supabase.from("vault_files").delete().eq("id", item.id);
+            toast({ title: "File deleted successfully" });
+            window.location.reload();
+          } catch (err: any) {
+            toast({ title: "Error deleting file", description: err.message, variant: "destructive" });
+          }
+        }}>
+          <Trash className="h-3.5 w-3.5" />
         </Button>
         {item.storage_path && (
           <>

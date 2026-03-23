@@ -112,7 +112,7 @@ export default function Teams() {
 
   // General
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [searchResults, setSearchResults] = useState<{ id: string; display_name: string; avatar_color?: string }[]>([]);
+  const [searchResults, setSearchResults] = useState<{ id: string; display_name: string; avatar_color?: string; isSelf?: boolean; isExistingMember?: boolean }[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [selectedUserProfileId, setSelectedUserProfileId] = useState<string | null>(null);
   const [teamTasks, setTeamTasks] = useState<any[]>([]);
@@ -138,14 +138,17 @@ export default function Teams() {
         .from("profiles")
         .select("id, display_name, avatar_color, avatar_emoji")
         .ilike("display_name", `%${query}%`)
-        .neq("id", currentUserId)
         .limit(8);
 
       if (error) throw error;
 
       const existingIds = new Set(teamMembers.map(m => m.user_id));
-      const filtered = (data || []).filter(u => !existingIds.has(u.id));
-      setSearchResults(filtered);
+      const enrichedSearchResults = (data || []).map(u => ({
+        ...u,
+        isSelf: u.id === currentUserId,
+        isExistingMember: existingIds.has(u.id)
+      }));
+      setSearchResults(enrichedSearchResults);
     } catch (e) {
       console.error("User search error:", e);
       setSearchResults([]);
@@ -1359,7 +1362,7 @@ export default function Teams() {
               <div className="p-8 space-y-6 max-w-4xl mx-auto">
                 <div className="flex items-center justify-between">
                   <h2 className="text-2xl font-bold">All People</h2>
-                  <Button size="sm" className="h-8 text-xs bg-[#7b68ee] hover:bg-[#6a5acd]" onClick={() => setIsCreateModalOpen(true)}>
+                  <Button size="sm" className="h-8 text-xs bg-[#7b68ee] hover:bg-[#6a5acd]" onClick={() => setIsInviteModalOpen(true)}>
                     <UserPlus className="h-3.5 w-3.5 mr-1.5" /> Invite to Team
                   </Button>
                 </div>
@@ -1581,10 +1584,33 @@ export default function Teams() {
       <Dialog open={isInviteModalOpen} onOpenChange={setIsInviteModalOpen}>
         <DialogContent className="sm:max-w-[440px] bg-[#1a1a1a] border-border/40 text-white">
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold">Invite to {selectedTeam?.name}</DialogTitle>
+            <DialogTitle className="text-xl font-bold">
+              {selectedTeam ? `Invite to ${selectedTeam.name}` : "Invite to Team"}
+            </DialogTitle>
             <DialogDescription className="text-muted-foreground">Selected user will receive an invitation to join the team.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-5 py-4">
+            {!selectedTeam && (
+              <div className="space-y-2">
+                <label className="text-sm font-semibold">Select Team</label>
+                <select 
+                  className="w-full h-11 bg-background/50 border border-border/40 rounded-xl px-3 text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                  onChange={e => {
+                    const t = teams.find(team => team.id === e.target.value);
+                    if (t) {
+                      setSelectedTeam(t);
+                      fetchTeamMembers(t.id);
+                    }
+                  }}
+                  defaultValue=""
+                >
+                  <option value="" disabled>Select a team to invite to...</option>
+                  {teams.map(t => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div className="space-y-2">
               <label className="text-sm font-semibold">Display Name</label>
               <div className="relative">
@@ -1609,22 +1635,27 @@ export default function Teams() {
                       </div>
                     ) : (
                       <div className="py-1">
-                        {searchResults.map(u => (
+                        {searchResults.map((u: any) => {
+                          const isDisabled = u.isSelf || u.isExistingMember;
+                          return (
                           <button
                             key={u.id}
-                            onClick={() => handleInviteMember(u.id)}
-                            className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-white/5 transition-colors text-left group"
+                            onClick={() => !isDisabled && handleInviteMember(u.id)}
+                            disabled={isDisabled}
+                            className={`w-full flex items-center gap-3 px-4 py-2.5 transition-colors text-left group ${isDisabled ? "opacity-50 cursor-not-allowed" : "hover:bg-white/5"}`}
                           >
                             <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs font-bold">
                               {u.display_name.charAt(0).toUpperCase()}
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">{u.display_name}</p>
-                              <p className="text-[10px] text-muted-foreground">Select to invite</p>
+                              <p className={`text-sm font-medium truncate transition-colors ${!isDisabled ? "group-hover:text-primary" : ""}`}>{u.display_name}</p>
+                              <p className="text-[10px] text-muted-foreground">
+                                {u.isSelf ? "You" : u.isExistingMember ? "Already in team" : "Select to invite"}
+                              </p>
                             </div>
-                            <Plus className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-all mr-1" />
+                            {!isDisabled && <Plus className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-all mr-1" />}
                           </button>
-                        ))}
+                        )})}
                       </div>
                     )}
                   </div>
@@ -1654,7 +1685,7 @@ export default function Teams() {
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => { setIsInviteModalOpen(false); setSearchResults([]); setInviteSearch(""); }}>Cancel</Button>
-            <Button onClick={() => searchResults[0] && handleInviteMember(searchResults[0].id)} disabled={isSubmitting || searchResults.length === 0} className="bg-[#7b68ee] hover:bg-[#6a5acd] px-8">
+            <Button onClick={() => searchResults[0] && handleInviteMember(searchResults[0].id)} disabled={isSubmitting || searchResults.length === 0 || !selectedTeam || searchResults[0]?.isSelf || searchResults[0]?.isExistingMember} className="bg-[#7b68ee] hover:bg-[#6a5acd] px-8">
               {isSubmitting && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Invite Selected
             </Button>
           </DialogFooter>
