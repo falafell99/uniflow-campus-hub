@@ -10,7 +10,6 @@ import { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { useApp } from "@/contexts/AppContext";
 import { useTheme } from "@/contexts/ThemeContext";
-import { FacultyBar } from "@/components/FacultyBar";
 import { CategorySidebar } from "@/components/CategorySidebar";
 import { SplitScreen } from "@/components/SplitScreen";
 import { useAuth } from "@/contexts/AuthContext";
@@ -110,7 +109,6 @@ export function TopHeader() {
           </Button>
         </SheetTrigger>
         <SheetContent side="left" className="p-0 flex w-[288px] gap-0 border-r border-border/40" hideClose>
-          <FacultyBar />
           <CategorySidebar />
         </SheetContent>
       </Sheet>
