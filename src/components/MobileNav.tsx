@@ -35,7 +35,7 @@ export function MobileNav() {
   return (
     <nav
       className="fixed bottom-0 left-0 right-0 z-50 md:hidden border-t border-border/30 bg-background/95 backdrop-blur-md"
-      style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+      style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) / 3)" }}
     >
       <div className="flex items-center justify-around h-14">
         {[
