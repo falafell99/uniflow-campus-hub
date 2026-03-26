@@ -8,6 +8,8 @@ import { ReminderBanner } from "@/components/ReminderBanner";
 import { MobileNav } from "@/components/MobileNav";
 import { initReminders } from "@/lib/reminders";
 import { useAuth } from "@/contexts/AuthContext";
+import { PWAInstallPrompt } from "./PWAInstallPrompt";
+import { PWAUpdatePrompt } from "./PWAUpdatePrompt";
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
@@ -38,6 +40,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <MobileNav />
       </div>
       <ActivityFeed />
+      <PWAInstallPrompt />
+      <PWAUpdatePrompt />
     </div>
   );
 }
