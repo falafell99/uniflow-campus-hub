@@ -28,6 +28,10 @@ function timeAgo(iso: string) {
 function getInitials(name: string) { return name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2); }
 
 function ReplyItem({ r }: { r: Reply }) {
+  const [expanded, setExpanded] = useState(false);
+  const isLong = r.content.length > 300;
+  const displayContent = !isLong || expanded ? r.content : r.content.slice(0, 300) + "...";
+
   return (
     <div className="glass-subtle p-3 rounded-lg space-y-1.5 w-full overflow-hidden">
       <div className="flex items-center gap-2">
@@ -35,7 +39,14 @@ function ReplyItem({ r }: { r: Reply }) {
         <span className="text-xs font-medium">{r.author}</span>
         <span className="text-[10px] text-muted-foreground">{timeAgo(r.created_at)}</span>
       </div>
-      <p className="text-sm text-foreground/90 pl-8 break-all whitespace-pre-wrap overflow-hidden">{r.content}</p>
+      <div className="pl-8">
+        <p className="text-sm text-foreground/90 break-words whitespace-pre-wrap">{displayContent}</p>
+        {isLong && (
+          <button onClick={() => setExpanded(!expanded)} className="text-xs text-primary mt-1 font-medium hover:underline">
+            {expanded ? "Свернуть" : "Показать полностью"}
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -59,7 +70,7 @@ function ThreadCard({ t, onUpvote, upvotedIds }: { t: Thread; onUpvote: (id: num
   const postReply = async () => {
     if (!replyText.trim()) return;
     if (replyText.trim().length < 3) { toast({ title: "Reply must be at least 3 characters", variant: "destructive" }); return; }
-    if (replyText.trim().length > 2000) { toast({ title: "Reply must be under 2000 characters", variant: "destructive" }); return; }
+    if (replyText.trim().length > 1000) { toast({ title: "Reply must be under 1000 characters", variant: "destructive" }); return; }
 
     // Rate limit: max 5 replies per hour
     if (user) {
@@ -105,12 +116,12 @@ function ThreadCard({ t, onUpvote, upvotedIds }: { t: Thread; onUpvote: (id: num
             <p className="text-xs text-muted-foreground italic">No replies yet — be the first!</p>
           ) : replies.map(r => <ReplyItem key={r.id} r={r} />)}
           <div className="space-y-2">
-            <Textarea maxLength={2000} placeholder="Write a reply... (Ctrl+Enter to post)" className="text-sm resize-none" rows={2} value={replyText} onChange={e => setReplyText(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) postReply(); }} />
+            <Textarea maxLength={1000} placeholder="Write a reply... (Ctrl+Enter to post)" className="text-sm resize-none" rows={2} value={replyText} onChange={e => setReplyText(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) postReply(); }} />
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className={`text-[10px] font-medium ${replyText.length >= 2000 ? "text-destructive" : "text-muted-foreground"}`}>{replyText.length}/2000</span>
-                {replyText.length > 1800 && (
-                  <span className="text-[10px] text-orange-400">{2000 - replyText.length} left</span>
+                <span className={`text-[10px] font-medium ${replyText.length >= 1000 ? "text-destructive" : "text-muted-foreground"}`}>{replyText.length}/1000</span>
+                {replyText.length > 900 && (
+                  <span className="text-[10px] text-orange-400">{1000 - replyText.length} left</span>
                 )}
               </div>
               <Button size="sm" className="text-xs gap-1.5" onClick={postReply} disabled={posting || replyText.trim().length < 3}>

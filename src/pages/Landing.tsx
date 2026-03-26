@@ -44,7 +44,7 @@ export default function Landing() {
   return (
     <div ref={scrollRef} className="h-screen overflow-y-auto bg-[#030303] text-white custom-scroll">
       {/* Sticky Nav */}
-      <div className={`fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-8 py-4 transition-all duration-300 ${scrolled ? "bg-[#030303]/80 backdrop-blur-md border-b border-white/[0.06] shadow-sm" : ""}`}>
+      <div className={`fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-8 py-4 pt-[calc(1rem+env(safe-area-inset-top))] transition-all duration-300 ${scrolled ? "bg-[#030303]/80 backdrop-blur-md border-b border-white/[0.06] shadow-sm" : ""}`}>
         <div className="flex items-center gap-2 cursor-pointer" onClick={scrollToTop}>
           <div className="h-7 w-7 rounded-lg bg-[#3b82f6] flex items-center justify-center text-white font-black text-sm shadow-lg shadow-[#3b82f6]/20">U</div>
           <span className="font-bold text-white">UniFlow</span>
