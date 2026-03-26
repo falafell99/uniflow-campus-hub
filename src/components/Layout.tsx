@@ -32,7 +32,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
         <TopHeader />
         <ReminderBanner />
-        <main className="flex-1 p-4 md:p-6 pb-24 md:pb-6 overflow-y-auto custom-scroll">
+        <main className="flex-1 p-4 md:p-6 pb-32 md:pb-6 overflow-y-auto custom-scroll">
           <div className="page-slide-in h-full">
             {children}
           </div>

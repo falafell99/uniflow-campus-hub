@@ -33,8 +33,8 @@ export function MobileNav() {
   }, [user]);
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-background/95 backdrop-blur-md border-t border-border/20 pb-[env(safe-area-inset-bottom)]">
-      <div className="flex items-center justify-around px-2 py-2">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-[rgba(3,3,3,0.95)] backdrop-blur-xl border-t border-white/[0.08] pb-[env(safe-area-inset-bottom)] pt-1">
+      <div className="flex items-center justify-around px-1">
         {[
           { path: "/", icon: Sun, label: "Today" },
           { path: "/vault", icon: BookOpen, label: "Vault" },
@@ -48,11 +48,11 @@ export function MobileNav() {
               key={item.path}
               to={item.path}
               end={item.path === "/"}
-              className={`flex flex-col items-center gap-1 px-3 py-1 rounded-xl transition-all relative ${
-                isActive ? "text-primary" : "text-muted-foreground"
+              className={`flex flex-col items-center justify-center h-12 min-w-[60px] rounded-xl transition-all relative ${
+                isActive ? "text-[#3b82f6]" : "text-white/40 hover:text-white/70"
               }`}
             >
-              <div className="relative">
+              <div className="relative flex flex-col items-center gap-1">
                 <item.icon className="h-5 w-5" />
                 {item.path === "/messages" && unreadMsgs > 0 && (
                   <span className="absolute -top-1.5 -right-1.5 flex h-3.5 min-w-3.5 px-1 items-center justify-center rounded-full bg-destructive text-[9px] font-bold text-destructive-foreground ring-2 ring-background">
