@@ -200,11 +200,6 @@
   body {
     padding-top: env(safe-area-inset-top);
   }
-
-  /* Bottom nav gets extra padding for home indicator */
-  .mobile-bottom-nav {
-    padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));
-  }
 }
 
 /* Prevent overscroll bounce in PWA */

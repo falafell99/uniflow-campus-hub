@@ -126,7 +126,7 @@ function ProtectedApp() {
             <Route path="/study-partners" element={<Navigate to="/community" replace />} />
 
             <Route path="/login" element={<Navigate to="/" replace />} />
-            <Route path="/onboarding" element={<Navigate to="/" replace />} />
+            <Route path="/onboarding" element={<Onboarding />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Layout>

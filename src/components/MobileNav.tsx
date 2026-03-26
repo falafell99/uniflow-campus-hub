@@ -33,7 +33,7 @@ export function MobileNav() {
   }, [user]);
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-background/95 backdrop-blur-md border-t border-border/20 mobile-bottom-nav">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-background/95 backdrop-blur-md border-t border-border/20 pb-[env(safe-area-inset-bottom)]">
       <div className="flex items-center justify-around px-2 py-2">
         {[
           { path: "/", icon: Sun, label: "Today" },
