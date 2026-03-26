@@ -101,7 +101,7 @@ export function TopHeader() {
 
 
   return (
-    <header className="sticky top-0 z-30 flex py-2 pt-[calc(0.5rem+env(safe-area-inset-top))] items-center gap-3 border-b border-border/40 bg-background/70 backdrop-blur-xl px-4 shrink-0">
+    <header className="sticky top-0 z-30 flex h-[calc(3rem+env(safe-area-inset-top))] items-end pb-3 gap-3 border-b border-border/40 bg-background/70 backdrop-blur-xl px-4 shrink-0 transition-all">
       <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
         <SheetTrigger asChild>
           <Button variant="ghost" size="icon" className="md:hidden h-8 w-8 shrink-0">

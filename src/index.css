@@ -195,12 +195,6 @@
   --safe-area-right: env(safe-area-inset-right);
 }
 
-/* When running as installed PWA */
-@media (display-mode: standalone) {
-  body {
-    padding-top: env(safe-area-inset-top);
-  }
-}
 
 /* Prevent overscroll bounce in PWA */
 html, body {

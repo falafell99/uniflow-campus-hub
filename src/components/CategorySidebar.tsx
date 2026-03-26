@@ -140,7 +140,7 @@ export function CategorySidebar() {
   };
 
   return (
-    <div className="w-[240px] shrink-0 flex flex-col bg-card/80 backdrop-blur-xl border-r border-border/40 overflow-hidden h-full">
+    <div className="w-[240px] md:w-full shrink-0 flex flex-col bg-card/80 backdrop-blur-xl border-r border-border/40 overflow-hidden h-full pt-[env(safe-area-inset-top)]">
       {/* Logo */}
       <div className="flex items-center gap-2.5 px-4 py-4 border-b border-border/20">
         <div className="h-8 w-8 rounded-xl bg-[#3b82f6] flex items-center justify-center text-white font-black text-sm">U</div>
