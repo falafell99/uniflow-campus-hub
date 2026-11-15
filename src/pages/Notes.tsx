@@ -708,6 +708,7 @@ export default function Notes() {
                 message='✍️ Inside notes, type "/" to see all block types'
                 position="left"
                 className="top-0 right-10"
+                maxWidthClass="max-w-[150px]"
               />
             </div>
           </div>
