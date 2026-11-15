@@ -43,9 +43,10 @@
     background: linear-gradient(to right, #000080, #1084d0);
     color: #ffffff;
   }
-  /* Teal desktop behind app windows */
+  /* Retro desktop wallpaper behind app windows (pixel-art Bliss homage) */
   .retro-desktop {
-    background: #008080;
+    background: #008080 url("/retro-wallpaper.png") center / cover no-repeat fixed;
+    image-rendering: pixelated;
   }
   /* White text labels directly on the desktop */
   .desktop-label {
