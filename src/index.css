@@ -167,9 +167,8 @@
   * {
     @apply border-border;
   }
-  /* Retro chrome is square. Explicit circles (avatars, status dots) keep
-     their rounding. */
-  *:not(.rounded-full):not([class*="rounded-full"]) {
+  /* Retro chrome is square, everywhere. */
+  * {
     border-radius: 0 !important;
   }
   html, body, #root {
@@ -184,8 +183,8 @@
 @layer components {
   .glass-card {
     @apply text-card-foreground;
-    background: #c3c7cb;
-    box-shadow: inset -1px -1px #0a0a0a, inset 1px 1px #ffffff, inset -2px -2px #868a8e, inset 2px 2px #dfdfdf;
+    background: #ffffff;
+    box-shadow: inset -1px -1px #ffffff, inset 1px 1px #0a0a0a, inset -2px -2px #dfdfdf, inset 2px 2px #868a8e;
   }
   .glass-subtle {
     @apply text-card-foreground;

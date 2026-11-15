@@ -31,10 +31,10 @@ export function HintBubble({ id, message, position = "bottom", className }: Hint
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.9 }}
-        className={`absolute z-50 bg-primary text-primary-foreground text-xs rounded-xl px-3 py-2 shadow-lg max-w-[200px] leading-relaxed ${className}`}
+        className={`absolute z-50 bg-[#ffffe1] text-black text-xs px-3 py-2 max-w-[200px] leading-relaxed border border-black shadow-[2px_2px_0_rgba(0,0,0,0.35)] ${className}`}
       >
         {/* Arrow */}
-        <div className={`absolute w-2 h-2 bg-primary rotate-45 ${arrowClass}`} />
+        <div className={`absolute w-2 h-2 bg-[#ffffe1] border border-black rotate-45 ${arrowClass}`} />
         <div className="flex items-start gap-2">
           <span className="flex-1">{message}</span>
           <button onClick={dismiss} className="opacity-60 hover:opacity-100 shrink-0 mt-0.5">✕</button>

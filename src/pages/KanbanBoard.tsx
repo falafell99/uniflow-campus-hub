@@ -48,10 +48,10 @@ type TeamOption = { id: string; name: string };
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const COLUMN_STYLES: Record<Status, { label: string; color: string; light: string }> = {
-  todo: { label: "To Do", color: "bg-slate-400", light: "bg-slate-500/10" },
-  in_progress: { label: "In Progress", color: "bg-amber-400", light: "bg-amber-500/10" },
-  review: { label: "In Review", color: "bg-purple-400", light: "bg-purple-500/10" },
-  done: { label: "Done", color: "bg-green-400", light: "bg-green-500/10" },
+  todo: { label: "To Do", color: "bg-[#808080]", light: "retro-face" },
+  in_progress: { label: "In Progress", color: "bg-[#000080]", light: "retro-face" },
+  review: { label: "In Review", color: "bg-[#800080]", light: "retro-face" },
+  done: { label: "Done", color: "bg-[#008000]", light: "retro-face" },
 };
 
 const PRIORITY_COLORS: Record<Priority, string> = {
@@ -537,7 +537,7 @@ export default function KanbanBoard() {
                     <div className="flex items-center gap-2">
                       <div className={`h-2.5 w-2.5 rounded-full ${style.color}`} />
                       <span className="font-semibold text-sm">{style.label}</span>
-                      <span className="text-xs bg-background/50 px-2 py-0.5 rounded-full ml-1">{colTasks.length}</span>
+                      <span className="text-xs bg-white px-2 py-0.5 ml-1 retro-bevel-in">{colTasks.length}</span>
                     </div>
                     <Button variant="ghost" size="icon" className="h-6 w-6 hover:bg-background/50 text-muted-foreground hover:text-foreground" onClick={() => openCreate(status)}>
                       <Plus className="h-4 w-4" />

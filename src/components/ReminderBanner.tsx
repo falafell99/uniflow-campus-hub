@@ -56,7 +56,7 @@ export function ReminderBanner() {
   if (visible.length === 0) return null;
 
   return (
-    <div className="fixed top-16 left-0 right-0 z-40 px-4 pt-2 pointer-events-none">
+    <div className="mb-3 pointer-events-none">
       <div className="max-w-[1400px] mx-auto space-y-2">
         <AnimatePresence>
           {visible.map(event => {
@@ -69,10 +69,8 @@ export function ReminderBanner() {
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className={`pointer-events-auto flex items-center gap-3 px-4 py-2.5 rounded-xl border text-sm shadow-lg ${
-                  isVeryUrgent
-                    ? "bg-red-500/10 border-red-500/30 text-red-400"
-                    : "bg-orange-500/10 border-orange-500/30 text-orange-400"
+                className={`pointer-events-auto flex items-center gap-3 px-3 py-2 text-sm retro-face retro-bevel ${
+                  isVeryUrgent ? "text-[#a00000]" : "text-black"
                 }`}
               >
                 <span className="text-base">{isVeryUrgent ? "⚡" : "⏰"}</span>

@@ -271,7 +271,7 @@ export default function Calendar() {
     return (
       <div className="flex flex-col xl:flex-row justify-between xl:items-center mb-4 gap-4 shrink-0">
         <div>
-          <h1 className="text-2xl lg:text-3xl font-black text-foreground tracking-tight flex items-center gap-3">
+          <h1 className="text-2xl lg:text-3xl font-black text-foreground tracking-tight flex items-center gap-3 whitespace-nowrap">
             <CalendarIcon className="h-6 w-6 lg:h-8 lg:w-8 text-primary" />
             Campus Calendar
           </h1>
@@ -310,7 +310,7 @@ export default function Calendar() {
               </Button>
             </div>
             
-            <Button onClick={() => setIsSyllabusModalOpen(true)} size="sm" variant="default" className="shrink-0 bg-indigo-600 hover:bg-indigo-700 text-white border-0">
+            <Button onClick={() => setIsSyllabusModalOpen(true)} size="sm" className="shrink-0">
               <Sparkles className="h-4 w-4 mr-1.5" />
               AI Syllabus Sync
             </Button>

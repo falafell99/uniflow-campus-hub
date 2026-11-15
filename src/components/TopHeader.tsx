@@ -100,8 +100,32 @@ export function TopHeader() {
   };
 
 
+  const pageTitles: Record<string, string> = {
+    "/": "Today", "/dashboard": "Dashboard", "/notes": "Notes", "/tasks": "Tasks",
+    "/ai-oracle": "AI Oracle", "/vault": "The Vault", "/flashcards": "Flashcards",
+    "/calendar": "Campus Calendar", "/progress": "Progress", "/gpa": "GPA Calculator",
+    "/workspace": "Workspace", "/knowledge-graph": "Workspace", "/pomodoro": "Pomodoro",
+    "/community": "Community", "/teams": "Teams Hub", "/messages": "Messages",
+    "/profile": "Profile", "/studio": "Studio", "/internships": "Internships",
+    "/toolbox": "Toolbox", "/meetups": "Meetups", "/forums": "Forums",
+    "/professors": "Professors", "/voice-lounges": "Voice Lounges", "/onboarding": "Welcome",
+  };
+  const pageTitle = pageTitles[location.pathname] ?? "UniFlow";
+
   return (
-    <header className="sticky top-0 z-30 flex h-[calc(3rem+env(safe-area-inset-top))] items-end pb-3 gap-3 retro-face shadow-[inset_0_-1px_#868a8e,inset_0_-2px_#ffffff] px-4 shrink-0">
+    <header className="sticky top-0 z-30 flex flex-col retro-face shadow-[inset_0_-1px_#868a8e,inset_0_-2px_#ffffff] shrink-0 pt-[env(safe-area-inset-top)]">
+      {/* Window title bar */}
+      <div className="retro-titlebar flex items-center gap-1.5 pl-2 pr-1 h-[22px] select-none shrink-0">
+        <span className="w-[13px] h-[13px] bg-white text-[#000080] text-[9px] font-bold flex items-center justify-center shrink-0">U</span>
+        <span className="font-pixel font-bold text-[9px] truncate">UniFlow — {pageTitle}</span>
+        <div className="ml-auto hidden sm:flex gap-[2px] shrink-0" aria-hidden="true">
+          <span className="retro-btn w-[16px] h-[14px] font-pixel text-[7px] leading-[12px] text-center text-black">_</span>
+          <span className="retro-btn w-[16px] h-[14px] font-pixel text-[7px] leading-[12px] text-center text-black">□</span>
+          <span className="retro-btn w-[16px] h-[14px] font-pixel text-[7px] leading-[12px] text-center text-black">✕</span>
+        </div>
+      </div>
+      {/* Toolbar */}
+      <div className="flex h-11 items-center gap-3 px-4">
       <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
         <SheetTrigger asChild>
           <Button variant="ghost" size="icon" className="md:hidden h-8 w-8 shrink-0">
@@ -215,6 +239,7 @@ export function TopHeader() {
           </div>
         </PopoverContent>
       </Popover>
+      </div>
     </header>
   );
 }

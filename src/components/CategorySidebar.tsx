@@ -145,7 +145,7 @@ export function CategorySidebar() {
       <div className="flex items-center gap-2.5 px-3 py-3 retro-groove">
         <div className="h-8 w-8 retro-bevel-out-sm bg-[#000080] flex items-center justify-center text-white font-pixel font-bold text-sm">U</div>
         <div>
-          <p className="font-bold text-sm leading-none">UniFlow</p>
+          <p className="font-pixel font-bold text-[11px] leading-none">UniFlow</p>
           <p className="font-pixel text-[8px] text-[#444] mt-1">STUDENT OS</p>
         </div>
       </div>

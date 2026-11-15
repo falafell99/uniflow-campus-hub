@@ -128,19 +128,19 @@ export default function Today() {
 
       <div className="grid grid-cols-2 gap-3 mb-5">
         {[
-          { label: "Ask Oracle", sub: "Get help with anything", icon: Sparkles, color: "bg-primary/10 text-primary border-primary/20", path: "/ai-oracle" },
-          { label: "Upload File", sub: "Add to your Vault", icon: Upload, color: "bg-blue-500/10 text-blue-400 border-blue-500/20", path: "/vault" },
-          { label: "New Note", sub: "Write something down", icon: NotebookPen, color: "bg-purple-500/10 text-purple-400 border-purple-500/20", path: "/notes" },
-          { label: "Study Cards", sub: "Review flashcards", icon: Layers, color: "bg-green-500/10 text-green-400 border-green-500/20", path: "/flashcards" },
+          { label: "Ask Oracle", sub: "Get help with anything", icon: Sparkles, path: "/ai-oracle" },
+          { label: "Upload File", sub: "Add to your Vault", icon: Upload, path: "/vault" },
+          { label: "New Note", sub: "Write something down", icon: NotebookPen, path: "/notes" },
+          { label: "Study Cards", sub: "Review flashcards", icon: Layers, path: "/flashcards" },
         ].map(action => (
           <button key={action.path} onClick={() => navigate(action.path)}
-            className={`flex items-center gap-3 p-4 bg-card border rounded-2xl transition-all text-left shadow-sm group ${action.color.replace('text-', 'hover:border-').split(' ')[0]}`}>
-            <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${action.color.split(' ').slice(0, 2).join(' ')}`}>
-              <action.icon className="h-5 w-5" />
+            className="retro-btn flex flex-col items-start gap-2 p-3 text-left">
+            <div className="retro-bevel-in h-9 w-9 flex items-center justify-center shrink-0 text-[#000080]">
+              <action.icon className="h-4 w-4" />
             </div>
-            <div className="min-w-0">
-              <p className="font-bold text-sm truncate">{action.label}</p>
-              <p className="text-[10px] text-muted-foreground truncate">{action.sub}</p>
+            <div>
+              <p className="font-bold text-[13px] leading-tight">{action.label}</p>
+              <p className="text-[10px] text-[#444] leading-tight mt-0.5">{action.sub}</p>
             </div>
           </button>
         ))}

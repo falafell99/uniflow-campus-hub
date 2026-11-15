@@ -85,7 +85,7 @@ export function PWAInstallPrompt() {
           initial={{ opacity: 0, y: 100 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 100 }}
-          className="fixed bottom-20 left-4 right-4 z-50 md:left-auto md:right-6 md:w-80"
+          className="fixed left-4 right-4 z-50 md:left-auto md:right-48 md:w-80 md:!bottom-6" style={{ bottom: "calc(4.25rem + env(safe-area-inset-bottom, 0px))" }}
         >
           <div className="retro-overlay p-4">
             <div className="flex items-start gap-3">
@@ -124,7 +124,7 @@ export function PWAInstallPrompt() {
         initial={{ opacity: 0, y: 100 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 100 }}
-        className="fixed bottom-20 left-4 right-4 z-50 md:bottom-6 md:left-auto md:right-6 md:w-80"
+        className="fixed bottom-20 left-4 right-4 z-50 md:bottom-6 md:left-auto md:right-48 md:w-80"
       >
         <div className="retro-overlay p-4">
           <div className="flex items-center gap-3 mb-3">

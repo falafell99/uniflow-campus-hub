@@ -31,11 +31,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </div>
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
         <TopHeader />
-        <ReminderBanner />
         <main
           className="flex-1 p-4 md:p-6 md:pb-6 overflow-y-auto custom-scroll"
           style={{ paddingBottom: "calc(3.5rem + env(safe-area-inset-bottom, 0px) / 3 + 0.5rem)" }}
         >
+          <ReminderBanner />
           <div className="page-slide-in h-full">
             {children}
           </div>
