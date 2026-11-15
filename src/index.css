@@ -48,14 +48,17 @@
     background: #008080 url("/retro-wallpaper.png") center / cover no-repeat fixed;
     image-rendering: pixelated;
   }
-  /* White text labels directly on the desktop */
+  /* White text labels directly on the desktop: full dark outline keeps them
+     readable over any part of the wallpaper, including white clouds */
   .desktop-label {
     color: #ffffff;
-    text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.55);
+    text-shadow: 1px 0 0 #1a1a1a, -1px 0 0 #1a1a1a, 0 1px 0 #1a1a1a, 0 -1px 0 #1a1a1a,
+      1px 1px 0 #1a1a1a, -1px -1px 0 #1a1a1a, 1px -1px 0 #1a1a1a, -1px 1px 0 #1a1a1a, 2px 2px 0 rgba(0, 0, 0, 0.4);
   }
   .desktop-label-muted {
-    color: #d7e4e4;
-    text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.45);
+    color: #eef5f5;
+    text-shadow: 1px 0 0 #1a1a1a, -1px 0 0 #1a1a1a, 0 1px 0 #1a1a1a, 0 -1px 0 #1a1a1a,
+      1px 1px 0 #1a1a1a, -1px -1px 0 #1a1a1a, 1px -1px 0 #1a1a1a, -1px 1px 0 #1a1a1a;
   }
   /* Window: gray beveled frame + blue titlebar + white client area */
   .retro-window {
