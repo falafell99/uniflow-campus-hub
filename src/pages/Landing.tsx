@@ -204,7 +204,7 @@ export default function Landing() {
         >
           <TodayScreen />
         </motion.div>
-        <p className="mt-3 text-[12px] text-black/40">The Today screen — the first thing you see when you open UniFlow.</p>
+        <p className="mt-3 text-[12px] text-black/40">Demo of the Today screen with sample content — the first thing you see when you open UniFlow.</p>
       </section>
 
       {/* Tools */}
