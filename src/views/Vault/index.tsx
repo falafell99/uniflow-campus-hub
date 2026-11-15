@@ -11,6 +11,7 @@ import { PreviewModal } from "./PreviewModal";
 import { UploadDialog, SEMESTER_COURSES, ELECTIVE_COURSES, SECTIONS } from "./UploadDialog";
 import { supabase } from "@/lib/supabase";
 import { LiveNoteEditor } from "./LiveNoteEditor";
+import { RetroWindow } from "@/components/RetroWindow";
 import { formatDistanceToNow } from "date-fns";
 import { FileText as FileTextIcon, History } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -427,31 +428,31 @@ export default function Vault() {
           </Button>
         </div>
       ) : viewMode === "list" ? (
-        <GlassCard padding="p-4">
+        <RetroWindow title="File Browser" noButtons bodyClassName="p-4"
+          actions={<Badge variant="outline" className="text-[10px] gap-1 bg-white"><span className="h-1.5 w-1.5 rounded-full bg-success inline-block" /> Live</Badge>}>
           <div className="flex items-center justify-between mb-3 pb-2 border-b border-border/30">
             <p className="text-xs text-muted-foreground">
               {(searchQuery || typeFilter !== "All") ? `${filteredFiles.length} file${filteredFiles.length !== 1 ? "s" : ""} found` : "Full ELTE CS BSc curriculum"}
             </p>
-            <Badge variant="outline" className="text-[10px] gap-1">
-              <span className="h-1.5 w-1.5 rounded-full bg-success inline-block" /> Live
-            </Badge>
           </div>
           {treeToShow.length === 0 ? (
             <p className="text-xs text-muted-foreground text-center py-8 italic">No files match your search.</p>
           ) : (
             <FileTree items={treeToShow} onPreview={setPreviewFile} />
           )}
-        </GlassCard>
+        </RetroWindow>
       ) : (
         <div className="space-y-4">
           {filteredFiles.length === 0 ? (
             <p className="text-xs text-muted-foreground text-center py-8 italic">No files match your filters.</p>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 retro-window p-3">
-              {filteredFiles.map((f) => (
-                <FileCard key={f.id} item={f} onPreview={setPreviewFile} />
-              ))}
-            </div>
+            <RetroWindow title="Files" noButtons bodyClassName="p-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+                {filteredFiles.map((f) => (
+                  <FileCard key={f.id} item={f} onPreview={setPreviewFile} />
+                ))}
+              </div>
+            </RetroWindow>
           )}
         </div>
       )}
