@@ -1,96 +1,159 @@
 import { useNavigate } from "react-router-dom";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 
-const tools = [
-  { n: "01", name: "AI Oracle", desc: "Ask anything. Expert explanations with LaTeX support, PDF analysis, and study plans." },
-  { n: "02", name: "Smart Vault", desc: "Upload lectures and PDFs. AI generates summaries and flashcards automatically." },
-  { n: "03", name: "Notes", desc: "Notion-style notes with Study Mode — quiz yourself on your own notes with AI." },
-  { n: "04", name: "Kanban Tasks", desc: "Drag-and-drop boards for assignments. Syncs with your Calendar." },
-  { n: "05", name: "Calendar", desc: "Exams and deadlines with smart reminders 7, 3, and 1 day before." },
-  { n: "06", name: "Flashcards", desc: "Spaced repetition. Generate a deck from any PDF or note in one click." },
-  { n: "07", name: "Teams", desc: "Group projects with shared tasks, whiteboards, and activity feeds." },
-  { n: "08", name: "Progress", desc: "Study streak, weekly activity heatmap, and subject breakdown." },
-  { n: "09", name: "Messages", desc: "Direct messages with @mentions for your study group." },
+interface ToolPage {
+  id: string;
+  name: string;
+  desc: string;
+  details: string[];
+}
+
+const TOOLS: ToolPage[] = [
+  {
+    id: "overview",
+    name: "Overview",
+    desc: "The student operating system. Notes, flashcards, kanban, calendar, a document vault, an AI tutor, teams and messages — in one place, free forever.",
+    details: ["Sign up with your university email", "Tell us your subjects — your space is set up", "No credit card, no download: it works in the browser"],
+  },
+  { id: "oracle", name: "AI Oracle", desc: "Ask anything. Get expert explanations with LaTeX support, PDF analysis, and study plans.", details: ["LaTeX rendering", "PDF analysis", "Study plans"] },
+  { id: "vault", name: "Smart Vault", desc: "Upload lectures and PDFs. AI generates summaries and flashcards automatically.", details: ["Lecture and PDF upload", "Automatic summaries", "Generated flashcards"] },
+  { id: "notes", name: "Notes", desc: "Notion-style notes with Study Mode — quiz yourself on your own notes with AI.", details: ["Block editor", "Study Mode", "AI quizzes"] },
+  { id: "kanban", name: "Kanban Tasks", desc: "Manage your assignments with drag-and-drop boards. Syncs with your Calendar.", details: ["Drag-and-drop boards", "Calendar sync"] },
+  { id: "calendar", name: "Calendar", desc: "Track exams and deadlines. Get smart reminders 7 days, 3 days, and 1 day before.", details: ["Exam and deadline tracking", "Reminders at 7, 3 and 1 days"] },
+  { id: "flashcards", name: "Flashcards", desc: "Spaced repetition flashcards. Generate them from any PDF or note in one click.", details: ["Spaced repetition", "One-click deck generation"] },
+  { id: "teams", name: "Teams", desc: "Collaborate on group projects with shared tasks, whiteboards, and activity feeds.", details: ["Shared tasks", "Whiteboards", "Activity feeds"] },
+  { id: "progress", name: "Progress", desc: "Track your study streak, weekly activity heatmap, and subject breakdown.", details: ["Study streak", "Weekly heatmap", "Subject breakdown"] },
+  { id: "messages", name: "Messages", desc: "Direct messages with @mentions. Stay connected with your study group.", details: ["Direct messages", "@mentions"] },
 ];
 
 export default function Landing() {
   const navigate = useNavigate();
-  const [scrolled, setScrolled] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const [activeId, setActiveId] = useState("overview");
+  const active = TOOLS.find((t) => t.id === activeId) ?? TOOLS[0];
 
   useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const handleScroll = () => setScrolled(el.scrollTop > 40);
-    el.addEventListener("scroll", handleScroll);
-    return () => el.removeEventListener("scroll", handleScroll);
+    document.title = "UniFlow | Student Collaboration Ecosystem";
   }, []);
 
+  const navButton = (t: ToolPage) => {
+    const selected = t.id === activeId;
+    return (
+      <button
+        key={t.id}
+        onClick={() => setActiveId(t.id)}
+        className={`text-left text-[14px] px-3 py-[7px] rounded-md transition-colors w-full ${
+          selected
+            ? "bg-black/[0.05] font-medium text-black"
+            : "text-black/50 hover:text-black hover:bg-black/[0.03]"
+        }`}>
+        {t.name}
+      </button>
+    );
+  };
+
   return (
-    <div ref={scrollRef} className="h-screen overflow-y-auto bg-white text-[#111] custom-scroll">
-      {/* Top bar: wordmark + sign-in link, no button chrome */}
-      <div className={`fixed top-0 left-0 right-0 z-50 transition-colors duration-200 ${scrolled ? "bg-white/95 border-b border-black/10" : ""}`}>
-        <div className="max-w-[680px] mx-auto px-6 flex items-baseline justify-between py-5 pt-[calc(1.25rem+env(safe-area-inset-top))]">
-          <span className="font-grotesk font-bold text-[17px] tracking-[-0.01em]">UniFlow</span>
-          <button
-            onClick={() => navigate("/login")}
-            className="text-[14px] text-black/60 hover:text-black underline underline-offset-[5px] decoration-black/25 hover:decoration-black transition-colors">
-            Sign in
-          </button>
-        </div>
-      </div>
+    <div className="h-screen overflow-y-auto bg-white text-[#111] custom-scroll">
+      <div className="min-h-full max-w-[960px] mx-auto md:grid md:grid-cols-[220px_minmax(0,1fr)]">
 
-      <main className="max-w-[680px] mx-auto px-6 pt-32 md:pt-40 pb-16">
-        {/* Definition: one sentence, then actions as plain links */}
-        <h1 className="font-grotesk font-bold text-[34px] md:text-[44px] leading-[1.08] tracking-[-0.02em] text-balance">
-          The student operating system.
-        </h1>
-        <p className="mt-6 text-[16px] md:text-[17px] leading-[1.65] text-black/65 max-w-[54ch] text-pretty">
-          Notes, flashcards, kanban, calendar, a document vault, an AI tutor, teams and messages — the seven apps you switch between, in one place. Free forever.
-        </p>
+        {/* Product-shaped navigation: the app's own sidebar as the page */}
+        <aside className="md:border-r md:border-black/10 md:min-h-screen px-6 md:px-0 min-w-0">
+          <div className="md:sticky md:top-0 pt-[calc(1.5rem+env(safe-area-inset-top))] md:pt-8 md:px-6 pb-4 md:pb-8 flex md:flex-col md:h-screen">
+            <div className="flex md:block items-baseline justify-between w-full">
+              <span className="font-grotesk font-bold text-[17px] tracking-[-0.01em]">UniFlow</span>
+              <button
+                onClick={() => navigate("/login")}
+                className="md:hidden text-[14px] text-black/60 underline underline-offset-[5px] decoration-black/25">
+                Sign in
+              </button>
+            </div>
 
-        <div className="mt-9 flex items-baseline gap-8 text-[15px] font-medium">
-          <button
-            onClick={() => navigate("/login?mode=signup")}
-            className="group text-black underline underline-offset-[6px] decoration-black/40 hover:decoration-black transition-colors">
-            Create an account
-            <span className="inline-block transition-transform group-hover:translate-x-1 ml-1.5">→</span>
-          </button>
-          <button
-            onClick={() => navigate("/login")}
-            className="text-black/55 hover:text-black underline underline-offset-[6px] decoration-black/20 hover:decoration-black/60 transition-colors">
-            Sign in
-          </button>
-        </div>
+            {/* Desktop: vertical nav like the app sidebar */}
+            <nav className="hidden md:block mt-10 space-y-[2px] flex-1">
+              {TOOLS.map(navButton)}
+            </nav>
 
-        {/* Index of what's inside */}
-        <div className="mt-16 md:mt-24 border-t border-black/15">
-          <div className="flex items-baseline justify-between pt-4 pb-2">
-            <span className="text-[13px] font-medium text-black/45">What's inside</span>
-            <span className="text-[13px] text-black/35 tabular-nums">9 tools</span>
+            <div className="hidden md:block mt-8 pt-6 border-t border-black/10">
+              <button
+                onClick={() => navigate("/login")}
+                className="text-[13px] text-black/50 hover:text-black underline underline-offset-[5px] decoration-black/20 hover:decoration-black/60 transition-colors">
+                Sign in
+              </button>
+              <p className="mt-3 text-[12px] leading-relaxed text-black/35">
+                Built for students, by students
+              </p>
+            </div>
           </div>
-          <ol>
-            {tools.map((t) => (
-              <li key={t.n} className="group border-t border-black/[0.07] py-[18px] grid grid-cols-[32px_1fr] md:grid-cols-[44px_180px_1fr] gap-x-4 gap-y-1 items-baseline">
-                <span className="text-[13px] text-black/35 tabular-nums">{t.n}</span>
-                <h2 className="font-grotesk font-medium text-[15px] tracking-[-0.005em]">{t.name}</h2>
-                <p className="col-start-2 md:col-start-3 text-[14px] leading-relaxed text-black/55 text-pretty">{t.desc}</p>
-              </li>
-            ))}
-          </ol>
-          <div className="border-t border-black/[0.07]" />
-        </div>
 
-        {/* How to start: one line, not a section */}
-        <p className="mt-14 text-[14px] leading-relaxed text-black/55 max-w-[54ch] text-pretty">
-          Sign up in 30 seconds with your university email, tell us your subjects, and your space is set up. No credit card, no download — it works in the browser.
-        </p>
+          {/* Mobile: horizontal tool switcher */}
+          <nav className="md:hidden -mx-6 px-6 pb-4 flex gap-1 overflow-x-auto hide-scrollbar border-b border-black/10">
+            {TOOLS.map((t) => {
+              const selected = t.id === activeId;
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => setActiveId(t.id)}
+                  className={`shrink-0 text-[13px] px-3 py-2 rounded-md whitespace-nowrap transition-colors ${
+                    selected ? "bg-black/[0.05] font-medium text-black" : "text-black/50"
+                  }`}>
+                  {t.name}
+                </button>
+              );
+            })}
+          </nav>
+        </aside>
 
-        <div className="mt-14 border-t border-black/15 pt-5 flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-2">
-          <span className="font-grotesk font-bold text-[14px]">UniFlow</span>
-          <span className="text-[13px] text-black/40">Built for students, by students · ELTE, Budapest</span>
-        </div>
-      </main>
+        {/* Content for the selected tool */}
+        <main className="px-6 md:px-12 pt-10 md:pt-[15vh] pb-20 min-w-0">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={active.id}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.18, ease: "easeOut" }}
+            >
+              <h1 className="font-grotesk font-bold text-[30px] md:text-[38px] leading-[1.1] tracking-[-0.015em]">
+                {active.id === "overview" ? "The student operating system." : active.name}
+              </h1>
+
+              <p className="mt-6 text-[16px] md:text-[17px] leading-[1.65] text-black/65 max-w-[52ch] text-pretty">
+                {active.desc}
+              </p>
+
+              {active.details.length > 0 && (
+                <ul className="mt-8 border-t border-black/10">
+                  {active.details.map((d) => (
+                    <li key={d} className="border-b border-black/[0.06] py-3 text-[14px] text-black/60">
+                      {d}
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              {active.id === "overview" && (
+                <div className="mt-10 flex items-baseline gap-8 text-[15px] font-medium">
+                  <button
+                    onClick={() => navigate("/login?mode=signup")}
+                    className="group text-black underline underline-offset-[6px] decoration-black/40 hover:decoration-black transition-colors">
+                    Create an account
+                    <span className="inline-block transition-transform group-hover:translate-x-1 ml-1.5">→</span>
+                  </button>
+                  <button
+                    onClick={() => navigate("/login")}
+                    className="text-black/55 hover:text-black underline underline-offset-[6px] decoration-black/20 hover:decoration-black/60 transition-colors">
+                    Sign in
+                  </button>
+                </div>
+              )}
+            </motion.div>
+          </AnimatePresence>
+
+          <p className="md:hidden mt-16 pt-6 border-t border-black/10 text-[12px] text-black/35">
+            Built for students, by students
+          </p>
+        </main>
+      </div>
     </div>
   );
 }
