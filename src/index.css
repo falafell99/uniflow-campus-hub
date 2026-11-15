@@ -43,6 +43,28 @@
     background: linear-gradient(to right, #000080, #1084d0);
     color: #ffffff;
   }
+  /* Teal desktop behind app windows */
+  .retro-desktop {
+    background: #008080;
+  }
+  /* White text labels directly on the desktop */
+  .desktop-label {
+    color: #ffffff;
+    text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.55);
+  }
+  .desktop-label-muted {
+    color: #d7e4e4;
+    text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.45);
+  }
+  /* Window: gray beveled frame + blue titlebar + white client area */
+  .retro-window {
+    background: #c3c7cb;
+    box-shadow: inset -1px -1px #0a0a0a, inset 1px 1px #ffffff, inset -2px -2px #868a8e, inset 2px 2px #dfdfdf, 3px 3px 0 rgba(0, 0, 0, 0.22);
+  }
+  .retro-window-body {
+    background: #ffffff;
+    box-shadow: inset 1px 1px #868a8e, inset -1px -1px #ffffff;
+  }
   /* Grooved separator line */
   .retro-groove {
     border-top: 1px solid #868a8e;

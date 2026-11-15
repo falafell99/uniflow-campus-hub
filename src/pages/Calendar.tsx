@@ -271,11 +271,11 @@ export default function Calendar() {
     return (
       <div className="flex flex-col xl:flex-row justify-between xl:items-center mb-4 gap-4 shrink-0">
         <div>
-          <h1 className="text-2xl lg:text-3xl font-black text-foreground tracking-tight flex items-center gap-3 whitespace-nowrap">
-            <CalendarIcon className="h-6 w-6 lg:h-8 lg:w-8 text-primary" />
+          <h1 className="text-2xl lg:text-3xl font-black desktop-label tracking-tight flex items-center gap-3 whitespace-nowrap">
+            <CalendarIcon className="h-6 w-6 lg:h-8 lg:w-8 text-white" />
             Campus Calendar
           </h1>
-          <p className="text-sm lg:text-base text-muted-foreground mt-1">Track your exams, deadlines, and meetups</p>
+          <p className="text-sm lg:text-base desktop-label-muted font-semibold mt-1">Track your exams, deadlines, and meetups</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex bg-muted/30 p-1 rounded-lg border border-border/40">
@@ -412,7 +412,7 @@ export default function Calendar() {
       );
       days = [];
     }
-    return <div className="rounded-xl overflow-hidden border border-border/40 shadow-sm flex-1 custom-scroll min-h-0 overflow-y-auto">{rows}</div>;
+    return <div className="retro-window-body overflow-hidden flex-1 custom-scroll min-h-0 overflow-y-auto">{rows}</div>;
   };
 
   const renderWeekView = () => {
@@ -421,7 +421,7 @@ export default function Calendar() {
     const hours = Array.from({ length: 24 }, (_, i) => i);
 
     return (
-      <div className="flex flex-col flex-1 border border-border/40 rounded-3xl bg-card overflow-hidden shadow-sm relative z-10 w-full min-h-0">
+      <div className="flex flex-col flex-1 retro-window-body overflow-hidden relative z-10 w-full min-h-0">
         {/* Header */}
         <div className="flex border-b border-border/40 bg-muted/20">
           <div className="w-16 shrink-0 border-r border-border/40" />
@@ -570,14 +570,11 @@ export default function Calendar() {
     <div className="flex flex-col w-full h-[calc(100vh-100px)] animate-in fade-in duration-500 overflow-hidden">
       {renderHeader()}
       
-      <div className="flex-1 bg-card p-3 lg:p-6 rounded-3xl border border-border/50 shadow-2xl relative overflow-hidden flex flex-col min-h-0">
-        {/* Decorative background glows */}
-        <div className="absolute top-0 right-1/4 w-96 h-96 bg-primary/5 rounded-full blur-[100px] pointer-events-none" />
-        <div className="absolute bottom-0 left-1/4 w-[500px] h-[500px] bg-blue-500/5 rounded-full blur-[120px] pointer-events-none" />
-        
+      <div className="flex-1 retro-window p-3 lg:p-6 relative overflow-hidden flex flex-col min-h-0">
+
         {/* Calendars panel */}
         {showCalendarsPanel && (
-          <div className="mb-4 p-4 rounded-2xl border border-border/40 bg-muted/20 shrink-0 z-10">
+          <div className="mb-4 p-4 retro-window-body shrink-0 z-10">
             <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">Imported Calendars</p>
             {Object.keys(calendarColors).length === 0 ? (
               <p className="text-xs text-muted-foreground">No imported calendars yet. Import an .ICS file to get started.</p>

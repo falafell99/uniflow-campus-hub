@@ -107,7 +107,8 @@ export default function Community() {
   }, [activeTab]);
 
   return (
-    <div className="flex flex-col h-[calc(100dvh-10rem)] md:h-[calc(100vh-6rem)] w-[calc(100%+2rem)] md:w-full max-w-[1400px] -mx-4 md:mx-auto md:rounded-xl border-y md:border border-border/40 overflow-hidden bg-background">
+    <div className="flex flex-col h-[calc(100dvh-10rem)] md:h-[calc(100vh-6rem)] w-[calc(100%+2rem)] md:w-full max-w-[1400px] -mx-4 md:mx-auto retro-window overflow-hidden">
+      <div className="retro-titlebar px-2 py-1 shrink-0"><span className="font-pixel text-[11px] font-bold text-white tracking-wide">Community</span></div>
       
       {showWelcome && (
         <motion.div

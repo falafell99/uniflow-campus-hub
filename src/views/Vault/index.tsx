@@ -287,9 +287,9 @@ export default function Vault() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">📚 The Vault</h1>
-          <p className="text-muted-foreground mt-1 text-sm hidden md:block">Upload and browse lecture files, past papers, and notes shared by students.</p>
-          <p className="text-muted-foreground mt-1 text-sm md:hidden">ELTE CS BSc · Browse & share resources</p>
+          <h1 className="text-2xl font-bold tracking-tight desktop-label">📚 The Vault</h1>
+          <p className="desktop-label-muted font-semibold mt-1 text-sm hidden md:block">Upload and browse lecture files, past papers, and notes shared by students.</p>
+          <p className="desktop-label-muted font-semibold mt-1 text-sm md:hidden">ELTE CS BSc · Browse & share resources</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" className="gap-2" onClick={() => setNoteOpen(true)}>
@@ -310,16 +310,16 @@ export default function Vault() {
       </div>
 
       {/* Mode Toggle */}
-      <div className="flex items-center gap-2 mb-2 p-1 bg-muted/20 rounded-xl w-fit">
+      <div className="flex items-center gap-2 mb-2 p-1 retro-face retro-bevel-thin-in w-fit">
         <button onClick={() => setVaultMode("my")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-            vaultMode === "my" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+          className={`flex items-center gap-2 px-4 py-2 text-sm font-bold transition-all ${
+            vaultMode === "my" ? "retro-btn-pressed retro-face text-[#000080]" : "retro-btn text-black"
           }`}>
           <Lock className="h-3.5 w-3.5" /> My Files
         </button>
         <button onClick={() => setVaultMode("community")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-            vaultMode === "community" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+          className={`flex items-center gap-2 px-4 py-2 text-sm font-bold transition-all ${
+            vaultMode === "community" ? "retro-btn-pressed retro-face text-[#000080]" : "retro-btn text-black"
           }`}>
           <Globe className="h-3.5 w-3.5" /> Community Files
         </button>
@@ -353,10 +353,10 @@ export default function Vault() {
             <button
               key={t}
               onClick={() => setTypeFilter(t)}
-              className={`px-2.5 py-1 rounded-full text-xs border transition-all ${
+              className={`px-2.5 py-1 text-xs font-bold transition-all ${
                 typeFilter === t
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "border-border/50 text-muted-foreground hover:border-primary/50"
+                  ? "retro-btn-pressed retro-face text-[#000080]"
+                  : "retro-btn text-black"
               }`}
             >
               {SECTION_EMOJIS[t] ? `${SECTION_EMOJIS[t]} ` : ""}{t}
@@ -372,7 +372,7 @@ export default function Vault() {
             <History className="h-4 w-4" />
             <h2 className="text-xs font-semibold uppercase tracking-wider">Recent Live Notes</h2>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 retro-window p-3">
             {liveNotes.map((note) => (
               <button
                 key={note.id}
@@ -407,7 +407,7 @@ export default function Vault() {
           </div>
         </GlassCard>
       ) : allFiles.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 px-4 text-center glass-card border-primary/20 bg-primary/5 rounded-3xl shadow-2xl animate-in fade-in zoom-in duration-500">
+        <div className="flex flex-col items-center justify-center py-20 px-4 text-center glass-card animate-in fade-in zoom-in duration-500">
           <div className="h-16 w-16 bg-muted/20 rounded-2xl flex items-center justify-center mb-4">
             <span className="text-3xl">📂</span>
           </div>
@@ -447,7 +447,7 @@ export default function Vault() {
           {filteredFiles.length === 0 ? (
             <p className="text-xs text-muted-foreground text-center py-8 italic">No files match your filters.</p>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 retro-window p-3">
               {filteredFiles.map((f) => (
                 <FileCard key={f.id} item={f} onPreview={setPreviewFile} />
               ))}

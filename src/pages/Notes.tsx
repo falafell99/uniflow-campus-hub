@@ -695,10 +695,11 @@ export default function Notes() {
   const toggleGroup = (key: string) => setCollapsedGroups(prev => ({ ...prev, [key]: !prev[key] }));
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] md:h-[calc(100vh-6rem)] pb-16 md:pb-0 overflow-hidden animate-fade-in relative">
+    <div className="flex h-[calc(100vh-4rem)] md:h-[calc(100vh-6rem)] pb-16 md:pb-0 overflow-hidden animate-fade-in relative p-3 gap-3">
       {/* ── Left Sidebar ── */}
-      <div className={`${mobileView === "list" ? "flex" : "hidden"} md:flex w-full md:w-64 shrink-0 md:border-r border-border/40 flex-col bg-card/30 absolute inset-0 md:relative z-20`}>
-        <div className="p-3 border-b border-border/40 space-y-2">
+      <div className={`${mobileView === "list" ? "flex" : "hidden"} md:flex w-full md:w-64 shrink-0 flex-col retro-window absolute inset-0 md:relative z-20`}>
+        <div className="retro-titlebar px-2 py-1 shrink-0 flex items-center gap-1.5"><NotebookPen className="h-3 w-3 text-white" /><span className="font-pixel text-[11px] font-bold text-white tracking-wide">Notes</span></div>
+        <div className="p-3 space-y-2">
           <div className="flex items-center justify-between">
             <h2 className="font-bold text-sm flex items-center gap-2"><NotebookPen className="h-4 w-4 text-primary" /> Notes</h2>
             <div className="relative">
@@ -718,7 +719,7 @@ export default function Notes() {
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto custom-scroll p-2 space-y-1">
+        <div className="flex-1 overflow-y-auto custom-scroll p-2 space-y-1 retro-window-body mx-[3px] mb-[3px]">
           {loading ? (
             Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-10 rounded-lg glass-subtle animate-pulse" />)
           ) : filteredNotes.length === 0 ? (
@@ -772,8 +773,9 @@ export default function Notes() {
       </div>
 
       {/* ── Editor ── */}
-      <div className={`${mobileView === "editor" ? "flex" : "hidden"} md:flex flex-1 flex-col min-w-0 overflow-hidden relative z-10 bg-background`}>
-        <div className="flex-1 flex flex-col min-w-0 pb-16 md:pb-0">
+      <div className={`${mobileView === "editor" ? "flex" : "hidden"} md:flex flex-1 flex-col min-w-0 overflow-hidden relative z-10 retro-window`}>
+        <div className="retro-titlebar px-2 py-1 shrink-0 flex items-center gap-1.5"><span className="font-pixel text-[11px] font-bold text-white tracking-wide truncate">{selectedNote ? (selectedNote.title || "Untitled") : "Notes"}</span><span className="ml-auto text-[10px] text-white/80 font-pixel">{saveStatus === "saving" ? "Saving..." : saveStatus === "saved" ? "Saved" : ""}</span></div>
+        <div className="flex-1 flex flex-col min-w-0 pb-16 md:pb-0 retro-window-body m-[3px] mt-0">
           {selectedNote ? (
             <>
               {/* Mobile back button & header */}

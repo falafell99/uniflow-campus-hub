@@ -365,11 +365,12 @@ export default function Messages() {
   }, [searchQuery, newChatOpen, user]);
 
   return (
-    <div className="flex h-[calc(100vh-5rem)] md:h-[calc(100vh-6rem)] w-full max-w-6xl mx-auto md:rounded-xl border-x md:border-y border-border/40 overflow-hidden bg-card/20 backdrop-blur-md animate-fade-in -mx-4 md:mx-auto">
+    <div className="flex h-[calc(100vh-5rem)] md:h-[calc(100vh-6rem)] w-full max-w-6xl mx-auto gap-3 animate-fade-in -mx-4 md:mx-auto p-3">
       
       {/* ─── LEFT PANE: Conversation List ─── */}
-      <div className={`w-full md:w-80 shrink-0 md:border-r border-border/40 flex flex-col bg-card/40 ${activeUser ? 'hidden md:flex' : 'flex'}`}>
-        <div className="p-4 border-b border-border/40 shrink-0 h-[72px] flex items-center justify-between">
+      <div className={`w-full md:w-80 shrink-0 flex flex-col retro-window ${activeUser ? 'hidden md:flex' : 'flex'}`}>
+        <div className="retro-titlebar px-2 py-1 shrink-0"><span className="font-pixel text-[11px] font-bold text-white tracking-wide">Conversations</span></div>
+        <div className="p-4 shrink-0 h-[64px] flex items-center justify-between">
           <h2 className="text-lg font-bold flex items-center gap-2">
             <MessageCircle className="h-5 w-5 text-primary" /> Messages
           </h2>
@@ -448,7 +449,8 @@ export default function Messages() {
       </div>
 
       {/* ─── RIGHT PANE: Chat View ─── */}
-      <div className={`flex-1 flex-col min-w-0 bg-background/50 ${!activeUser ? 'hidden md:flex' : 'flex'}`}>
+      <div className={`flex-1 flex-col min-w-0 retro-window ${!activeUser ? 'hidden md:flex' : 'flex'}`}>
+        <div className="retro-titlebar px-2 py-1 shrink-0"><span className="font-pixel text-[11px] font-bold text-white tracking-wide truncate">{activeUser ? activeUser.display_name : "Chat"}</span></div>
         {activeUser ? (
           <>
             {/* Chat Header */}

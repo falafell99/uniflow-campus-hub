@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { RetroWindow } from "@/components/RetroWindow";
 import {
   Award, Users, Edit2, Check, X,
   LogOut, Loader2, Shield, Coins, Smile,
@@ -249,7 +250,7 @@ export default function Profile() {
     <div className="space-y-6 animate-fade-in max-w-3xl">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">👤 Profile</h1>
+        <h1 className="text-2xl font-bold tracking-tight desktop-label">👤 Profile</h1>
         <div className="flex items-center gap-2">
           {!editing ? (
             <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setEditing(true)}>
@@ -272,7 +273,8 @@ export default function Profile() {
       </div>
 
       {/* Profile Card */}
-      <div className="glass-card overflow-hidden">
+      <RetroWindow title="My Profile" noButtons>
+      <div className="overflow-hidden">
         <div className="relative">
           {/* Cover/banner */}
           <div className="h-32 bg-gradient-to-br from-[#3b82f6]/30 via-[#3b82f6]/10 to-transparent rounded-t-2xl" />
@@ -362,14 +364,13 @@ export default function Profile() {
           </div>
         )}
       </div>
+      </RetroWindow>
 
-      <div className="py-2"><hr className="border-border/40"/></div>
-      <h2 className="text-xl font-bold tracking-tight">Settings</h2>
+      <h2 className="text-xl font-bold tracking-tight desktop-label mt-2">Settings</h2>
 
       {/* Status & Options */}
       <div className="grid md:grid-cols-2 gap-6">
-      <div className="glass-card p-5 space-y-3">
-        <h3 className="font-semibold text-sm">Current Status</h3>
+      <RetroWindow title="Current Status" noButtons bodyClassName="p-4 space-y-3">
         <div className="flex flex-wrap gap-2">
           {STATUS_OPTIONS.map((s) => (
             <button
@@ -384,10 +385,10 @@ export default function Profile() {
             </button>
           ))}
         </div>
-      </div>
+      </RetroWindow>
 
       {/* Tutoring Toggle */}
-      <div className="glass-card p-5 flex items-center justify-between">
+      <RetroWindow title="Tutoring" noButtons bodyClassName="p-4 flex items-center justify-between h-full">
         <div>
           <h3 className="font-semibold text-sm flex items-center gap-2">
             🎓 Available for Tutoring
@@ -396,12 +397,12 @@ export default function Profile() {
           <p className="text-xs text-muted-foreground mt-0.5">Let other students know you can help</p>
         </div>
         <Switch checked={tutoringAvailable} onCheckedChange={setTutoringAvailable} />
-      </div>
+      </RetroWindow>
       </div>
 
       <div className="grid md:grid-cols-2 gap-6">
         {/* Account */}
-        <div className="glass-card p-5 space-y-3">
+        <RetroWindow title="Account" noButtons bodyClassName="p-4 space-y-3">
           <h3 className="font-semibold text-sm flex items-center justify-between">
             <div className="flex items-center gap-2"><Shield className="h-4 w-4 text-primary" /> Account details</div>
             <button className="text-xs text-primary hover:underline" onClick={() => toast({title: "Check email for reset link"})}>Reset Password</button>
@@ -411,11 +412,10 @@ export default function Profile() {
             <div className="flex items-center justify-between py-2"><span className="text-muted-foreground">Account ID</span><span className="font-mono text-xs text-muted-foreground">{user?.id?.slice(0, 8)}…</span></div>
             <div className="flex items-center justify-between py-2"><span className="text-muted-foreground">Member since</span><span>{user?.created_at ? new Date(user.created_at).toLocaleDateString("en-GB", { month: "long", year: "numeric" }) : "—"}</span></div>
           </div>
-        </div>
+        </RetroWindow>
 
         {/* Notifications */}
-        <div className="glass-card p-5">
-          <h3 className="font-semibold text-sm flex items-center gap-2 mb-4">🔔 Notifications</h3>
+        <RetroWindow title="Notifications" noButtons bodyClassName="p-4">
           <div className="flex items-center justify-between p-3 bg-background border border-border/40 rounded-xl">
             <div>
               <p className="text-sm font-medium">Deadline reminders</p>
@@ -430,12 +430,11 @@ export default function Profile() {
               {typeof Notification !== "undefined" && Notification.permission === "granted" ? "✓ Enabled" : "Enable"}
             </Button>
           </div>
-        </div>
+        </RetroWindow>
       </div>
 
       {/* Achievements */}
-      <div className="glass-card p-5">
-        <h3 className="font-semibold flex items-center gap-2 mb-4"><Award className="h-5 w-5 text-primary" /> Achievements</h3>
+      <RetroWindow title="Achievements" noButtons bodyClassName="p-4">
         <div className="grid grid-cols-3 gap-3">
           {BADGES.map((b) => (
             <div key={b.name} className={`glass-subtle p-3 text-center rounded-lg transition-all ${!b.earned ? "opacity-40 grayscale" : "hover:scale-105"}`}>
@@ -445,7 +444,7 @@ export default function Profile() {
             </div>
           ))}
         </div>
-      </div>
+      </RetroWindow>
     </div>
   );
 }

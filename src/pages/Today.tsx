@@ -1,3 +1,4 @@
+import { RetroWindow } from "@/components/RetroWindow";
 import { useState, useEffect } from "react";
 import { format, differenceInDays, formatDistanceToNow } from "date-fns";
 import { useNavigate } from "react-router-dom";
@@ -99,18 +100,14 @@ export default function Today() {
   return (
     <div className="max-w-2xl mx-auto py-8 px-6 pb-24 h-full overflow-y-auto custom-scroll">
       
-      <div className="mb-8">
-        <h1 className="text-3xl font-black">{greeting}, {firstName} 👋</h1>
-        <p className="text-muted-foreground mt-1 text-sm">
+      <div className="mb-6">
+        <h1 className="text-3xl font-black desktop-label">{greeting}, {firstName} 👋</h1>
+        <p className="desktop-label-muted mt-1 text-sm font-semibold">
           {format(new Date(), "EEEE, MMMM d")} · {todayTasks.length} tasks pending
         </p>
       </div>
 
-      <div className="bg-primary/5 border border-primary/20 rounded-2xl p-5 mb-5 shadow-sm">
-        <div className="flex items-center gap-2 mb-3">
-          <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
-          <span className="text-xs font-bold text-primary uppercase tracking-wider">Focus for today</span>
-        </div>
+      <RetroWindow title="Focus for Today" noButtons className="mb-5" bodyClassName="p-5">
         {mostUrgent ? (
           <div>
             <p className="font-bold text-lg leading-snug">{mostUrgent.title}</p>
@@ -124,9 +121,10 @@ export default function Today() {
         ) : (
           <p className="text-muted-foreground text-sm font-medium">Nothing urgent today — great job! 🎉</p>
         )}
-      </div>
+      </RetroWindow>
 
-      <div className="grid grid-cols-2 gap-3 mb-5">
+      <RetroWindow title="Quick Actions" noButtons className="mb-5" bodyClassName="p-3">
+      <div className="grid grid-cols-2 gap-3">
         {[
           { label: "Ask Oracle", sub: "Get help with anything", icon: Sparkles, path: "/ai-oracle" },
           { label: "Upload File", sub: "Add to your Vault", icon: Upload, path: "/vault" },
@@ -145,14 +143,11 @@ export default function Today() {
           </button>
         ))}
       </div>
+      </RetroWindow>
 
-      <div className="bg-card border border-border/40 rounded-2xl overflow-hidden mb-4 shadow-sm">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border/20 bg-muted/10">
-          <span className="font-bold text-sm flex items-center gap-2">
-            <CheckSquare className="h-4 w-4 text-primary" /> Today's Tasks
-          </span>
-          <button onClick={() => navigate("/tasks")} className="text-xs font-semibold text-primary hover:underline">View all →</button>
-        </div>
+      <RetroWindow title="Today's Tasks" noButtons className="mb-4"
+        actions={<button onClick={() => navigate("/tasks")} className="text-[10px] font-pixel font-bold text-white hover:underline mr-1">View all →</button>}>
+        <div className="border-b border-border/20" />
         {todayTasks.length === 0 ? (
           <div className="p-6 text-center">
             <p className="text-sm text-muted-foreground font-medium">No tasks for today 🎉</p>
@@ -172,15 +167,11 @@ export default function Today() {
             {task.subject && <Badge variant="outline" className="text-[10px] h-5 shrink-0 bg-background">{task.subject}</Badge>}
           </div>
         ))}
-      </div>
+      </RetroWindow>
 
-      <div className="bg-card border border-border/40 rounded-2xl overflow-hidden mb-4 shadow-sm">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border/20 bg-muted/10">
-          <span className="font-bold text-sm flex items-center gap-2">
-            <CalendarDays className="h-4 w-4 text-orange-400" /> Upcoming Deadlines
-          </span>
-          <button onClick={() => navigate("/calendar")} className="text-xs font-semibold text-primary hover:underline">Calendar →</button>
-        </div>
+      <RetroWindow title="Upcoming Deadlines" noButtons className="mb-4"
+        actions={<button onClick={() => navigate("/calendar")} className="text-[10px] font-pixel font-bold text-white hover:underline mr-1">Calendar →</button>}>
+        <div className="border-b border-border/20" />
         {upcomingDeadlines.map(event => {
           const daysLeft = Math.max(0, differenceInDays(new Date(event.start_time), new Date()));
           return (
@@ -205,9 +196,10 @@ export default function Today() {
             <button onClick={() => navigate("/calendar")} className="text-xs font-semibold text-primary hover:underline mt-2 block mx-auto">Add one →</button>
           </div>
         )}
-      </div>
+      </RetroWindow>
 
-      <div className="flex items-center gap-3 p-4 bg-card border border-border/40 rounded-2xl shadow-sm">
+      <RetroWindow title="Streak" noButtons bodyClassName="p-0">
+      <div className="flex items-center gap-3 p-4">
         <span className="text-3xl drop-shadow-sm">{streak > 0 ? "🔥" : "💤"}</span>
         <div className="flex-1 min-w-0">
           <p className="font-black text-base">{streak} day streak</p>
@@ -215,6 +207,7 @@ export default function Today() {
         </div>
         <button onClick={() => navigate("/progress")} className="text-xs font-semibold text-primary hover:underline shrink-0">Stats →</button>
       </div>
+      </RetroWindow>
 
     </div>
   );

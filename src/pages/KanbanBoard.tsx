@@ -416,12 +416,11 @@ export default function KanbanBoard() {
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)] md:h-[calc(100vh-6rem)] pb-16 md:pb-0 overflow-hidden animate-fade-in relative">
       {/* Header */}
-      <div className="p-4 border-b border-border/40 space-y-3">
+      <div className="p-4 space-y-3">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">📋 Tasks</h1>
-            <p className="text-muted-foreground mt-1 text-sm hidden md:block">Organize tasks and track assignments.</p>
-            <p className="text-muted-foreground mt-1 text-sm hidden md:block">Manage your assignments and projects. Drag cards to update status.</p>
+            <h1 className="text-2xl font-bold tracking-tight desktop-label">📋 Tasks</h1>
+                        <p className="desktop-label-muted mt-1 text-sm hidden md:block font-semibold">Manage your assignments and projects. Drag cards to update status.</p>
           </div>
           <div className="flex items-center gap-2">
             {/* Mode toggle */}
@@ -466,28 +465,28 @@ export default function KanbanBoard() {
             { key: "overdue" as FilterKey, label: "Overdue" },
           ]).map(f => (
             <button key={f.key} onClick={() => toggleFilter(f.key)}
-              className={`px-2.5 py-1 rounded-full text-[10px] font-medium border transition-all ${
-                filters.has(f.key) ? "bg-primary text-primary-foreground border-primary" : "border-border/50 text-muted-foreground hover:border-primary/50"
+              className={`px-2.5 py-1 text-[10px] font-bold transition-all ${
+                filters.has(f.key) ? "retro-btn-pressed retro-face text-[#000080]" : "retro-btn text-black"
               }`}>
               {f.label}
             </button>
           ))}
           {subjects.length > 0 && (
             <select value={subjectFilter} onChange={e => setSubjectFilter(e.target.value)}
-              className="bg-transparent border border-border/40 rounded-full px-2 py-1 text-[10px] outline-none text-muted-foreground">
-              <option value="" className="bg-[#1a1a1a]">All subjects</option>
-              {subjects.map(s => <option key={s} value={s} className="bg-[#1a1a1a]">{s}</option>)}
+              className="bg-white retro-bevel-thin-in px-2 py-1 text-[10px] outline-none text-black">
+              <option value="">All subjects</option>
+              {subjects.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
           )}
         </div>
       </div>
 
       {upcomingDeadlines && upcomingDeadlines.length > 0 && (
-        <div className="flex items-center gap-2 px-6 py-2 border-b border-border/20 bg-orange-500/5 overflow-x-auto">
-          <Clock className="h-3.5 w-3.5 text-orange-400 shrink-0" />
-          <span className="text-[11px] text-orange-400 font-medium shrink-0">Upcoming:</span>
+        <div className="flex items-center gap-2 px-3 py-1.5 retro-face retro-bevel-out-sm overflow-x-auto">
+          <Clock className="h-3.5 w-3.5 text-[#a00000] shrink-0" />
+          <span className="text-[11px] text-[#a00000] font-bold shrink-0">Upcoming:</span>
           {upcomingDeadlines.map((d, i) => (
-            <span key={i} className="text-[11px] text-muted-foreground shrink-0 bg-card border border-border/30 rounded-md px-2 py-0.5">
+            <span key={i} className="text-[11px] text-black shrink-0 bg-white retro-bevel-thin-in px-2 py-0.5">
               {d.title} · {format(new Date(d.start_time), "MMM d")}
             </span>
           ))}
@@ -504,8 +503,8 @@ export default function KanbanBoard() {
           const count = columnTasks(status).length;
           return (
             <button key={status} onClick={() => setMobileColumn(status)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all flex border ${
-                mobileColumn === status ? "bg-primary text-primary-foreground border-primary" : "bg-muted/30 text-muted-foreground border-border/40 hover:bg-muted/50"
+              className={`px-4 py-2 text-sm font-bold whitespace-nowrap transition-all flex ${
+                mobileColumn === status ? "retro-btn-pressed retro-face text-[#000080]" : "retro-btn text-black"
               }`}>
               {style.label} <span className="ml-1.5 opacity-60">({count})</span>
             </button>
@@ -529,30 +528,30 @@ export default function KanbanBoard() {
               
               return (
                 <div key={status}
-                  className={`min-w-full md:min-w-[280px] md:max-w-[320px] md:w-[300px] flex-col rounded-2xl border border-border/30 bg-card/20 overflow-hidden ${
+                  className={`min-w-full md:min-w-[280px] md:max-w-[320px] md:w-[300px] flex-col retro-window overflow-hidden ${
                     mobileColumn === status ? "flex" : "hidden md:flex"
                   }`}>
                   {/* Column header */}
-                  <div className={`flex items-center justify-between px-4 py-3 ${style.light} border-b border-border/20`}>
+                  <div className="retro-titlebar flex items-center justify-between px-2 py-1">
                     <div className="flex items-center gap-2">
-                      <div className={`h-2.5 w-2.5 rounded-full ${style.color}`} />
-                      <span className="font-semibold text-sm">{style.label}</span>
-                      <span className="text-xs bg-white px-2 py-0.5 ml-1 retro-bevel-in">{colTasks.length}</span>
+                      <div className={`h-2.5 w-2.5 ${style.color}`} />
+                      <span className="font-pixel font-bold text-[11px] text-white">{style.label}</span>
+                      <span className="text-[10px] bg-white text-black px-1.5 py-px retro-bevel-thin-in">{colTasks.length}</span>
                     </div>
-                    <Button variant="ghost" size="icon" className="h-6 w-6 hover:bg-background/50 text-muted-foreground hover:text-foreground" onClick={() => openCreate(status)}>
-                      <Plus className="h-4 w-4" />
-                    </Button>
+                    <button className="retro-btn w-[18px] h-[16px] flex items-center justify-center text-black" onClick={() => openCreate(status)}>
+                      <Plus className="h-3 w-3" />
+                    </button>
                   </div>
 
                   {/* Column body */}
                   <SortableContext items={colTasks.map(t => t.id)} strategy={verticalListSortingStrategy} id={status}>
-                    <div className="flex-1 overflow-y-auto custom-scroll p-3 space-y-3">
+                    <div className="flex-1 overflow-y-auto custom-scroll p-3 space-y-3 retro-window-body m-[3px] mt-0">
                       {loading ? (
                         Array.from({ length: 2 }).map((_, i) => (
                           <div key={i} className="h-24 rounded-xl glass-subtle animate-pulse" />
                         ))
                       ) : colTasks.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-8 opacity-60 border-2 border-dashed border-border/30 rounded-xl m-2">
+                        <div className="flex flex-col items-center justify-center py-8 opacity-60 border-2 border-dashed border-[#868a8e] m-2">
                           <p className="text-xs text-muted-foreground">Drop tasks here</p>
                           <button onClick={() => openCreate(status)} className="text-xs text-primary mt-1 hover:underline">
                             + Add task
