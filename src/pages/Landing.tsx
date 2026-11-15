@@ -1,25 +1,36 @@
 import { motion } from "framer-motion";
-import { Sparkles, ArrowUp } from "lucide-react";
+import {
+  ArrowUp,
+  Brain,
+  BookOpen,
+  PenLine,
+  CheckSquare,
+  Calendar,
+  Layers,
+  Users,
+  LineChart,
+  MessagesSquare,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState, useRef } from "react";
 
 const features = [
-  { emoji: "🧠", title: "AI Oracle", desc: "Ask anything. Get expert explanations with LaTeX support, PDF analysis, and study plans.", popular: true },
-  { emoji: "📚", title: "Smart Vault", desc: "Upload lectures and PDFs. AI generates summaries and flashcards automatically." },
-  { emoji: "📝", title: "Notes", desc: "Notion-style notes with Study Mode — quiz yourself on your own notes with AI." },
-  { emoji: "✅", title: "Kanban Tasks", desc: "Manage your assignments with drag-and-drop boards. Syncs with your Calendar." },
-  { emoji: "📅", title: "Calendar", desc: "Track exams and deadlines. Get smart reminders 7 days, 3 days, and 1 day before." },
-  { emoji: "🃏", title: "Flashcards", desc: "Spaced repetition flashcards. Generate them from any PDF or note in one click." },
-  { emoji: "👥", title: "Teams", desc: "Collaborate on group projects with shared tasks, whiteboards, and activity feeds." },
-  { emoji: "📊", title: "Progress", desc: "Track your study streak, weekly activity heatmap, and subject breakdown." },
-  { emoji: "💬", title: "Messages", desc: "Direct messages with @mentions. Stay connected with your study group." },
+  { icon: Brain, title: "AI Oracle", desc: "Ask anything. Get expert explanations with LaTeX support, PDF analysis, and study plans.", popular: true },
+  { icon: BookOpen, title: "Smart Vault", desc: "Upload lectures and PDFs. AI generates summaries and flashcards automatically." },
+  { icon: PenLine, title: "Notes", desc: "Notion-style notes with Study Mode — quiz yourself on your own notes with AI." },
+  { icon: CheckSquare, title: "Kanban Tasks", desc: "Manage your assignments with drag-and-drop boards. Syncs with your Calendar." },
+  { icon: Calendar, title: "Calendar", desc: "Track exams and deadlines. Get smart reminders 7 days, 3 days, and 1 day before." },
+  { icon: Layers, title: "Flashcards", desc: "Spaced repetition flashcards. Generate them from any PDF or note in one click." },
+  { icon: Users, title: "Teams", desc: "Collaborate on group projects with shared tasks, whiteboards, and activity feeds." },
+  { icon: LineChart, title: "Progress", desc: "Track your study streak, weekly activity heatmap, and subject breakdown." },
+  { icon: MessagesSquare, title: "Messages", desc: "Direct messages with @mentions. Stay connected with your study group." },
 ];
 
 const howItWorks = [
-  { step: "01", title: "Create your account", desc: "Sign up in 30 seconds. No credit card needed.", emoji: "✍️" },
-  { step: "02", title: "Set up your space", desc: "Tell us your university and subjects. We personalize everything.", emoji: "🎓" },
-  { step: "03", title: "Start studying smarter", desc: "Upload files, ask the AI, connect with classmates.", emoji: "🚀" },
+  { step: "01", title: "Create your account", desc: "Sign up in 30 seconds. No credit card needed." },
+  { step: "02", title: "Set up your space", desc: "Tell us your university and subjects. We personalize everything." },
+  { step: "03", title: "Start studying smarter", desc: "Upload files, ask the AI, connect with classmates." },
 ];
 
 export default function Landing() {
@@ -42,133 +53,121 @@ export default function Landing() {
   };
 
   return (
-    <div ref={scrollRef} className="h-screen overflow-y-auto bg-[#030303] text-white custom-scroll">
+    <div ref={scrollRef} className="h-screen overflow-y-auto bg-[#fafaf9] text-[#161616] custom-scroll">
       {/* Sticky Nav */}
-      <div className={`fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-8 py-4 pt-[calc(1rem+env(safe-area-inset-top))] transition-all duration-300 ${scrolled ? "bg-[#030303]/80 backdrop-blur-md border-b border-white/[0.06] shadow-sm" : ""}`}>
-        <div className="flex items-center gap-2 cursor-pointer" onClick={scrollToTop}>
-          <div className="h-7 w-7 rounded-lg bg-[#3b82f6] flex items-center justify-center text-white font-black text-sm shadow-lg shadow-[#3b82f6]/20">U</div>
-          <span className="font-bold text-white">UniFlow</span>
+      <div className={`fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 md:px-10 py-4 pt-[calc(1rem+env(safe-area-inset-top))] transition-all duration-300 ${scrolled ? "bg-[#fafaf9]/85 backdrop-blur-md border-b border-black/[0.08]" : ""}`}>
+        <div className="flex items-center gap-2.5 cursor-pointer" onClick={scrollToTop}>
+          <div className="h-6 w-6 rounded-[6px] bg-[#161616] flex items-center justify-center text-white font-semibold text-[11px]">U</div>
+          <span className="font-semibold tracking-tight">UniFlow</span>
         </div>
-        <Button onClick={() => navigate("/login")} className="h-9 px-5 text-sm font-semibold bg-[#3b82f6] hover:bg-[#2563eb] text-white rounded-lg">
+        <Button onClick={() => navigate("/login")} className="h-9 px-5 text-sm font-medium bg-[#161616] hover:bg-black text-white rounded-full">
           Sign In
         </Button>
       </div>
 
       {/* Hero */}
-      <div className="min-h-screen flex flex-col items-center justify-center text-center px-6 relative overflow-hidden pt-20">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_50%,rgba(123,104,238,0.08),transparent_70%)] pointer-events-none" />
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(123,104,238,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(123,104,238,0.03)_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none" />
+      <div className="min-h-screen flex flex-col items-center justify-center text-center px-6 pt-24 pb-16">
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="space-y-7 max-w-2xl">
+          <p className="text-[11px] uppercase tracking-[0.2em] text-black/40 font-medium">
+            Built for students, by students
+          </p>
 
-        <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="relative z-10 space-y-6 max-w-3xl pt-10">
-          {/* Tagline */}
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-            className="inline-flex items-center gap-2 bg-[#3b82f6]/10 border border-[#3b82f6]/20 rounded-full px-4 py-1.5 text-sm text-[#3b82f6] font-medium">
-            <Sparkles className="h-3.5 w-3.5" /> Built for students, by students
-          </motion.div>
-
-          {/* Title */}
-          <h1 className="text-5xl md:text-7xl font-black tracking-tight text-white leading-[1.05]">
-            Stop switching<br />
-            between <span className="text-[#3b82f6]">7 apps.</span>
+          <h1 className="text-[2.6rem] md:text-6xl font-semibold tracking-[-0.03em] leading-[1.08]">
+            Stop switching<br />between 7 apps.
           </h1>
 
-          <p className="text-xl text-white/40 mt-4 max-w-lg mx-auto leading-relaxed">
+          <p className="text-base md:text-lg text-black/50 max-w-md mx-auto leading-relaxed">
             UniFlow is the all-in-one platform where students study smarter, collaborate better, and actually enjoy the process.
           </p>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-1">
             <Button onClick={() => navigate("/login?mode=signup")} size="lg"
-              className="h-12 px-8 font-bold text-base rounded-xl shadow-lg shadow-[#3b82f6]/20 w-full sm:w-auto bg-[#3b82f6] hover:bg-[#2563eb] text-white active:scale-95 transition-all">
+              className="h-11 px-7 font-medium text-sm rounded-full bg-[#161616] hover:bg-black text-white w-full sm:w-auto">
               Get Started Free
             </Button>
-            <Button variant="ghost" size="lg"
-              className="h-12 px-8 font-semibold text-base rounded-xl border border-white/20 hover:bg-white/10 text-white w-full sm:w-auto"
+            <button
+              className="text-sm font-medium text-black/50 hover:text-black underline-offset-4 hover:underline transition-colors"
               onClick={() => document.getElementById("features")?.scrollIntoView({ behavior: "smooth" })}>
-              See Features ↓
-            </Button>
+              See features ↓
+            </button>
           </div>
 
-          {/* Social Proof */}
-          <div className="flex items-center justify-center gap-6 mt-8 text-sm text-white/30 flex-wrap">
-            <div className="flex items-center gap-2">
-              <div className="flex -space-x-2">
-                {["#3b82f6","#10b981","#f59e0b","#ef4444"].map((color, i) => (
-                  <div key={i} className="h-7 w-7 rounded-full border-2 border-[#030303]" style={{ background: color }} />
-                ))}
-              </div>
-              <span>Join students already using UniFlow</span>
-            </div>
-            <div className="h-4 w-px bg-white/10" />
-            <span>🔒 Free forever</span>
-          </div>
+          <p className="text-xs text-black/35 pt-3">
+            Free forever · Join students already using UniFlow
+          </p>
         </motion.div>
       </div>
 
       {/* Features */}
-      <div id="features" className="py-24 px-6 max-w-6xl mx-auto relative">
-        <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl font-black text-white">Everything a student needs</h2>
-          <p className="text-white/40 mt-3">Stop switching between 7 apps. UniFlow has it all.</p>
+      <div id="features" className="px-6 pb-28 max-w-5xl mx-auto">
+        <div className="mb-12 md:mb-16">
+          <h2 className="text-2xl md:text-3xl font-semibold tracking-tight">Everything a student needs</h2>
+          <p className="text-black/45 mt-2 text-sm md:text-base">Stop switching between 7 apps. UniFlow has it all.</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-px bg-black/[0.08] border border-black/[0.08] rounded-2xl overflow-hidden">
           {features.map((f, i) => (
-            <motion.div key={i} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.05, duration: 0.4 }} viewport={{ once: true, margin: "-50px" }}
-              className="relative bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6 hover:bg-white/[0.05] hover:border-[#3b82f6]/20 transition-all">
+            <motion.div key={i} initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.04, duration: 0.35 }} viewport={{ once: true, margin: "-50px" }}
+              className="relative bg-[#fafaf9] p-7 hover:bg-white transition-colors">
               {"popular" in f && f.popular && (
-                <div className="absolute -top-2 -right-2 bg-[#3b82f6] text-white text-[10px] font-bold px-2 py-0.5 rounded-full">Popular</div>
+                <span className="absolute top-7 right-7 text-[10px] uppercase tracking-[0.14em] text-black/35 font-medium">Popular</span>
               )}
-              <div className="text-2xl mb-3">{f.emoji}</div>
-              <h3 className="font-bold text-sm mb-1 text-white">{f.title}</h3>
-              <p className="text-white/40 text-sm leading-relaxed">{f.desc}</p>
+              <f.icon className="h-5 w-5 text-black/70 mb-5" strokeWidth={1.5} />
+              <h3 className="font-semibold text-sm mb-1.5">{f.title}</h3>
+              <p className="text-black/50 text-sm leading-relaxed">{f.desc}</p>
             </motion.div>
           ))}
         </div>
 
-        <div className="mt-16 flex justify-center">
-          <Button variant="ghost" onClick={scrollToTop} className="gap-2 text-white/30 hover:text-white/60 rounded-full px-6">
-            <ArrowUp className="h-4 w-4" /> Back to top
-          </Button>
+        <div className="mt-14 flex justify-center">
+          <button onClick={scrollToTop} className="inline-flex items-center gap-2 text-xs text-black/35 hover:text-black/60 transition-colors">
+            <ArrowUp className="h-3.5 w-3.5" /> Back to top
+          </button>
         </div>
       </div>
 
       {/* How It Works */}
-      <div className="py-24 px-6 max-w-4xl mx-auto">
-        <h2 className="text-3xl font-black text-white text-center mb-4">How it works</h2>
-        <p className="text-white/40 text-center mb-16">Get started in 3 simple steps</p>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {howItWorks.map((item, i) => (
-            <motion.div key={i} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.1 }} viewport={{ once: true }}
-              className="text-center space-y-3">
-              <div className="text-4xl">{item.emoji}</div>
-              <div className="text-[#3b82f6] font-mono text-sm font-bold">{item.step}</div>
-              <h3 className="font-bold text-white">{item.title}</h3>
-              <p className="text-white/40 text-sm leading-relaxed">{item.desc}</p>
-            </motion.div>
-          ))}
+      <div className="border-t border-black/[0.08]">
+        <div className="py-24 px-6 max-w-5xl mx-auto">
+          <div className="mb-14">
+            <h2 className="text-2xl md:text-3xl font-semibold tracking-tight">How it works</h2>
+            <p className="text-black/45 mt-2 text-sm md:text-base">Get started in 3 simple steps</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-8">
+            {howItWorks.map((item, i) => (
+              <motion.div key={i} initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.08 }} viewport={{ once: true }}
+                className="border-t border-black/[0.12] pt-6">
+                <div className="text-xs font-medium text-black/35 mb-3">{item.step}</div>
+                <h3 className="font-semibold text-sm mb-1.5">{item.title}</h3>
+                <p className="text-black/50 text-sm leading-relaxed">{item.desc}</p>
+              </motion.div>
+            ))}
+          </div>
         </div>
       </div>
 
       {/* CTA */}
-      <div className="py-24 px-6 text-center border-t border-white/[0.04]">
-        <div className="max-w-2xl mx-auto space-y-4">
-          <h2 className="text-4xl font-black text-white">Ready to study smarter?</h2>
-          <p className="text-white/40 mt-3">Join students who stopped juggling 7 apps.</p>
-          <Button onClick={() => navigate("/login?mode=signup")} size="lg"
-            className="mt-8 h-14 px-12 bg-[#3b82f6] hover:bg-[#2563eb] text-white font-bold text-lg rounded-2xl shadow-2xl shadow-[#3b82f6]/20 active:scale-95 transition-all">
-            Get Started — It's Free →
-          </Button>
-          <p className="text-white/20 text-xs mt-4">No credit card • No download • Works in your browser</p>
+      <div className="border-t border-black/[0.08] py-28 px-6 text-center">
+        <div className="max-w-xl mx-auto space-y-5">
+          <h2 className="text-3xl md:text-4xl font-semibold tracking-[-0.02em]">Ready to study smarter?</h2>
+          <p className="text-black/45 text-sm md:text-base">Join students who stopped juggling 7 apps.</p>
+          <div className="pt-3">
+            <Button onClick={() => navigate("/login?mode=signup")} size="lg"
+              className="h-12 px-9 bg-[#161616] hover:bg-black text-white font-medium text-sm rounded-full">
+              Get Started — It's Free
+            </Button>
+          </div>
+          <p className="text-black/30 text-xs">No credit card · No download · Works in your browser</p>
         </div>
       </div>
 
       {/* Footer */}
-      <footer className="border-t border-white/[0.04] py-8 px-6 text-center text-white/30 text-sm">
+      <footer className="border-t border-black/[0.08] py-10 px-6 text-center text-black/35 text-xs">
         <div className="flex items-center justify-center gap-2 mb-2">
-          <div className="h-5 w-5 rounded-md bg-[#3b82f6] flex items-center justify-center text-white font-black text-[10px]">U</div>
-          <span className="font-bold opacity-70">UniFlow</span>
+          <div className="h-5 w-5 rounded-[5px] bg-[#161616] flex items-center justify-center text-white font-semibold text-[9px]">U</div>
+          <span className="font-medium text-black/50">UniFlow</span>
         </div>
         <p>The Student Operating System</p>
       </footer>
