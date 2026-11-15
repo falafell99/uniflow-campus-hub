@@ -1,257 +1,313 @@
 import { useNavigate } from "react-router-dom";
-import { useEffect } from "react";
-import { motion } from "framer-motion";
+import { useEffect, useState } from "react";
 
-const TOOLS = [
-  { emoji: "🧠", title: "AI Oracle", desc: "Ask anything. Get expert explanations with LaTeX support, PDF analysis, and study plans." },
-  { emoji: "📚", title: "Smart Vault", desc: "Upload lectures and PDFs. AI generates summaries and flashcards automatically." },
-  { emoji: "📝", title: "Notes", desc: "Notion-style notes with Study Mode — quiz yourself on your own notes with AI." },
-  { emoji: "✅", title: "Kanban Tasks", desc: "Manage your assignments with drag-and-drop boards. Syncs with your Calendar." },
-  { emoji: "📅", title: "Calendar", desc: "Track exams and deadlines. Get smart reminders 7 days, 3 days, and 1 day before." },
-  { emoji: "🃏", title: "Flashcards", desc: "Spaced repetition flashcards. Generate them from any PDF or note in one click." },
-  { emoji: "👥", title: "Teams", desc: "Collaborate on group projects with shared tasks, whiteboards, and activity feeds." },
-  { emoji: "📊", title: "Progress", desc: "Track your study streak, weekly activity heatmap, and subject breakdown." },
-  { emoji: "💬", title: "Messages", desc: "Direct messages with @mentions. Stay connected with your study group." },
-];
+/* Pixel icons: hand-drawn 16x16, crisp edges. */
+const PX = {
+  notes: (
+    <>
+      <rect x="3" y="1" width="9" height="14" fill="#fff" stroke="#000" />
+      <rect x="9" y="1" width="3" height="3" fill="#dfdfdf" stroke="#000" />
+      <rect x="5" y="4" width="5" height="1" fill="#1084d0" /><rect x="5" y="6" width="5" height="1" fill="#1084d0" />
+      <rect x="5" y="8" width="5" height="1" fill="#1084d0" /><rect x="5" y="10" width="3" height="1" fill="#1084d0" />
+    </>
+  ),
+  cards: (
+    <>
+      <rect x="4" y="2" width="8" height="11" fill="#dfdfdf" stroke="#000" />
+      <rect x="2" y="4" width="8" height="11" fill="#fff" stroke="#000" />
+      <rect x="4" y="7" width="4" height="1" fill="#c00000" /><rect x="4" y="9" width="4" height="1" fill="#000" />
+      <rect x="4" y="11" width="3" height="1" fill="#000" />
+    </>
+  ),
+  kanban: (
+    <>
+      <rect x="1" y="2" width="14" height="12" fill="#fff" stroke="#000" />
+      <rect x="2" y="4" width="3" height="8" fill="#ffd27f" stroke="#000" strokeWidth="0.5" />
+      <rect x="6.5" y="4" width="3" height="8" fill="#a8d8ff" stroke="#000" strokeWidth="0.5" />
+      <rect x="11" y="4" width="3" height="8" fill="#b5e6b5" stroke="#000" strokeWidth="0.5" />
+    </>
+  ),
+  calendar: (
+    <>
+      <rect x="2" y="2" width="12" height="12" fill="#fff" stroke="#000" />
+      <rect x="2" y="2" width="12" height="3" fill="#c00000" />
+      <rect x="4" y="7" width="2" height="2" fill="#1084d0" /><rect x="7" y="7" width="2" height="2" fill="#dfdfdf" />
+      <rect x="10" y="7" width="2" height="2" fill="#dfdfdf" /><rect x="4" y="10" width="2" height="2" fill="#dfdfdf" />
+      <rect x="7" y="10" width="2" height="2" fill="#dfdfdf" /><rect x="10" y="10" width="2" height="2" fill="#dfdfdf" />
+    </>
+  ),
+  vault: (
+    <>
+      <rect x="3" y="2" width="10" height="12" fill="#7f1f1f" stroke="#000" />
+      <rect x="5" y="2" width="8" height="12" fill="#a83232" stroke="#000" />
+      <rect x="7" y="5" width="4" height="3" fill="#ffd27f" stroke="#000" strokeWidth="0.5" />
+      <rect x="3" y="12" width="10" height="2" fill="#fff" stroke="#000" strokeWidth="0.5" />
+    </>
+  ),
+  oracle: (
+    <>
+      <rect x="2" y="3" width="12" height="9" fill="#fff" stroke="#000" />
+      <rect x="5" y="12" width="6" height="2" fill="#dfdfdf" stroke="#000" />
+      <rect x="7" y="5" width="2" height="2" fill="#ffd700" /><rect x="6" y="6" width="4" height="1" fill="#ffd700" />
+      <rect x="6" y="7" width="4" height="1" fill="#ffd700" /><rect x="7" y="8" width="2" height="1" fill="#ffd700" />
+    </>
+  ),
+  teams: (
+    <>
+      <rect x="3" y="3" width="4" height="4" fill="#1084d0" /><rect x="2" y="8" width="6" height="6" fill="#1084d0" />
+      <rect x="10" y="3" width="4" height="4" fill="#7fbbe8" /><rect x="9" y="8" width="6" height="6" fill="#7fbbe8" />
+    </>
+  ),
+  progress: (
+    <>
+      <rect x="2" y="8" width="3" height="6" fill="#3aa655" stroke="#000" strokeWidth="0.5" />
+      <rect x="6" y="5" width="3" height="9" fill="#3aa655" stroke="#000" strokeWidth="0.5" />
+      <rect x="10" y="2" width="3" height="12" fill="#3aa655" stroke="#000" strokeWidth="0.5" />
+    </>
+  ),
+  messages: (
+    <>
+      <rect x="2" y="3" width="12" height="8" fill="#fff" stroke="#000" />
+      <rect x="4" y="11" width="3" height="3" fill="#fff" stroke="#000" />
+      <rect x="4" y="5" width="8" height="1" fill="#1084d0" /><rect x="4" y="7" width="6" height="1" fill="#1084d0" />
+    </>
+  ),
+} as const;
 
-const STEPS = [
-  { step: "01", title: "Create your account", desc: "Sign up in 30 seconds. No credit card needed." },
-  { step: "02", title: "Set up your space", desc: "Tell us your university and subjects. We personalize everything." },
-  { step: "03", title: "Start studying smarter", desc: "Upload files, ask the AI, connect with classmates." },
-];
+type PxId = keyof typeof PX;
 
-const SIDEBAR_STUDY = [
-  { emoji: "🏠", name: "Dashboard", active: true },
-  { emoji: "📝", name: "Notes" },
-  { emoji: "✅", name: "Tasks" },
-  { emoji: "🤖", name: "AI Oracle" },
-  { emoji: "📚", name: "The Vault" },
-  { emoji: "🃏", name: "Flashcards" },
-  { emoji: "📅", name: "Campus Calendar" },
-  { emoji: "📈", name: "Progress" },
-];
-
-const SIDEBAR_CAMPUS = [
-  { emoji: "🌐", name: "Community" },
-  { emoji: "👥", name: "Teams Hub" },
-  { emoji: "💬", name: "Messages" },
-];
-
-const MOCK_TASKS = [
-  { title: "Review cell structure flashcards", subject: "Biology" },
-  { title: "Read chapter 7 — Thermodynamics", subject: "Physics" },
-  { title: "Draft history essay outline", subject: "History" },
-];
-
-const MOCK_DEADLINES = [
-  { days: "2d", title: "Physics midterm", when: "Mar 18, 10:00 AM", hot: true },
-  { days: "5d", title: "History essay due", when: "Mar 21, 11:59 PM", hot: false },
-];
-
-/* A faithful, static recreation of the app's Today screen (src/pages/Today.tsx)
-   with generic sample content. Non-interactive on purpose. */
-function TodayScreen() {
+function PxIcon({ id, size = 36 }: { id: PxId; size?: number }) {
   return (
-    <div className="flex bg-[#f4f6f9] text-[#1c2333] select-none pointer-events-none" aria-hidden="true">
-      {/* Sidebar, mirrors AppSidebar */}
-      <div className="hidden md:block w-48 shrink-0 bg-white border-r border-[#e4e9f0] py-4 px-3">
-        <div className="flex items-center gap-2 px-2 pb-4">
-          <div className="h-6 w-6 rounded-md bg-[#3b82f6] flex items-center justify-center text-white font-bold text-[11px]">U</div>
-          <span className="font-bold text-[13px]">UniFlow</span>
-        </div>
-        <p className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-[#8a94a8]">Study</p>
-        {SIDEBAR_STUDY.map((item) => (
-          <div
-            key={item.name}
-            className={`flex items-center gap-2 px-2 py-[5px] rounded-md text-[12px] font-medium ${
-              item.active ? "bg-[#ebf2fe] text-[#2f6fdd]" : "text-[#4a5468]"
-            }`}
-          >
-            <span className="text-[13px]">{item.emoji}</span>
-            {item.name}
-          </div>
-        ))}
-        <p className="px-2 pt-4 pb-1 text-[10px] font-semibold uppercase tracking-wider text-[#8a94a8]">Campus</p>
-        {SIDEBAR_CAMPUS.map((item) => (
-          <div key={item.name} className="flex items-center gap-2 px-2 py-[5px] rounded-md text-[12px] font-medium text-[#4a5468]">
-            <span className="text-[13px]">{item.emoji}</span>
-            {item.name}
-          </div>
-        ))}
-      </div>
-
-      {/* Today page */}
-      <div className="flex-1 min-w-0 px-5 py-6 md:px-7">
-        <h3 className="text-[20px] font-extrabold tracking-tight">Good morning 👋</h3>
-        <p className="text-[12px] text-[#6b7686] mt-0.5">Monday, March 16 · 3 tasks pending</p>
-
-        {/* Focus card */}
-        <div className="mt-4 bg-[#3b82f6]/[0.06] border border-[#3b82f6]/25 rounded-2xl p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="h-1.5 w-1.5 rounded-full bg-[#3b82f6]" />
-            <span className="text-[10px] font-bold text-[#3b82f6] uppercase tracking-wider">Focus for today</span>
-          </div>
-          <p className="font-bold text-[15px] leading-snug">Calculus — Problem Set 4</p>
-          <p className="text-[12px] text-[#6b7686] mt-1">📋 due in 2 days</p>
-          <div className="mt-2.5 inline-flex items-center gap-1.5 bg-[#3b82f6] text-white text-[12px] font-semibold rounded-lg px-3 py-1.5">
-            Work on this →
-          </div>
-        </div>
-
-        {/* Tasks */}
-        <div className="mt-3 bg-white border border-[#e4e9f0] rounded-2xl overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-2.5 border-b border-[#eef1f5]">
-            <span className="font-bold text-[12px]">☑ Today's Tasks</span>
-            <span className="text-[11px] font-semibold text-[#3b82f6]">View all →</span>
-          </div>
-          {MOCK_TASKS.map((t) => (
-            <div key={t.title} className="flex items-center gap-3 px-4 py-2.5 border-b border-[#f2f4f8] last:border-0">
-              <div className="h-4 w-4 rounded border-2 border-[#d3dae4] shrink-0" />
-              <span className="text-[12px] font-medium flex-1 truncate">{t.title}</span>
-              <span className="text-[10px] text-[#6b7686] border border-[#e4e9f0] rounded-md px-1.5 py-0.5 shrink-0">{t.subject}</span>
-            </div>
-          ))}
-        </div>
-
-        {/* Deadlines */}
-        <div className="mt-3 bg-white border border-[#e4e9f0] rounded-2xl overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-2.5 border-b border-[#eef1f5]">
-            <span className="font-bold text-[12px]">🗓 Upcoming Deadlines</span>
-            <span className="text-[11px] font-semibold text-[#3b82f6]">Calendar →</span>
-          </div>
-          {MOCK_DEADLINES.map((d) => (
-            <div key={d.title} className="flex items-center gap-3 px-4 py-2.5 border-b border-[#f2f4f8] last:border-0">
-              <div className={`h-8 w-8 rounded-xl flex items-center justify-center text-[11px] font-extrabold shrink-0 ${
-                d.hot ? "bg-orange-500/10 text-orange-500" : "bg-[#f0f2f6] text-[#6b7686]"
-              }`}>
-                {d.days}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[12px] font-bold truncate">{d.title}</p>
-                <p className="text-[11px] text-[#6b7686]">{d.when}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Streak */}
-        <div className="mt-3 flex items-center gap-3 p-3.5 bg-white border border-[#e4e9f0] rounded-2xl">
-          <span className="text-[22px]">🔥</span>
-          <div className="flex-1 min-w-0">
-            <p className="font-extrabold text-[13px]">6 day streak</p>
-            <p className="text-[11px] text-[#6b7686] truncate">Keep it going — do something today</p>
-          </div>
-          <span className="text-[11px] font-semibold text-[#3b82f6] shrink-0">Stats →</span>
-        </div>
-      </div>
-    </div>
+    <svg viewBox="0 0 16 16" width={size} height={size} shapeRendering="crispEdges" aria-hidden="true">
+      {PX[id]}
+    </svg>
   );
 }
 
+interface Tool {
+  id: string;
+  name: string;
+  desc: string;
+  icon: PxId;
+}
+
+const TOOLS: Tool[] = [
+  { id: "notes", name: "Notes", desc: "Notion-style notes with Study Mode — quiz yourself on your own notes with AI.", icon: "notes" },
+  { id: "flashcards", name: "Flashcards", desc: "Spaced repetition flashcards. Generate them from any PDF or note in one click.", icon: "cards" },
+  { id: "kanban", name: "Kanban Tasks", desc: "Manage your assignments with drag-and-drop boards. Syncs with your Calendar.", icon: "kanban" },
+  { id: "calendar", name: "Calendar", desc: "Track exams and deadlines. Get smart reminders 7 days, 3 days, and 1 day before.", icon: "calendar" },
+  { id: "vault", name: "Smart Vault", desc: "Upload lectures and PDFs. AI generates summaries and flashcards automatically.", icon: "vault" },
+  { id: "oracle", name: "AI Oracle", desc: "Ask anything. Get expert explanations with LaTeX support, PDF analysis, and study plans.", icon: "oracle" },
+  { id: "teams", name: "Teams", desc: "Collaborate on group projects with shared tasks, whiteboards, and activity feeds.", icon: "teams" },
+  { id: "progress", name: "Progress", desc: "Track your study streak, weekly activity heatmap, and subject breakdown.", icon: "progress" },
+  { id: "messages", name: "Messages", desc: "Direct messages with @mentions. Stay connected with your study group.", icon: "messages" },
+];
+
+const WELCOME = "welcome";
+
 export default function Landing() {
   const navigate = useNavigate();
+  const [activeWin, setActiveWin] = useState<string | null>(WELCOME);
+  const [minimized, setMinimized] = useState(false);
+  const [maximized, setMaximized] = useState(false);
+  const [startOpen, setStartOpen] = useState(false);
+  const [selectedIcon, setSelectedIcon] = useState<string | null>(null);
+  const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
     document.title = "UniFlow | Student Collaboration Ecosystem";
+    const t = setInterval(() => setNow(new Date()), 15000);
+    return () => clearInterval(t);
   }, []);
 
-  return (
-    <div className="h-screen overflow-y-auto bg-[#fafaf8] text-[#16161a] custom-scroll">
-      {/* Static header */}
-      <header className="max-w-5xl mx-auto flex items-center justify-between px-6 pt-[calc(1.25rem+env(safe-area-inset-top))] pb-5">
-        <span className="font-bold text-[17px] tracking-[-0.01em]">UniFlow</span>
-        <button
-          onClick={() => navigate("/login")}
-          className="text-[14px] text-black/60 hover:text-black underline underline-offset-[5px] decoration-black/25 transition-colors"
-        >
-          Sign in
-        </button>
-      </header>
+  const clock = now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 
-      {/* Intro */}
-      <section className="max-w-5xl mx-auto px-6 pt-10 md:pt-16 pb-12 md:pb-16">
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, ease: "easeOut" }} className="max-w-xl">
-          <h1 className="font-extrabold text-[32px] md:text-[40px] leading-[1.12] tracking-[-0.02em]">
-            The student operating system.
-          </h1>
-          <p className="mt-5 text-[16px] md:text-[17px] leading-[1.65] text-black/60 max-w-[52ch]">
-            Notes, flashcards, kanban, calendar, a document vault, an AI tutor, teams and messages — in one place, free forever.
-          </p>
-          <div className="mt-8 flex items-center gap-6">
+  const activeTool = TOOLS.find((t) => t.id === activeWin) ?? null;
+  const winTitle = activeWin === WELCOME ? "UniFlow — Welcome" : activeTool ? `${activeTool.name} — UniFlow` : "";
+  const winIcon: PxId = activeWin === WELCOME ? "notes" : activeTool?.icon ?? "notes";
+
+  const openWindow = (id: string) => {
+    setActiveWin(id);
+    setMinimized(false);
+    setMaximized(false);
+    setSelectedIcon(id === WELCOME ? null : id);
+    setStartOpen(false);
+  };
+
+  return (
+    <div className="h-screen w-screen overflow-hidden bg-[#3a7e7c] flex flex-col font-sans text-black select-none">
+      {/* Desktop area */}
+      <div className="flex-1 min-h-0 flex flex-col md:flex-row relative">
+        {/* Icons */}
+        <div className="flex-1 md:flex-none grid grid-cols-3 md:grid-cols-2 md:w-[184px] gap-x-1 gap-y-5 content-evenly md:content-start justify-items-center px-2 pt-4 md:pt-5 pb-2 min-h-0">
+          {TOOLS.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => openWindow(t.id)}
+              className="flex flex-col items-center gap-1.5 w-[84px] group"
+              aria-label={`Open ${t.name}`}
+            >
+              <span className="drop-shadow-[1px_2px_0_rgba(0,0,0,0.35)]">
+                <PxIcon id={t.icon} />
+              </span>
+              <span
+                className={`font-pixel text-[9px] leading-[1.35] text-white text-center px-1 py-[1px] [text-shadow:1px_1px_0_rgba(0,0,0,0.55)] ${
+                  selectedIcon === t.id ? "bg-[#000080]" : ""
+                }`}
+              >
+                {t.name}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {/* Window area */}
+        <div className="shrink-0 md:flex-1 min-h-0 flex items-end md:items-center justify-center p-3 md:p-6">
+          {activeWin !== null && !minimized && (
+            <div
+              className={`retro-bevel-out p-[3px] flex flex-col min-h-0 ${
+                maximized ? "w-full h-full" : "w-full max-w-[560px] max-h-full"
+              }`}
+              role="dialog"
+              aria-label={winTitle}
+            >
+              {/* Title bar */}
+              <div className="flex items-center gap-2 px-1.5 py-[3px] pl-2 bg-gradient-to-r from-[#000080] to-[#1084d0] shrink-0">
+                <PxIcon id={winIcon} size={14} />
+                <span className="font-pixel font-bold text-[10px] text-white truncate">{winTitle}</span>
+                <div className="ml-auto flex gap-[2px] shrink-0">
+                  <button
+                    onClick={() => setMinimized(true)}
+                    aria-label="Minimize window"
+                    className="retro-btn w-[18px] h-[16px] font-pixel text-[8px] leading-[14px] text-center"
+                  >
+                    _
+                  </button>
+                  <button
+                    onClick={() => setMaximized((m) => !m)}
+                    aria-label={maximized ? "Restore window" : "Maximize window"}
+                    className="retro-btn w-[18px] h-[16px] font-pixel text-[8px] leading-[14px] text-center"
+                  >
+                    {maximized ? "❒" : "□"}
+                  </button>
+                  <button
+                    onClick={() => { setActiveWin(null); setMaximized(false); }}
+                    aria-label="Close window"
+                    className="retro-btn w-[18px] h-[16px] font-pixel text-[8px] leading-[14px] text-center"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+
+              {/* Body */}
+              <div className="retro-bevel-in m-[3px] p-5 md:p-6 overflow-y-auto min-h-0 custom-scroll">
+                {activeWin === WELCOME ? (
+                  <>
+                    <h1 className="text-[20px] md:text-[22px] font-bold tracking-[-0.01em]">
+                      The student operating system.
+                    </h1>
+                    <p className="mt-3 text-[12.5px] leading-[1.65] text-[#222] max-w-[46ch]">
+                      Notes, flashcards, kanban, calendar, a document vault, an AI tutor, teams and messages — in one place, free forever.
+                    </p>
+                    <div className="mt-5 flex flex-wrap gap-3">
+                      <button
+                        onClick={() => navigate("/login?mode=signup")}
+                        className="retro-btn px-5 py-[6px] text-[12px] font-bold outline outline-1 -outline-offset-4 outline-black"
+                      >
+                        Create an account
+                      </button>
+                      <button
+                        onClick={() => navigate("/login")}
+                        className="retro-btn px-5 py-[6px] text-[12px]"
+                      >
+                        Sign in
+                      </button>
+                    </div>
+                  </>
+                ) : activeTool ? (
+                  <>
+                    <div className="flex items-center gap-3">
+                      <PxIcon id={activeTool.icon} size={32} />
+                      <h1 className="text-[16px] font-bold">{activeTool.name}</h1>
+                    </div>
+                    <p className="mt-4 text-[12.5px] leading-[1.65] text-[#222] max-w-[48ch]">{activeTool.desc}</p>
+                  </>
+                ) : null}
+              </div>
+
+              {/* Status bar */}
+              <div className="retro-bevel-thin-in mx-[3px] mb-[3px] px-2 py-[3px] flex text-[11px] shrink-0">
+                <span>{activeWin === WELCOME ? "9 tools, one place" : activeTool?.name}</span>
+                <span className="ml-auto">Ready</span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="hidden md:block absolute right-3 top-3 text-right font-pixel text-[9px] leading-[1.7] text-white/75 [text-shadow:1px_1px_0_rgba(0,0,0,0.4)]">
+          UniFlow OS<br />student edition
+        </div>
+      </div>
+
+      {/* Start menu */}
+      {startOpen && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setStartOpen(false)} />
+          <div className="retro-bevel-out absolute left-1 bottom-[36px] z-20 w-[220px] p-[3px]">
+            <div className="bg-gradient-to-b from-[#000080] to-[#1084d0] px-2 py-1.5 font-pixel font-bold text-[10px] text-white">
+              UniFlow
+            </div>
             <button
               onClick={() => navigate("/login?mode=signup")}
-              className="h-10 px-5 rounded-lg bg-[#3b82f6] hover:bg-[#2f6fdd] text-white text-[14px] font-semibold transition-colors"
+              className="w-full text-left px-3 py-2 text-[12px] hover:bg-[#000080] hover:text-white"
             >
               Create an account
             </button>
             <button
               onClick={() => navigate("/login")}
-              className="text-[14px] text-black/55 hover:text-black underline underline-offset-[5px] decoration-black/25 transition-colors"
+              className="w-full text-left px-3 py-2 text-[12px] hover:bg-[#000080] hover:text-white"
             >
               Sign in
             </button>
+            <div className="mx-1 my-1 border-t border-[#868a8e] border-b border-b-white" />
+            <button
+              onClick={() => openWindow(WELCOME)}
+              className="w-full text-left px-3 py-2 text-[12px] hover:bg-[#000080] hover:text-white"
+            >
+              UniFlow Welcome
+            </button>
           </div>
-        </motion.div>
-      </section>
+        </>
+      )}
 
-      {/* The product itself */}
-      <section className="max-w-5xl mx-auto px-6 pb-16 md:pb-24">
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, ease: "easeOut", delay: 0.1 }}
-          className="rounded-2xl border border-black/10 overflow-hidden"
+      {/* Taskbar */}
+      <div className="retro-face shrink-0 h-[34px] flex items-center gap-1.5 px-1.5 shadow-[inset_0_1px_#ffffff,inset_0_2px_#dfdfdf] relative z-30">
+        <button
+          onClick={() => setStartOpen((o) => !o)}
+          className={`retro-btn ${startOpen ? "retro-btn-pressed" : ""} flex items-center gap-1.5 pl-1.5 pr-3 py-[3px]`}
+          aria-label="Start menu"
+          aria-expanded={startOpen}
         >
-          <TodayScreen />
-        </motion.div>
-        <p className="mt-3 text-[12px] text-black/40">Demo of the Today screen with sample content — the first thing you see when you open UniFlow.</p>
-      </section>
+          <span className="w-[18px] h-[18px] bg-[#1084d0] text-white text-[10px] font-bold flex items-center justify-center">U</span>
+          <span className="font-pixel font-bold text-[10px]">Start</span>
+        </button>
 
-      {/* Tools */}
-      <section className="max-w-5xl mx-auto px-6 pb-16 md:pb-24">
-        <h2 className="font-bold text-[20px] tracking-[-0.01em]">Everything in one place</h2>
-        <div className="mt-8 grid sm:grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-7">
-          {TOOLS.map((t) => (
-            <div key={t.title}>
-              <p className="font-semibold text-[15px]"><span className="mr-2">{t.emoji}</span>{t.title}</p>
-              <p className="mt-1.5 text-[14px] leading-[1.6] text-black/55">{t.desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* How it works */}
-      <section className="max-w-5xl mx-auto px-6 pb-16 md:pb-24">
-        <h2 className="font-bold text-[20px] tracking-[-0.01em]">How it works</h2>
-        <div className="mt-6 border-t border-black/10">
-          {STEPS.map((s) => (
-            <div key={s.step} className="flex items-baseline gap-6 py-5 border-b border-black/[0.07]">
-              <span className="text-[13px] font-semibold text-black/35 tabular-nums shrink-0">{s.step}</span>
-              <div>
-                <p className="font-semibold text-[15px]">{s.title}</p>
-                <p className="mt-1 text-[14px] text-black/55">{s.desc}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Closing */}
-      <section className="max-w-5xl mx-auto px-6 pb-16 md:pb-24">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6 border-t border-black/10 pt-10">
-          <p className="font-bold text-[20px] tracking-[-0.01em]">Free forever. Start today.</p>
+        {activeWin !== null && (
           <button
-            onClick={() => navigate("/login?mode=signup")}
-            className="h-10 px-5 rounded-lg bg-[#3b82f6] hover:bg-[#2f6fdd] text-white text-[14px] font-semibold transition-colors self-start"
+            onClick={() => setMinimized((m) => !m)}
+            className={`retro-btn ${minimized ? "" : "retro-btn-pressed"} flex items-center gap-2 px-2 sm:px-3 py-[3px] min-w-0 sm:min-w-[140px] max-w-[160px] sm:max-w-[220px]`}
+            aria-label={minimized ? `Restore ${winTitle}` : `Minimize ${winTitle}`}
           >
-            Create an account
+            <PxIcon id={winIcon} size={12} />
+            <span className="text-[11px] truncate">{winTitle}</span>
           </button>
-        </div>
-      </section>
+        )}
 
-      <footer className="max-w-5xl mx-auto px-6 pb-10">
-        <p className="text-[12px] text-black/40 border-t border-black/10 pt-6">Built for students, by students</p>
-      </footer>
+        <div className="retro-bevel-thin-in ml-auto px-2.5 py-[4px] text-[11px] whitespace-nowrap">
+          <span className="hidden sm:inline">Built for students, by students&nbsp;&nbsp;</span>{clock}
+        </div>
+      </div>
     </div>
   );
 }

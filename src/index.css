@@ -1,8 +1,35 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;700&family=Silkscreen:wght@400;700&display=swap');
 
 @layer utilities {
   .font-grotesk {
     font-family: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+  }
+  .font-pixel {
+    font-family: 'Silkscreen', monospace;
+  }
+  /* Retro OS chrome (landing) */
+  .retro-face { background: #c3c7cb; }
+  .retro-bevel-out {
+    background: #c3c7cb;
+    box-shadow: inset -1px -1px #0a0a0a, inset 1px 1px #ffffff, inset -2px -2px #868a8e, inset 2px 2px #dfdfdf;
+  }
+  .retro-bevel-out-sm {
+    background: #c3c7cb;
+    box-shadow: inset -1px -1px #0a0a0a, inset 1px 1px #ffffff;
+  }
+  .retro-bevel-in {
+    background: #ffffff;
+    box-shadow: inset -1px -1px #ffffff, inset 1px 1px #0a0a0a, inset -2px -2px #dfdfdf, inset 2px 2px #868a8e;
+  }
+  .retro-bevel-thin-in {
+    box-shadow: inset 1px 1px #868a8e, inset -1px -1px #ffffff;
+  }
+  .retro-btn {
+    background: #c3c7cb;
+    box-shadow: inset -1px -1px #0a0a0a, inset 1px 1px #ffffff, inset -2px -2px #868a8e, inset 2px 2px #dfdfdf;
+  }
+  .retro-btn:active, .retro-btn-pressed {
+    box-shadow: inset -1px -1px #ffffff, inset 1px 1px #0a0a0a, inset -2px -2px #dfdfdf, inset 2px 2px #868a8e;
   }
 }
 
