@@ -87,9 +87,9 @@ export function PWAInstallPrompt() {
           exit={{ opacity: 0, y: 100 }}
           className="fixed bottom-20 left-4 right-4 z-50 md:left-auto md:right-6 md:w-80"
         >
-          <div className="bg-card border border-border/40 rounded-2xl p-4 shadow-2xl">
+          <div className="retro-overlay p-4">
             <div className="flex items-start gap-3">
-              <div className="h-10 w-10 rounded-xl bg-[#7b68ee] flex items-center justify-center text-white font-black text-lg shrink-0">
+              <div className="h-10 w-10 retro-bevel-out-sm bg-[#000080] flex items-center justify-center text-white font-pixel font-bold text-sm shrink-0">
                 U
               </div>
               <div className="flex-1 min-w-0">
@@ -110,7 +110,7 @@ export function PWAInstallPrompt() {
               </button>
             </div>
             {/* Arrow pointing down to Safari toolbar */}
-            <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-card border-r border-b border-border/40 rotate-45" />
+            
           </div>
         </motion.div>
       </AnimatePresence>
@@ -126,9 +126,9 @@ export function PWAInstallPrompt() {
         exit={{ opacity: 0, y: 100 }}
         className="fixed bottom-20 left-4 right-4 z-50 md:bottom-6 md:left-auto md:right-6 md:w-80"
       >
-        <div className="bg-card border border-border/40 rounded-2xl p-4 shadow-2xl">
+        <div className="retro-overlay p-4">
           <div className="flex items-center gap-3 mb-3">
-            <div className="h-10 w-10 rounded-xl bg-[#7b68ee] flex items-center justify-center text-white font-black text-lg shrink-0">
+            <div className="h-10 w-10 retro-bevel-out-sm bg-[#000080] flex items-center justify-center text-white font-pixel font-bold text-sm shrink-0">
               U
             </div>
             <div className="flex-1 min-w-0">

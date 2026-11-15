@@ -119,19 +119,19 @@ export function CategorySidebar() {
     return (
       <RouterNavLink 
         to={path}
-        className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${
+        className={`flex items-center gap-3 px-3 py-2.5 ${
           isActive
-            ? "bg-primary/10 text-primary border-l-2 border-primary pl-[10px]"
-            : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
+            ? "bg-[#000080] text-white"
+            : "text-black hover:bg-[#dfdfdf] hover:shadow-[inset_1px_1px_#868a8e,inset_-1px_-1px_#ffffff]"
         }`}
       >
         <Icon className="h-4 w-4 shrink-0" />
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium leading-none">{label}</p>
-          {subtitle && <p className="text-[10px] text-muted-foreground mt-0.5 leading-none">{subtitle}</p>}
+          {subtitle && <p className={`text-[10px] mt-0.5 leading-none ${isActive ? "text-white/75" : "text-[#555555]"}`}>{subtitle}</p>}
         </div>
         {badge > 0 && (
-          <span className="shrink-0 h-4 min-w-4 px-1 rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground flex items-center justify-center">
+          <span className="shrink-0 h-4 min-w-4 px-1 bg-[#a00000] text-[10px] font-bold text-white flex items-center justify-center">
             {badge}
           </span>
         )}
@@ -140,25 +140,25 @@ export function CategorySidebar() {
   };
 
   return (
-    <div className="w-[240px] md:w-full shrink-0 flex flex-col bg-card/80 backdrop-blur-xl border-r border-border/40 overflow-hidden h-full pt-[env(safe-area-inset-top)]">
+    <div className="w-[240px] md:w-full shrink-0 flex flex-col retro-face shadow-[inset_-1px_0_#0a0a0a,inset_-2px_0_#868a8e] overflow-hidden h-full pt-[env(safe-area-inset-top)]">
       {/* Logo */}
-      <div className="flex items-center gap-2.5 px-4 py-4 border-b border-border/20">
-        <div className="h-8 w-8 rounded-xl bg-[#3b82f6] flex items-center justify-center text-white font-black text-sm">U</div>
+      <div className="flex items-center gap-2.5 px-3 py-3 retro-groove">
+        <div className="h-8 w-8 retro-bevel-out-sm bg-[#000080] flex items-center justify-center text-white font-pixel font-bold text-sm">U</div>
         <div>
           <p className="font-bold text-sm leading-none">UniFlow</p>
-          <p className="text-[10px] text-muted-foreground mt-0.5">Student OS</p>
+          <p className="font-pixel text-[8px] text-[#444] mt-1">STUDENT OS</p>
         </div>
       </div>
 
       {/* Mode switcher */}
-      <div className="px-3 py-3 border-b border-border/20">
-        <div className="flex items-center bg-muted/20 rounded-xl p-1 gap-1">
+      <div className="px-3 py-3 retro-groove">
+        <div className="flex items-center retro-bevel-thin-in p-[3px] gap-[3px]">
           <button
             onClick={() => setMode("personal")}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all ${
+            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-semibold ${
               mode === "personal"
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
+                ? "retro-btn retro-btn-pressed text-black"
+                : "text-[#333] hover:bg-[#dfdfdf]"
             }`}
           >
             <User className="h-3.5 w-3.5" />
@@ -166,10 +166,10 @@ export function CategorySidebar() {
           </button>
           <button
             onClick={() => setMode("campus")}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all ${
+            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-semibold ${
               mode === "campus"
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
+                ? "retro-btn retro-btn-pressed text-black"
+                : "text-[#333] hover:bg-[#dfdfdf]"
             }`}
           >
             <Globe className="h-3.5 w-3.5" />
@@ -197,7 +197,7 @@ export function CategorySidebar() {
         <div className="px-3 mt-4 mb-1">
           <button
             onClick={() => setToolsExpanded(p => !p)}
-            className="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-muted/10 hover:bg-muted/20 transition-colors border border-border/20"
+            className="w-full flex items-center justify-between px-3 py-2 retro-btn text-black"
           >
             <div className="flex items-center gap-2">
               <Wrench className="h-3.5 w-3.5 text-muted-foreground" />
@@ -214,7 +214,7 @@ export function CategorySidebar() {
       </nav>
 
       {/* Online Status + User Section */}
-      <div className="mt-auto border-t border-border/20 shrink-0">
+      <div className="mt-auto retro-groove shrink-0">
         {/* Online count */}
         <div className="px-4 py-2 flex items-center gap-2">
           <div className="h-1.5 w-1.5 rounded-full bg-green-400 animate-pulse" />
@@ -222,14 +222,14 @@ export function CategorySidebar() {
         </div>
         {/* User card */}
         <div className="p-3">
-          <div className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-muted/20 transition-colors cursor-pointer"
+          <div className="flex items-center gap-2.5 p-2 hover:bg-[#dfdfdf] hover:shadow-[inset_1px_1px_#868a8e,inset_-1px_-1px_#ffffff] cursor-pointer"
             onClick={() => navigate("/profile")}>
-            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary text-sm font-bold shrink-0">
+            <div className="h-8 w-8 retro-bevel-in flex items-center justify-center text-[#000080] text-sm font-bold shrink-0">
               {displayName?.charAt(0)?.toUpperCase() || "?"}
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate">{displayName || "Loading..."}</p>
-              <p className="text-[10px] text-green-400">Online</p>
+              <p className="text-[10px] text-[#1a7a1a]">Online</p>
             </div>
             <Settings className="h-4 w-4 text-muted-foreground" />
           </div>

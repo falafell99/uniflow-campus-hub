@@ -101,14 +101,14 @@ export function TopHeader() {
 
 
   return (
-    <header className="sticky top-0 z-30 flex h-[calc(3rem+env(safe-area-inset-top))] items-end pb-3 gap-3 border-b border-border/40 bg-background/70 backdrop-blur-xl px-4 shrink-0 transition-all">
+    <header className="sticky top-0 z-30 flex h-[calc(3rem+env(safe-area-inset-top))] items-end pb-3 gap-3 retro-face shadow-[inset_0_-1px_#868a8e,inset_0_-2px_#ffffff] px-4 shrink-0">
       <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
         <SheetTrigger asChild>
           <Button variant="ghost" size="icon" className="md:hidden h-8 w-8 shrink-0">
             <Menu className="h-5 w-5" />
           </Button>
         </SheetTrigger>
-        <SheetContent side="left" className="p-0 flex w-[288px] gap-0 border-r border-border/40" hideClose>
+        <SheetContent side="left" className="p-0 flex w-[288px] gap-0" hideClose>
           <CategorySidebar />
         </SheetContent>
       </Sheet>
@@ -122,7 +122,7 @@ export function TopHeader() {
         <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" />
         <Input
           placeholder="Search everything..."
-          className="pl-9 pr-20 h-8 text-sm bg-muted/50 border border-transparent focus-visible:ring-1 focus-visible:ring-primary/30 group-hover:bg-muted/80 transition-all cursor-pointer"
+          className="pl-9 pr-20 h-8 text-sm cursor-pointer"
           onFocus={(e) => {
             e.target.blur();
             window.dispatchEvent(new CustomEvent("open-command-palette"));
@@ -135,8 +135,8 @@ export function TopHeader() {
         />
         <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 pointer-events-none">
           <div className="hidden sm:flex items-center gap-0.5">
-            <kbd className="bg-background border border-border/40 rounded px-1 text-[10px] font-mono text-muted-foreground">⌘</kbd>
-            <kbd className="bg-background border border-border/40 rounded px-1 text-[10px] font-mono text-muted-foreground">K</kbd>
+            <kbd className="retro-bevel-thin-in px-1.5 text-[10px] font-mono text-[#444]">⌘</kbd>
+            <kbd className="retro-bevel-thin-in px-1.5 text-[10px] font-mono text-[#444]">K</kbd>
           </div>
         </div>
       </motion.div>

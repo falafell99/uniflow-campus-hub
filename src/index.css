@@ -7,7 +7,7 @@
   .font-pixel {
     font-family: 'Silkscreen', monospace;
   }
-  /* Retro OS chrome (landing) */
+  /* Retro OS chrome */
   .retro-face { background: #c3c7cb; }
   .retro-bevel-out {
     background: #c3c7cb;
@@ -31,10 +31,27 @@
   .retro-btn:active, .retro-btn-pressed {
     box-shadow: inset -1px -1px #ffffff, inset 1px 1px #0a0a0a, inset -2px -2px #dfdfdf, inset 2px 2px #868a8e;
   }
+  /* Overlay surfaces (menus, popovers, dialogs, sheets) */
+  .retro-overlay {
+    background: #c3c7cb;
+    color: #000000;
+    border: none;
+    box-shadow: inset -1px -1px #0a0a0a, inset 1px 1px #ffffff, inset -2px -2px #868a8e, inset 2px 2px #dfdfdf, 4px 4px 0 rgba(0, 0, 0, 0.25);
+  }
+  /* Classic title bar */
+  .retro-titlebar {
+    background: linear-gradient(to right, #000080, #1084d0);
+    color: #ffffff;
+  }
+  /* Grooved separator line */
+  .retro-groove {
+    border-top: 1px solid #868a8e;
+    border-bottom: 1px solid #ffffff;
+  }
 }
 
 ::selection {
-  background: #111;
+  background: #000080;
   color: #fff;
 }
 
@@ -44,99 +61,101 @@
 
 @layer base {
   :root {
-    --background: 210 20% 97%;
-    --foreground: 222 47% 11%;
+    --background: 210 6% 78%;
+    --foreground: 0 0% 4%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card: 210 6% 78%;
+    --card-foreground: 0 0% 4%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
+    --popover: 210 6% 78%;
+    --popover-foreground: 0 0% 4%;
 
-    --primary: 217 91% 60%;
+    --primary: 240 100% 25%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 215 20% 93%;
-    --secondary-foreground: 222 47% 11%;
+    --secondary: 0 0% 87%;
+    --secondary-foreground: 0 0% 4%;
 
-    --muted: 210 20% 95%;
-    --muted-foreground: 215 16% 47%;
+    --muted: 210 6% 72%;
+    --muted-foreground: 215 9% 30%;
 
-    --accent: 217 91% 60%;
+    --accent: 240 100% 25%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 84% 60%;
+    --destructive: 0 84% 38%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 214 20% 88%;
-    --input: 214 20% 88%;
-    --ring: 217 91% 60%;
+    --border: 210 4% 54%;
+    --input: 210 4% 54%;
+    --ring: 240 100% 25%;
 
-    --radius: 0.75rem;
+    --radius: 0px;
 
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 215 25% 27%;
-    --sidebar-primary: 217 91% 60%;
+    --sidebar-background: 210 6% 78%;
+    --sidebar-foreground: 0 0% 4%;
+    --sidebar-primary: 240 100% 25%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 217 91% 96%;
-    --sidebar-accent-foreground: 217 91% 40%;
-    --sidebar-border: 214 20% 92%;
-    --sidebar-ring: 217 91% 60%;
+    --sidebar-accent: 0 0% 87%;
+    --sidebar-accent-foreground: 0 0% 4%;
+    --sidebar-border: 210 4% 54%;
+    --sidebar-ring: 240 100% 25%;
 
-    --success: 142 76% 36%;
+    --success: 142 76% 30%;
     --success-foreground: 0 0% 100%;
-    --warning: 38 92% 50%;
+    --warning: 38 92% 42%;
     --warning-foreground: 0 0% 100%;
-    --info: 199 89% 48%;
+    --info: 199 89% 40%;
     --info-foreground: 0 0% 100%;
 
     /* Enterprise Dark — pure-black base for dark-mode surfaces */
     --enterprise-dark: #030303;
   }
 
+  /* The retro theme is fixed: dark mode maps to the same palette so the
+     theme toggle never breaks the old-Windows look. */
   .dark {
-    --background: 222 47% 6%;
-    --foreground: 210 20% 92%;
+    --background: 210 6% 78%;
+    --foreground: 0 0% 4%;
 
-    --card: 222 47% 9%;
-    --card-foreground: 210 20% 92%;
+    --card: 210 6% 78%;
+    --card-foreground: 0 0% 4%;
 
-    --popover: 222 47% 9%;
-    --popover-foreground: 210 20% 92%;
+    --popover: 210 6% 78%;
+    --popover-foreground: 0 0% 4%;
 
-    --primary: 217 91% 60%;
+    --primary: 240 100% 25%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 222 30% 16%;
-    --secondary-foreground: 210 20% 85%;
+    --secondary: 0 0% 87%;
+    --secondary-foreground: 0 0% 4%;
 
-    --muted: 222 30% 14%;
-    --muted-foreground: 215 16% 55%;
+    --muted: 210 6% 72%;
+    --muted-foreground: 215 9% 30%;
 
-    --accent: 217 91% 60%;
+    --accent: 240 100% 25%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 70% 50%;
+    --destructive: 0 84% 38%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 222 20% 18%;
-    --input: 222 20% 18%;
-    --ring: 217 91% 60%;
+    --border: 210 4% 54%;
+    --input: 210 4% 54%;
+    --ring: 240 100% 25%;
 
-    --sidebar-background: 222 47% 7%;
-    --sidebar-foreground: 210 20% 75%;
-    --sidebar-primary: 217 91% 60%;
+    --sidebar-background: 210 6% 78%;
+    --sidebar-foreground: 0 0% 4%;
+    --sidebar-primary: 240 100% 25%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 217 91% 15%;
-    --sidebar-accent-foreground: 217 91% 70%;
-    --sidebar-border: 222 20% 14%;
-    --sidebar-ring: 217 91% 60%;
+    --sidebar-accent: 0 0% 87%;
+    --sidebar-accent-foreground: 0 0% 4%;
+    --sidebar-border: 210 4% 54%;
+    --sidebar-ring: 240 100% 25%;
 
-    --success: 142 76% 42%;
+    --success: 142 76% 30%;
     --success-foreground: 0 0% 100%;
-    --warning: 38 92% 55%;
+    --warning: 38 92% 42%;
     --warning-foreground: 0 0% 100%;
-    --info: 199 89% 55%;
+    --info: 199 89% 40%;
     --info-foreground: 0 0% 100%;
 
     /* Enterprise Dark — pure-black base for dark-mode surfaces */
@@ -147,6 +166,11 @@
 @layer base {
   * {
     @apply border-border;
+  }
+  /* Retro chrome is square. Explicit circles (avatars, status dots) keep
+     their rounding. */
+  *:not(.rounded-full):not([class*="rounded-full"]) {
+    border-radius: 0 !important;
   }
   html, body, #root {
     @apply h-full overflow-hidden;
@@ -159,15 +183,18 @@
 
 @layer components {
   .glass-card {
-    @apply bg-card/80 backdrop-blur-xl border border-border/50 rounded-xl;
-    box-shadow: 0 8px 32px -8px hsl(var(--primary) / 0.06), 0 2px 8px -2px hsl(var(--foreground) / 0.04);
+    @apply text-card-foreground;
+    background: #c3c7cb;
+    box-shadow: inset -1px -1px #0a0a0a, inset 1px 1px #ffffff, inset -2px -2px #868a8e, inset 2px 2px #dfdfdf;
   }
   .glass-subtle {
-    @apply bg-card/60 backdrop-blur-sm border border-border/40 rounded-lg;
-    box-shadow: 0 2px 12px -4px hsl(var(--foreground) / 0.05);
+    @apply text-card-foreground;
+    background: #c3c7cb;
+    box-shadow: inset -1px -1px #0a0a0a, inset 1px 1px #ffffff;
   }
   .glass-sidebar {
-    @apply bg-card/90 backdrop-blur-xl border-r border-border/50;
+    background: #c3c7cb;
+    box-shadow: inset -1px 0 #0a0a0a, inset -2px 0 #868a8e;
   }
   .badge-golden {
     @apply bg-warning/10 text-warning border border-warning/20;
@@ -179,31 +206,23 @@
     @apply bg-info/10 text-info border border-info/20;
   }
 
-  /* Haptic button press feedback */
-  button, [role="button"] {
-    @apply transition-transform duration-100;
-  }
-  button:active, [role="button"]:active {
-    transform: scale(0.95);
-  }
-
   /* Custom scrollbar */
   .custom-scroll {
     scrollbar-width: thin;
-    scrollbar-color: hsl(var(--border)) transparent;
+    scrollbar-color: #868a8e #dfdfdf;
   }
   .custom-scroll::-webkit-scrollbar {
-    width: 6px;
+    width: 10px;
   }
   .custom-scroll::-webkit-scrollbar-track {
-    background: transparent;
+    background: #dfdfdf;
   }
   .custom-scroll::-webkit-scrollbar-thumb {
-    background: hsl(var(--border));
-    border-radius: 3px;
+    background: #c3c7cb;
+    box-shadow: inset -1px -1px #0a0a0a, inset 1px 1px #ffffff, inset -2px -2px #868a8e, inset 2px 2px #dfdfdf;
   }
   .custom-scroll::-webkit-scrollbar-thumb:hover {
-    background: hsl(var(--muted-foreground));
+    background: #c3c7cb;
   }
 
   /* Page transition */

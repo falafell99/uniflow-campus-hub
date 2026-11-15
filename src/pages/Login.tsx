@@ -114,10 +114,14 @@ export default function Login() {
   // Verification message screen
   if (showVerificationMessage) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
-        <div className="w-full max-w-sm space-y-6">
-          <div className="glass-card p-6">
-            <div className="flex flex-col items-center text-center space-y-4 py-8">
+      <div className="min-h-screen flex items-center justify-center bg-[#3a7e7c] p-4 font-sans">
+        <div className="w-full max-w-sm">
+          <div className="retro-bevel-out p-[3px]">
+            <div className="retro-titlebar flex items-center gap-2 px-2 py-[3px]">
+              <span className="font-pixel font-bold text-[10px]">UniFlow — Check your email</span>
+            </div>
+            <div className="retro-bevel-in m-[3px] p-6">
+            <div className="flex flex-col items-center text-center space-y-4 py-4">
               <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center text-3xl">
                 📧
               </div>
@@ -127,7 +131,7 @@ export default function Login() {
                 Click the link to activate your account.
               </p>
               {getElteFaculty(verificationEmail) && (
-                <div className="flex items-center gap-2 bg-primary/10 border border-primary/20 rounded-xl px-4 py-2.5">
+                <div className="flex items-center gap-2 retro-bevel-thin-in px-4 py-2.5">
                   <GraduationCap className="h-4 w-4 text-primary" />
                   <span className="text-sm text-primary font-medium">
                     ELTE {getElteFaculty(verificationEmail)?.faculty} detected ✓
@@ -145,33 +149,40 @@ export default function Login() {
               </Button>
             </div>
           </div>
+            <div className="retro-bevel-thin-in mx-[3px] mb-[3px] px-2 py-[3px] flex text-[11px] text-black">
+              <span>ELTE Student Collaboration Platform</span>
+              <span className="ml-auto">Ready</span>
+            </div>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <div className="w-full max-w-sm space-y-6">
-        {/* Logo */}
-        <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 mb-2">
-            <GraduationCap className="h-7 w-7 text-primary" />
+    <div className="min-h-screen flex items-center justify-center bg-[#3a7e7c] p-4 font-sans">
+      <div className="w-full max-w-sm">
+        {/* Window */}
+        <div className="retro-bevel-out p-[3px]">
+          <div className="retro-titlebar flex items-center gap-2 px-2 py-[3px]">
+            <span className="w-[14px] h-[14px] bg-white text-[#000080] text-[10px] font-bold flex items-center justify-center shrink-0">U</span>
+            <span className="font-pixel font-bold text-[10px]">UniFlow — {mode === "signin" ? "Sign In" : "Create an account"}</span>
+            <div className="ml-auto flex gap-[2px]">
+              <span className="retro-btn w-[18px] h-[16px] font-pixel text-[8px] leading-[14px] text-center text-black">_</span>
+              <span className="retro-btn w-[18px] h-[16px] font-pixel text-[8px] leading-[14px] text-center text-black">□</span>
+              <span className="retro-btn w-[18px] h-[16px] font-pixel text-[8px] leading-[14px] text-center text-black">✕</span>
+            </div>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight">UniFlow</h1>
-          <p className="text-sm text-muted-foreground">ELTE Student Collaboration Platform</p>
-        </div>
 
-        {/* Card */}
-        <div className="glass-card p-6 space-y-4">
+        <div className="m-[3px] p-5 space-y-4 bg-[#c3c7cb]">
           {/* Tab toggle */}
-          <div className="flex rounded-lg overflow-hidden border border-border/40 p-1 gap-1 bg-muted/40">
+          <div className="flex retro-bevel-thin-in p-[3px] gap-[3px]">
             {(["signin", "signup"] as const).map((m) => (
               <button
                 key={m}
                 onClick={() => { setMode(m); setError(null); }}
-                className={`flex-1 py-1.5 rounded-md text-sm font-medium transition-all ${
-                  mode === m ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+                className={`flex-1 py-1.5 text-sm font-medium ${
+                  mode === m ? "retro-btn retro-btn-pressed font-semibold text-black" : "text-[#333] hover:bg-[#dfdfdf]"
                 }`}
               >
                 {m === "signin" ? "Sign In" : "Sign Up"}
@@ -213,7 +224,7 @@ export default function Login() {
             />
 
             {error && (
-              <p className="text-xs text-destructive bg-destructive/10 border border-destructive/20 rounded-md px-3 py-2">
+              <p className="text-xs text-[#a00000] retro-bevel-thin-in px-3 py-2 bg-[#f3e2e2]">
                 {error}
               </p>
             )}
@@ -224,7 +235,13 @@ export default function Login() {
           </form>
         </div>
 
-        <p className="text-center text-xs text-muted-foreground">
+          <div className="retro-bevel-thin-in mx-[3px] mb-[3px] px-2 py-[3px] flex text-[11px] text-black">
+            <span>ELTE Student Collaboration Platform</span>
+            <span className="ml-auto">Ready</span>
+          </div>
+        </div>
+
+        <p className="text-center text-[10px] font-pixel text-white/80 mt-4 [text-shadow:1px_1px_0_rgba(0,0,0,0.4)]">
           By continuing you agree to ELTE's student data policy.
         </p>
       </div>

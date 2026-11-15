@@ -34,7 +34,7 @@ export function MobileNav() {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-50 md:hidden border-t border-border/30 bg-background/95 backdrop-blur-md"
+      className="fixed bottom-0 left-0 right-0 z-50 md:hidden retro-face shadow-[inset_0_1px_#ffffff,inset_0_2px_#dfdfdf]"
       style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) / 3)" }}
     >
       <div className="flex items-center justify-around h-14">
@@ -51,8 +51,8 @@ export function MobileNav() {
               key={item.path}
               to={item.path}
               end={item.path === "/"}
-              className={`flex flex-col items-center gap-0.5 px-3 transition-colors relative ${
-                isActive ? "text-primary" : "text-muted-foreground"
+              className={`flex flex-col items-center gap-0.5 px-3 py-1 relative ${
+                isActive ? "text-black retro-btn retro-btn-pressed" : "text-[#333]"
               }`}
             >
               <div className="relative">
@@ -64,7 +64,7 @@ export function MobileNav() {
                 )}
               </div>
               <span className="text-[10px] font-medium leading-none">{item.label}</span>
-              {isActive && <div className="h-1 w-1 rounded-full bg-primary mt-0.5" />}
+              
             </NavLink>
           );
         })}

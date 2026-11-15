@@ -120,7 +120,7 @@ export function ActivityFeed() {
   };
 
   return (
-    <div className="w-[240px] shrink-0 border-l border-border/40 bg-card/60 backdrop-blur-xl overflow-hidden hidden xl:flex flex-col">
+    <div className="w-[240px] shrink-0 retro-face shadow-[inset_1px_0_#0a0a0a,inset_2px_0_#868a8e] overflow-hidden hidden xl:flex flex-col">
 
       {/* Live badge */}
       <div className="h-10 flex items-center justify-between px-3 border-b border-border/30 shrink-0">

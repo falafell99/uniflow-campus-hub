@@ -123,7 +123,7 @@ export function StudyCoach({ page, currentSubject, onTriggerStudyMode }: StudyCo
       {/* Trigger Button */}
       <button 
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-full text-sm font-semibold shadow-lg hover:bg-primary/90 active:scale-95 transition-all outline-none ring-offset-2 ring-primary/20 focus-visible:ring-2"
+        className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-2.5 retro-btn text-black text-sm font-semibold outline-none focus-visible:ring-1 focus-visible:ring-[#000080]"
       >
         <Brain className="h-4 w-4" />
         Study Coach
@@ -136,7 +136,7 @@ export function StudyCoach({ page, currentSubject, onTriggerStudyMode }: StudyCo
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className="fixed bottom-20 right-6 w-80 z-50 bg-card border border-border/40 rounded-2xl shadow-2xl overflow-hidden glass-card"
+            className="fixed bottom-20 right-6 w-80 z-50 overflow-hidden glass-card"
             style={{ maxHeight: '420px' }}
           >
             {/* Header */}
