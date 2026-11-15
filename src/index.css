@@ -1,25 +1,14 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Instrument+Serif:ital@0;1&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;700&display=swap');
 
 @layer utilities {
-  .font-display {
-    font-family: 'Instrument Serif', Georgia, 'Times New Roman', serif;
+  .font-grotesk {
+    font-family: 'Space Grotesk', 'Inter', system-ui, sans-serif;
   }
 }
 
 ::selection {
-  background: rgba(242, 201, 76, 0.45);
-}
-
-@keyframes highlight-sweep {
-  from { background-size: 0% 100%; }
-  to { background-size: 100% 100%; }
-}
-
-.hl-mark {
-  background-image: linear-gradient(to top, rgba(242, 201, 76, 0.55) 38%, transparent 38%);
-  background-repeat: no-repeat;
-  animation: highlight-sweep 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.4s both;
-  padding: 0 0.06em;
+  background: #111;
+  color: #fff;
 }
 
 @tailwind base;
